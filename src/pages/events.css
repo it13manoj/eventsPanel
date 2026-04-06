@@ -1,0 +1,23 @@
+.event-green {
+  background-color: #22c55e !important;
+  border-color: #22c55e !important;
+  color: white !important;
+}
+
+.event-red {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+}
+
+.event-brown {
+  background-color: #92400e !important;
+  border-color: #92400e !important;
+  color: white !important;
+}
+
+.event-yellow {
+  background-color: #eab308 !important;
+  border-color: #eab308 !important;
+  color: black !important;
+}
