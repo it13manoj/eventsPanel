@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
@@ -18,13 +18,18 @@ import Blank from "./pages/Blank";
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
+import PrivateRoute from "./components/PrivateRoute";
 
 export default function App() {
+
+
+
   return (
     <>
       <Router>
         <ScrollToTop />
         <Routes>
+          <Route element={<PrivateRoute />}>
           {/* Dashboard Layout */}
           <Route element={<AppLayout />}>
             <Route index path="/dashboard" element={<Home />} />
@@ -52,7 +57,7 @@ export default function App() {
             <Route path="/line-chart" element={<LineChart />} />
             <Route path="/bar-chart" element={<BarChart />} />
           </Route>
-
+          </Route>
           {/* Auth Layout */}
           <Route path="/" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />

@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Link, useNavigate, useNavigation } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
+import { loginUser } from "../../hooks/api/authService";
+
+
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -15,14 +18,24 @@ export default function SignInForm() {
         password:""
   });
 
-  const eventHendler = (e:any) =>{
+  const eventHendler =  (e: React.ChangeEvent<HTMLInputElement>) =>{
       setLogin(preState=>({...preState,[e.target.name]:e.target.value}))
   }
 
-  const loginHandler = (e: any) => {
+  const loginHandler = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(login);
-    navigation("/dashboard")
+    try {
+      const res = await loginUser(login);
+      console.log();
+      
+      localStorage.setItem("token", res.results.token);
+
+      navigation("/dashboard");
+
+    } catch (err) {
+      alert("Invalid Credentials");
+    }
+
   }
 
 
