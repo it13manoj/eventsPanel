@@ -36,6 +36,12 @@ const Calendar: React.FC = () => {
   const [eventEndDate, setEventEndDate] = useState("");
   const [eventLevel, setEventLevel] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [venueDateTime, setVenueDateTime] = useState("");
+  const [bookingDays, setBookingDays] = useState("");
+  const [placeOfBooking, setPlaceOfBooking] = useState("");
+  const [transportCharges, setTransportCharges] = useState("");
+  const [specialRequest, setSpecialRequest] = useState("");
+  const [amountTaxes, setAmountTaxes] = useState("");
 
   const calendarRef = useRef<FullCalendar>(null);
   const { isOpen, openModal, closeModal } = useModal();
@@ -121,7 +127,7 @@ const Calendar: React.FC = () => {
       />
       <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="custom-calendar">
-         <FullCalendar
+          <FullCalendar
             ref={calendarRef}
             plugins={[
               dayGridPlugin,
@@ -171,7 +177,7 @@ const Calendar: React.FC = () => {
             </div>
             <div className="mt-8">
               <div>
-                <div>
+                <div className="mt-3">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                     Client Name
                   </label>
@@ -184,10 +190,11 @@ const Calendar: React.FC = () => {
                   />
                 </div>
               </div>
+
               <div>
-                <div>
+                <div className="mt-3">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  VANUS
+                    VANUS
                   </label>
                   <input
                     id="event-title"
@@ -198,6 +205,131 @@ const Calendar: React.FC = () => {
                   />
                 </div>
               </div>
+
+              <div>
+                <div className="mt-3">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Date Of Event
+                  </label>
+                  <input
+                    id="event-title"
+                    type="date"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mt-3">
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Location Of VANUS
+                  </label>
+                  <input
+                    id="event-title"
+                    type="textarea"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Venue Availability Date & Time
+                </label>
+
+                <input
+                  id="event-datetime"
+                  type="datetime-local"
+                  value={venueDateTime}
+                  onChange={(e) => setVenueDateTime(e.target.value)}
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                />
+              </div>
+
+              <div className="mt-3">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Number Of Days of Booking
+                </label>
+
+                <input
+                  id="booking-days"
+                  type="number"
+                  min="1"
+                  placeholder="Enter number of days"
+                  value={bookingDays}
+                  onChange={(e) => setBookingDays(e.target.value)}
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                />
+              </div>
+
+              <div className="mt-3">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Place Of Booking
+                </label>
+
+                <input
+                  id="place-booking"
+                  type="text"
+                  placeholder="Enter place of booking"
+                  value={placeOfBooking}
+                  onChange={(e) => setPlaceOfBooking(e.target.value)}
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                />
+              </div>
+
+              <div className="mt-3">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Transport Charges (If Booking Outside Indore City)
+                </label>
+
+                <input
+                  id="transport-charges"
+                  type="number"
+                  min="0"
+                  placeholder="Enter transport charges"
+                  value={transportCharges}
+                  onChange={(e) => setTransportCharges(e.target.value)}
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                />
+              </div>
+
+              <div className="mt-3">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Special Request (If Any)
+                </label>
+
+                <textarea
+                  id="special-request"
+                  rows="3"
+                  placeholder="Enter any special request..."
+                  value={specialRequest}
+                  onChange={(e) => setSpecialRequest(e.target.value)}
+                  className="dark:bg-dark-900 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                ></textarea>
+              </div>
+
+              <div className="mt-3">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Amount + Taxes
+                </label>
+
+                <input
+                  id="amount-taxes"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter total amount"
+                  value={amountTaxes}
+                  onChange={(e) => setAmountTaxes(e.target.value)}
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                />
+              </div>
+
+
               <div className="mt-6">
                 <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
                   Event Color
