@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import "./SignUp.css"
+import { registerUser } from "../../hooks/api/authService";
+
 
 interface Errors {
   message: string
@@ -12,6 +14,7 @@ interface Errors {
 
 
 export default function SignUpForm() {
+  const navigation = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<Errors | null>(null);
@@ -33,7 +36,7 @@ export default function SignUpForm() {
   };
 
   // ✅ submit handler
-  const handleSubmit = (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
@@ -41,24 +44,27 @@ export default function SignUpForm() {
       return;
     }
 
-    // if (!isChecked) {
-    //   setError({ message: "Please accept Terms & Conditions ⚠️" });
-    //   return;
-    // }
+    const res = await registerUser(formData);
+    if (res.status == "300") {
+      setError({ message: "error" });
+    } else {
+      navigation("/");
+      setError({ message: "Register successfully!" });
+    }
 
-    setError({ message: "Register successfully!" });
+
     console.log("Form submitted ✅", formData);
   };
 
   useEffect(() => {
-  if (!error?.message) return;
+    if (!error?.message) return;
 
-  const timer = setTimeout(() => {
-    setError(null);
-  }, 3000); // 3 sec
+    const timer = setTimeout(() => {
+      setError(null);
+    }, 3000); // 3 sec
 
-  return () => clearTimeout(timer);
-}, [error]);
+    return () => clearTimeout(timer);
+  }, [error]);
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar">
