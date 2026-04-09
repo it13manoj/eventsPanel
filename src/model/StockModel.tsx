@@ -1,7 +1,7 @@
 import { Modal } from "../components/ui/modal";
 
 
-export default function StockModel({ isOpen, onClose, closeModal }: any) {
+export default function StockModel({ isOpen, closeModal }: any) {
     if (!open) return null;
     return (
         <Modal
