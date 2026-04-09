@@ -304,7 +304,6 @@ const Calendar: React.FC = () => {
 
                 <textarea
                   id="special-request"
-                  rows="3"
                   placeholder="Enter any special request..."
                   value={specialRequest}
                   onChange={(e) => setSpecialRequest(e.target.value)}
