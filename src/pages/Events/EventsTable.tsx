@@ -9,10 +9,14 @@ import {
 
 import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
+import EventAssignModel from "../../model/EventAssignModel";
+import { useModal } from "../../hooks/useModal";
 
 
 
 export default function EventsTable() {
+    
+        const { isOpen, openModal, closeModal } = useModal();
     const [events, setEvents] = useState([{
         "id": "",
         "c_name": "",
@@ -249,13 +253,17 @@ export default function EventsTable() {
                                     0
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                   <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600">Assign Team</button>
+                                   <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"   onClick={openModal}>Assign Team</button>
                                 </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </div>
+            <EventAssignModel 
+            isOpen={isOpen}
+                openModal={openModal}
+                closeModal={closeModal}/>
         </div>
     );
 }

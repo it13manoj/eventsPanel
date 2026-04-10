@@ -33,6 +33,7 @@ export default function EventsList() {
                 openModal={openModal}
                 closeModal={closeModal}
             />
+            
         </div>
     )
 }
