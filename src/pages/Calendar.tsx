@@ -8,6 +8,7 @@ import { Modal } from "../components/ui/modal";
 import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
 import multiMonthPlugin from "@fullcalendar/multimonth";
+import apiClient from "../hooks/api/apiClient";
 
 interface CalendarEvent extends EventInput {
   extendedProps?: {
@@ -31,44 +32,41 @@ const cellBackgroundColors: Record<string, string> = {
 
 const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+
+
   const [eventTitle, setEventTitle] = useState("");
-  const [eventStartDate, setEventStartDate] = useState("");
-  const [eventEndDate, setEventEndDate] = useState("");
-  const [eventLevel, setEventLevel] = useState("");
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [venueDateTime, setVenueDateTime] = useState("");
+  const [vanus, setVanus] = useState("");
+  const [dateOfEvent, setDateOfEvent] = useState("");
+  const [locationOfVanus, setLocationOfVanus] = useState("");
+  const [venueAvailabiliyDate, setVenueAvailalityDate] = useState("");
   const [bookingDays, setBookingDays] = useState("");
   const [placeOfBooking, setPlaceOfBooking] = useState("");
   const [transportCharges, setTransportCharges] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
   const [amountTaxes, setAmountTaxes] = useState("");
 
+
+
+
+  const [eventStartDate, setEventStartDate] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
+  const [eventLevel, setEventLevel] = useState("");
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+
+
+
+
+
+
   const calendarRef = useRef<FullCalendar>(null);
   const { isOpen, openModal, closeModal } = useModal();
 
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
 
-    setEvents([
-      {
-        id: "1",
-        title: "Event Conf.",
-        start: today,
-        extendedProps: { calendar: "Danger" },
-      },
-      {
-        id: "bg1",
-        start: today,
-        end: today,
-        display: "background",
-        backgroundColor: cellBackgroundColors["Danger"],
-      },
-    ]);
-  }, []);
 
   const handleDateSelect = (selectInfo: DateSelectArg) => {
     resetModalFields();
     setEventStartDate(selectInfo.startStr);
+    setDateOfEvent(selectInfo.startStr)
     setEventEndDate(selectInfo.endStr || selectInfo.startStr);
     openModal();
   };
@@ -85,7 +83,7 @@ const Calendar: React.FC = () => {
     openModal();
   };
 
-  const handleAddOrUpdateEvent = () => {
+  const handleAddOrUpdateEvent = async () => {
     const bgColor = cellBackgroundColors[eventLevel];
 
     const mainEvent: CalendarEvent = {
@@ -107,6 +105,21 @@ const Calendar: React.FC = () => {
 
     setEvents((prev) => [...prev, mainEvent, bgEvent]);
 
+    const data = {
+      "c_name": eventTitle,
+      "vanus": vanus,
+      "doe": dateOfEvent,
+      "v_location": locationOfVanus,
+      "v_a_d": venueAvailabiliyDate,
+      "nodb": bookingDays,
+      "pob": placeOfBooking,
+      "tc": transportCharges,
+      "sr": specialRequest,
+      "amount": amountTaxes
+    }
+    const results = await apiClient.post("admin/Events/create", data)
+    console.log(results)
+
     closeModal();
     resetModalFields();
   };
@@ -118,6 +131,67 @@ const Calendar: React.FC = () => {
     setEventLevel("");
     setSelectedEvent(null);
   };
+
+
+ const getEvents = async () => {
+  try {
+    const results = await apiClient.get("admin/Events/find");
+    const apiEvents = results?.data?.results || [];
+
+    const formattedEvents: CalendarEvent[] = apiEvents.flatMap((item: any) => {
+      const startDate = new Date(item.doe);
+
+      const endDate = new Date(item.doe);
+      endDate.setDate(endDate.getDate() + Number(item.nodb));
+
+      const start = startDate.toISOString().split("T")[0];
+      const end = endDate.toISOString().split("T")[0];
+
+      const color =
+        item.status == 0
+          ? "#FFA500"
+          : item.status == 1
+          ? "#008000"
+          : item.status == 2
+          ? "#8B4513"
+          : item.status == 3
+          ? "#87CEEB"
+          : item.status == 4
+          ? "#FF0000"
+          : "#ffffff";
+
+      return [
+        {
+          id: "event-" + item.id,
+          title: `${item.c_name} (${item.vanus})`,
+          start,
+          end,
+          allDay: true,
+          extendedProps: {
+            calendar: "Primary",
+          },
+        },
+        {
+          id: "bg-" + item.id,
+          start,
+          end,
+          display: "background",
+          backgroundColor: color,
+        },
+      ];
+    });
+
+    console.log("Formatted Events:", formattedEvents);
+
+    setEvents(formattedEvents);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+  useEffect(() => {
+    getEvents()
+  }, [0])
 
   return (
     <>
@@ -137,7 +211,7 @@ const Calendar: React.FC = () => {
             ]}
             initialView="Yearly"
             headerToolbar={{
-              left: "prev,next addEventButton",
+              left: "prev,next",
               center: "title",
               right: "Yearly,dayGridMonth,timeGridWeek,timeGridDay",
             }}
@@ -152,12 +226,6 @@ const Calendar: React.FC = () => {
             select={handleDateSelect}
             eventClick={handleEventClick}
             eventContent={renderEventContent}
-            customButtons={{
-              addEventButton: {
-                text: "Add Event +",
-                click: openModal,
-              },
-            }}
           />
         </div>
         <Modal
@@ -167,14 +235,7 @@ const Calendar: React.FC = () => {
         >
           <div className="overflow-y-auto custom-scrollbar">
             {/* Header */}
-            <div>
-              <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
-                {selectedEvent ? "Edit Event" : "Add Event"}
-              </h5>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Plan your next big moment: schedule or edit an event to stay on track
-              </p>
-            </div>
+
 
             {/* Form: 2-column grid */}
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -198,7 +259,7 @@ const Calendar: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                 value={eventTitle} onChange={(e) => setEventTitle(e.target.value)}
+                  value={vanus} onChange={(e) => setVanus(e.target.value)}
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                 />
               </div>
@@ -210,7 +271,7 @@ const Calendar: React.FC = () => {
                 </label>
                 <input
                   type="date"
-                  value={eventTitle} onChange={(e) => setEventTitle(e.target.value)}
+                  value={dateOfEvent} onChange={(e) => setDateOfEvent(e.target.value)}
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                 />
               </div>
@@ -222,7 +283,7 @@ const Calendar: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                 value={eventTitle} onChange={(e) => setEventTitle(e.target.value)}
+                  value={locationOfVanus} onChange={(e) => setLocationOfVanus(e.target.value)}
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                 />
               </div>
@@ -234,8 +295,8 @@ const Calendar: React.FC = () => {
                 </label>
                 <input
                   type="datetime-local"
-                  value={venueDateTime}
-                  onChange={(e) => setVenueDateTime(e.target.value)}
+                  value={venueAvailabiliyDate}
+                  onChange={(e) => setVenueAvailalityDate(e.target.value)}
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                 />
               </div>
@@ -314,7 +375,7 @@ const Calendar: React.FC = () => {
               </div>
 
               {/* Event Color */}
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 " style={{ display: "none" }}>
                 <label className="block mb-4 text-sm font-medium text-gray-700 dark:text-gray-400">
                   Event Color
                 </label>
@@ -351,7 +412,7 @@ const Calendar: React.FC = () => {
               </div>
 
               {/* Start Date */}
-              <div>
+              <div style={{ display: "none" }}>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                   Enter Start Date
                 </label>
@@ -364,7 +425,7 @@ const Calendar: React.FC = () => {
               </div>
 
               {/* End Date */}
-              <div>
+              <div style={{ display: "none" }}>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                   Enter End Date
                 </label>
@@ -403,15 +464,7 @@ const Calendar: React.FC = () => {
 
 
 
-// const renderEventContent = (eventInfo: any) => {
-//   const status = eventInfo.event.extendedProps?.calendar;
 
-//   return (
-//     <div className="p-1 rounded text-xs bg-white shadow">
-//       <div>{eventInfo.event.title}</div>
-//     </div>
-//   );
-// };
 
 const renderEventContent = (eventInfo: any) => {
   const colorClass = `fc-bg-${eventInfo.event.extendedProps.calendar?.toLowerCase()}`;

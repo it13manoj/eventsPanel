@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
 
   {
     icon: <CalenderIcon />,
-    name: "Bookings",
+    name: "Events List",
     path: "/events",
   },
 

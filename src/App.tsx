@@ -20,6 +20,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import PrivateRoute from "./components/PrivateRoute";
 import StockPages from "./pages/Stock/StockPage";
+import EventsList from "./pages/Events/EventList";
 
 export default function App() {
 
@@ -35,7 +36,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route index path="/dashboard" element={<Home />} />
             <Route  path="/stock" element={<StockPages />} />
-
+             <Route  path="/events" element={<EventsList />} />
             {/* Others Page */}
             <Route path="/profile" element={<UserProfiles />} />
             <Route path="/calendar" element={<Calendar />} />
