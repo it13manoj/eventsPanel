@@ -139,8 +139,8 @@ export default function BasicTableOne() {
                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                   {rows?.height}
                 </TableCell>
-                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                  {rows?.color}
+                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400" >
+                  <span  style={{background:`${rows?.color}`, display:"block"}}>&nbsp;</span>
                 </TableCell>
                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                   {rows?.quantity}

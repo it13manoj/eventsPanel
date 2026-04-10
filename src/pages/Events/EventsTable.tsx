@@ -30,6 +30,7 @@ export default function EventsTable() {
         "sr": "",
         "amount": "",
         "status": "",
+        "created_at":""
     }])
 
 
@@ -145,6 +146,13 @@ export default function EventsTable() {
                                 Amount + Taxes
                             </TableCell>
 
+                            <TableCell
+                                isHeader
+                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                            >
+                               Booking Date 
+                            </TableCell>
+
 
                             <TableCell
                                 isHeader
@@ -243,6 +251,15 @@ export default function EventsTable() {
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {rows?.amount}
                                 </TableCell>
+
+                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                    {/* {rows?.v_a_d} */}
+                                    {rows?.created_at && !isNaN(new Date(rows.created_at).getTime()) ? new Date(rows?.created_at)
+                                        .toISOString()
+                                        .slice(0, 19)
+                                        .replace("T", " ") : "_"}
+                                </TableCell>
+
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {
                                         getStatusColor(Number(rows.status))
