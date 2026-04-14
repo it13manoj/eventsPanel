@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
 
   {
     icon: <CalenderIcon />,
-    name: "Bookings",
+    name: "Events List",
     path: "/events",
   },
 
@@ -50,10 +50,17 @@ const navItems: NavItem[] = [
   },
 
   {
-    icon: <TableIcon />,
+    icon: <GridIcon />,
     name: "Inventroy",
-    path: "/stock",
+    subItems: [{ name: "Where House", path: "/wherehouse", pro: false }, { name: "Stock", path: "/stock", pro: false }, { name: "Category", path: "/category", pro: false }, { name: "Sub Category", path: "/sub-category", pro: false }],
   },
+
+  {
+    icon: <GridIcon />,
+    name: "Vehicle Management",
+    subItems: [{ name: "Vehicle Types", path: "/vehicletypes", pro: false },{ name: "Owner Vehicle", path: "/owner-vahicle", pro: false }, { name: "Agency Vehicle", path: "/agency-vehicle", pro: false }, { name: "Vehicle", path: "/vehicle", pro: false }],
+  },
+
 
   {
     icon: <CalenderIcon />,
@@ -61,17 +68,7 @@ const navItems: NavItem[] = [
     path: "/attendance",
   },
 
-  {
-    icon: <CalenderIcon />,
-    name: "Vehicle Management",
-    path: "/attendance",
-  },
-
-  {
-    icon: <CalenderIcon />,
-    name: "Transport Planing",
-    path: "/attendance",
-  },
+ 
 
   {
     icon: <CalenderIcon />,
