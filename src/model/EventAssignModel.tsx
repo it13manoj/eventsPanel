@@ -1,4 +1,4 @@
-import  { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "../components/ui/modal";
 import apiClient from "../hooks/api/apiClient";
 
@@ -8,8 +8,8 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [users, setUsers] = useState([{
-      id:0,
-      name:""
+    id: 0,
+    name: ""
   }])
 
   const toggleSelect = (id: number) => {
@@ -19,18 +19,18 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
   };
 
 
-  const getUsers = async () =>{
-    try{
-          const results = await apiClient.get("/users/all")
-          setUsers(results?.data?.results)
-    }catch{
+  const getUsers = async () => {
+    try {
+      const results = await apiClient.get("/users/all")
+      setUsers(results?.data?.results)
+    } catch {
 
     }
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     getUsers()
-  },[0])
+  }, [0])
 
   const selectedNames = users
     .filter((cat) => selected.includes(cat.id))
@@ -63,7 +63,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs cursor-pointer flex items-center justify-between"
                 >
                   <span>
-                    {selected.length > 0 ? selectedNames : "Select Category"}
+                    {selected.length > 0 ? selectedNames : " Select Employee"}
                   </span>
                   <span>▼</span>
                 </div>
@@ -71,7 +71,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
                 {/* Dropdown */}
                 {open && (
                   <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                    { users && users.map((rows) => (
+                    {users && users.map((rows) => (
                       <label
                         key={rows.id}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer"
@@ -88,13 +88,25 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
                 )}
               </div>
             </div>
+            </div>
+             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                Inventory Category
+              </label>
+              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id">
+                <option value={0}> Select Inventory Category</option>
+
+              </select>
+            </div>
+
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Sub Category
+                Goods
               </label>
               <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id">
-                <option value={0}> Select Sub Category</option>
+                <option value={0}> Select Goods </option>
 
               </select>
             </div>
@@ -103,7 +115,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Width(ft)
+                Date
               </label>
               <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="width" />
 
@@ -111,7 +123,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Height(ft)
+                Venue
               </label>
               <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="height" />
 
@@ -121,7 +133,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Color
+                Time
               </label>
               <input type="color" className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="color" />
 
@@ -129,7 +141,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Number Of Quantity
+                Location
               </label>
               <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quantity" />
 
@@ -139,7 +151,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Price(ft)
+                Installation and Uninstalling Time Day/Night:
               </label>
               <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="price" />
 
@@ -147,7 +159,7 @@ export default function EventAssignModel({ isOpen, closeModal }: any) {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Quality
+                Stock Location
               </label>
               <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quality" />
 

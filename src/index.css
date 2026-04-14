@@ -790,3 +790,57 @@ span.flatpickr-weekday,
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
 }
+
+
+
+th {
+  position: relative;
+}
+
+.resizer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+}
+
+.resizer:hover {
+  background-color: #3b82f6;
+}
+
+
+/* 🔥 Increase overall month size */
+.fc .fc-multimonth {
+  gap: 40px; /* space between months */
+}
+
+/* 🔥 Increase each month block size */
+.fc .fc-multimonth-month {
+  min-width: 710px; /* increase width */
+}
+
+/* 🔥 Increase day cell height */
+.fc .fc-daygrid-day-frame {
+  min-height: 120px; /* increase height */
+}
+
+/* 🔥 Make day numbers bigger */
+.fc .fc-daygrid-day-number {
+  font-size: 14px;
+  padding: 6px;
+}
+
+/* 🔥 Optional: increase event size */
+.fc .fc-daygrid-event {
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+@media (max-width: 768px) {
+  .fc .fc-multimonth {
+    grid-template-columns: repeat(2, 2fr);
+  }
+}
