@@ -42,7 +42,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     "created_at": "2026-04-18T05:53:13.000Z",
     "updated_at": "2026-04-18T05:53:13.000Z"
   })
-  const [inventory, setInventory] = useState({})
+  // const [inventory, setInventory] = useState({})
   const [wareHouse, setWarehouse] = useState([{
     id: "",
      WareHouse:{address: ""}
