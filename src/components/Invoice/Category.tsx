@@ -1,21 +1,47 @@
 
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
-
+import { useState } from "react";
+import apiClient from "../../hooks/api/apiClient";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Category() {
+    const [from,setform] = useState({})
 
+    const eventHendler = (e:any) =>{
+            setform(preState => ({ ...preState, [e.target.name]: e.target.value }))
+    }
+
+    const submitCategory = async (e:any) =>{
+        e.preventDefault();
+        try{
+                const results = await apiClient.post("/admin/category/create",from);
+                console.log(results);
+                 toast.success("Successfully Created!");
+        }catch{
+            console.log("error");
+        }
+    }
 
     return (
 
         <div>
+            <ToastContainer
+                position="bottom-left"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={true}
+                closeOnClick
+                pauseOnHover
+            />
             <PageMeta
                 title="React.js Blank Dashboard | TailAdmin - Next.js Admin Dashboard Template"
                 description="This is React.js Blank Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
             />
             <PageBreadcrumb pageTitle="Category" />
             <div className="min-h-screen rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
-                <form>
+                <form  onSubmit={submitCategory}>
                     <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
 
                         {/* Category Name */}
@@ -25,7 +51,7 @@ export default function Category() {
                             </label>
                             <input
                                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                placeholder="Enter category name"
+                                placeholder="Enter category name" name="name" onChange={eventHendler}
                             />
                         </div>
 
@@ -36,34 +62,21 @@ export default function Category() {
                             </label>
                             <input
                                 className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                placeholder="CAT-001"
+                                placeholder="CAT-001" name="code"  onChange={eventHendler}
                             />
                         </div>
                     </div>
 
                     <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
 
-                        {/* Parent Category */}
-                        <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                                Parent Category
-                            </label>
-                            <select
-                                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-                            >
-                                <option value="">Select Parent Category</option>
-                                <option>Electronics</option>
-                                <option>Furniture</option>
-                            </select>
-                        </div>
-
+                      
                         {/* Status */}
                         <div>
                             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                                 Status
                             </label>
                             <select
-                                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
+                                className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800" name="status"  onChange={eventHendler}
                             >
                                 <option value="1">Active</option>
                                 <option value="0">Inactive</option>
@@ -79,7 +92,7 @@ export default function Category() {
                         <textarea
                           
                             className="dark:bg-dark-900 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                            placeholder="Write category description..."
+                            placeholder="Write category description..." name="description"  onChange={eventHendler}
                         ></textarea>
                     </div>
 

@@ -28,6 +28,7 @@ import Owner from "./components/Vechicle/Owner";
 import Agency from "./components/Vechicle/Agency";
 import Vechicle from "./components/Vechicle/Vehicle";
 import VehicleTypes from "./components/Vechicle/VehicleDetails";
+import WareHouseList from "./components/Invoice/WareHouseList";
 
 export default function App() {
 
@@ -51,6 +52,7 @@ export default function App() {
               <Route path="/agency-vehicle" element={<Agency />} />
               <Route path="/vehicle" element={<Vechicle />} />
               <Route path="/vehicletypes" element={<VehicleTypes/>}/>
+              <Route path="/warehouselist" element={<WareHouseList/>}/>
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/calendar" element={<Calendar />} />
@@ -82,7 +84,9 @@ export default function App() {
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+
       </Router>
+      
     </>
   );
 }

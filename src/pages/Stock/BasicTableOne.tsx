@@ -20,6 +20,10 @@ export default function BasicTableOne() {
     subCategories: {
       name: ""
     },
+    WareHouse:{
+      id:"",
+      name:""
+    },
     width: "",
     height: "",
     color: "",
@@ -55,6 +59,12 @@ export default function BasicTableOne() {
                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
               >
                 #
+              </TableCell>
+               <TableCell
+                isHeader
+                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+              >
+                Ware House
               </TableCell>
               <TableCell
                 isHeader
@@ -115,6 +125,16 @@ export default function BasicTableOne() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 overflow-hidden rounded-full">
                       {rows?.id}
+                    </div>
+                  </div>
+                </TableCell>
+                 <TableCell className="px-5 py-4 sm:px-6 text-start">
+                  <div>
+                    <div>
+                      <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                        {rows?.WareHouse?.name}
+                      </span>
+
                     </div>
                   </div>
                 </TableCell>

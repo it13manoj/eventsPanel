@@ -3,7 +3,7 @@ import { Modal } from "../components/ui/modal";
 import apiClient from "../hooks/api/apiClient";
 
 
-export default function StockModel({ isOpen, closeModal }: any) {
+export default function StockModel({ isOpen, closeModal}: any) {
     if (!open) return null;
     const [categories, setCategories] = useState([{
         id: "",
@@ -15,6 +15,10 @@ export default function StockModel({ isOpen, closeModal }: any) {
     }]);
 
     const [inventory, setInventory] = useState({})
+    const [wareHouse, setWarehouse] = useState([{
+        id: "",
+        name: ""
+    }])
 
 
 
@@ -51,17 +55,30 @@ export default function StockModel({ isOpen, closeModal }: any) {
     }
 
 
-    const submitHandler = (e:any)=>{
+    const submitHandler = (e: any) => {
         e.preventDefault();
-        
-        try{
-                const results = apiClient.post("/admin/Inverntory/create",inventory)
-                console.log(results);
-                  closeModal();
-        }catch{
+
+        try {
+            const results = apiClient.post("/admin/Inverntory/create", inventory)
+            console.log(results);
+            closeModal();
+        } catch {
 
         }
     }
+
+    const wareHouses = async () => {
+        try {
+            const results = await apiClient.get("/admin/warehouse/find")
+            setWarehouse(results?.data?.results)
+        } catch {
+
+        }
+    }
+
+    useEffect(() => {
+        wareHouses()
+    }, [0])
 
 
     return (
@@ -101,6 +118,19 @@ export default function StockModel({ isOpen, closeModal }: any) {
                             <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id" onChange={datahandler}>
                                 <option value={0}> Select Sub Category</option>
                                 {subCategories && subCategories.map(rows => (
+                                    <option value={rows?.id}>{rows.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                Ware House
+                            </label>
+                            <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="ware_house_id" onChange={datahandler}>
+                                <option value={0}> Select Ware House</option>
+                                {wareHouse && wareHouse.map(rows => (
                                     <option value={rows?.id}>{rows.name}</option>
                                 ))}
                             </select>

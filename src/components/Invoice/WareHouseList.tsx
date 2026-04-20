@@ -9,67 +9,41 @@ import {
 
 import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
-import EventAssignModel from "../../model/EventAssignModel";
-import { useModal } from "../../hooks/useModal";
 
 
-
-export default function EventsTable() {
-    const [eid, setEId] = useState({
-        id: ""
-    })
-    const { isOpen, openModal, closeModal } = useModal();
-    const [events, setEvents] = useState([{
+export default function WareHouseList() {
+    const [Inverntory, setInventory] = useState([{
         "id": "",
-        "c_name": "",
-        "vanus": "",
-        "doe": "",
-        "v_location": "",
-        "v_a_d": "",
-        "nodb": "",
-        "pob": "",
-        "tc": "",
-        "sr": "",
-        "amount": "",
-        "status": "",
-        "created_at": ""
+        "name": "",
+        "code": "",
+        "location": "",
+        "capacity": "",
+        "manager_name": "",
+        "contact_number": "",
+        "gst_number": "",
+        "license_number": "",
+        "address": "",
+        "google_link": ""
     }])
 
 
-    const getEvents = async () => {
+    const getInvetory = async () => {
         try {
-            const results = await apiClient.get("admin/Events/find")
-            setEvents(results?.data?.results);
+            const results = await apiClient.get("/admin/warehouse/find")
+            setInventory(results?.data?.results);
         } catch {
 
         }
     }
 
-    const getStatusColor = (status: any) => {
-        const statusColors: Record<number, string> = {
-            0: "Enquriy",
-            1: "Confirm/Live",
-            2: "Installation Ongoing",
-            3: "Event Finished",
-            4: "Cancelled/Postpone",
-        };
-
-        return statusColors[Number(status)] || "#ffffff";
-    };
-
     useEffect(() => {
-        getEvents()
+        getInvetory()
     }, [0])
 
-    const getEventsByID = (id: any) => {
-        setEId({id:id});
-    }
-
-console.log(eid);
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-            <div className="max-w-full overflow-x-scroll" style={{ whiteSpace: "nowrap" }}>
+            <div className="max-w-full overflow-x-auto">
                 <Table>
                     {/* Table Header */}
                     <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -84,110 +58,74 @@ console.log(eid);
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Client Name
+                                Name
                             </TableCell>
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                VANUS
+                                Code
                             </TableCell>
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Start Date Of Event
-                            </TableCell>
-
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                End Date Of Event
+                                Registration No.
                             </TableCell>
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Location Of VANUS
+                                GST No.
                             </TableCell>
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Venue Availability Date & Time
+                                Location
                             </TableCell>
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Number Of Days of Booking
+                                Capacity
                             </TableCell>
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Place Of Booking
+                                Manager Name
                             </TableCell>
-
-
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Transport Charges
+                                Contact Number
                             </TableCell>
-
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Special Request
+                                Address
                             </TableCell>
-
-
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Amount + Taxes
+                                Google Maps Link
                             </TableCell>
-
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Booking Date
-                            </TableCell>
-
-
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Status
                             </TableCell>
-
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Team
-                            </TableCell>
-
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Action
-                            </TableCell>
-
                         </TableRow>
                     </TableHeader>
 
                     {/* Table Body */}
                     <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                        {events && events.map((rows) => (
+                        {Inverntory && Inverntory.map((rows) => (
                             <TableRow key={rows?.id}>
                                 <TableCell className="px-5 py-4 sm:px-6 text-start">
                                     <div className="flex items-center gap-3">
@@ -200,95 +138,48 @@ console.log(eid);
                                     <div>
                                         <div>
                                             <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                                                {rows?.c_name}
+                                                {rows?.name}
                                             </span>
 
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    {rows?.vanus}
+                                    {rows?.code}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                     <div className="flex -space-x-2">
-                                        {rows?.doe && !isNaN(new Date(rows.doe).getTime())
-                                            ? new Date(rows.doe).toISOString().split("T")[0]
-                                            : "-"}
+                                        {rows?.location}
                                     </div>
                                 </TableCell>
-
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <div className="flex -space-x-2">
-                                        {(() => {
-                                            if (!rows?.doe) return "-";
-
-                                            const startDate = new Date(rows.doe);
-                                            if (isNaN(startDate.getTime())) return "-";
-
-                                            startDate.setDate(startDate.getDate() + Number(rows?.nodb || 0));
-
-                                            return startDate.toISOString().split("T")[0];
-                                        })()}
-                                    </div>
+                                    {rows?.capacity}
                                 </TableCell>
-
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    {rows?.v_location}
+                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400" >
+                                    {rows?.manager_name}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {/* {rows?.v_a_d} */}
-                                    {rows?.v_a_d && !isNaN(new Date(rows.v_a_d).getTime()) ? new Date(rows?.v_a_d)
-                                        .toISOString()
-                                        .slice(0, 19)
-                                        .replace("T", " ") : "_"}
+                                    {rows?.contact_number}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.nodb}
+                                    {rows?.gst_number}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.pob}
-
+                                    {rows?.license_number}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.tc}
+                                    {rows?.address}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.sr}
+                                   
+                                    <iframe src={`${rows?.google_link}`} ></iframe>
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.amount}
-                                </TableCell>
-
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {/* {rows?.v_a_d} */}
-                                    {rows?.created_at && !isNaN(new Date(rows.created_at).getTime()) ? new Date(rows?.created_at)
-                                        .toISOString()
-                                        .slice(0, 19)
-                                        .replace("T", " ") : "_"}
-                                </TableCell>
-
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {
-                                        getStatusColor(Number(rows.status))
-
-                                    }
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    0
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" onClick={(e: any) => { openModal(); getEventsByID(rows.id); }}>Assign Team</button>
-                                </TableCell>
+                               
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
             </div>
-            <EventAssignModel
-                eid={eid}
-                isOpen={isOpen}
-                openModal={openModal}
-                closeModal={closeModal} />
         </div>
     );
 }

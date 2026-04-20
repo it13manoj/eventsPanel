@@ -52,7 +52,7 @@ const navItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Inventroy",
-    subItems: [{ name: "Where House", path: "/wherehouse", pro: false }, { name: "Stock", path: "/stock", pro: false }, { name: "Category", path: "/category", pro: false }, { name: "Sub Category", path: "/sub-category", pro: false }],
+    subItems: [{ name: "Ware House", path: "/wherehouse", pro: false },{ name: "Ware House List", path: "/warehouselist", pro: false }, { name: "Stock", path: "/stock", pro: false }, { name: "Category", path: "/category", pro: false }, { name: "Sub Category", path: "/sub-category", pro: false }],
   },
 
   {
