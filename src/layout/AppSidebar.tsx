@@ -15,6 +15,8 @@ import {
   TableIcon,
   UserCircleIcon,
 } from "../icons";
+import { Users, Warehouse } from "lucide-react";
+import { Truck  } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 
@@ -44,19 +46,19 @@ const navItems: NavItem[] = [
   },
 
   {
-    icon: <UserCircleIcon />,
+    icon: <Users />,
     name: "Employee",
-    path: "/employee",
+    subItems: [{name: "Employee Profile", path:"/profile", pro: false}, {name: "Employee List", path: "/employeelist", pro: false}, {name: "Attendance", path: "/attendance", pro: false}]
   },
 
   {
-    icon: <GridIcon />,
+    icon: <Warehouse  />,
     name: "Inventroy",
     subItems: [{ name: "Where House", path: "/wherehouse", pro: false }, { name: "Stock", path: "/stock", pro: false }, { name: "Category", path: "/category", pro: false }, { name: "Sub Category", path: "/sub-category", pro: false }],
   },
 
   {
-    icon: <GridIcon />,
+    icon: <Truck  />,
     name: "Vehicle Management",
     subItems: [{ name: "Vehicle Types", path: "/vehicletypes", pro: false },{ name: "Owner Vehicle", path: "/owner-vahicle", pro: false }, { name: "Agency Vehicle", path: "/agency-vehicle", pro: false }, { name: "Vehicle", path: "/vehicle", pro: false }],
   },

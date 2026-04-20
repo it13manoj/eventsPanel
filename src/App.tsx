@@ -28,6 +28,8 @@ import Owner from "./components/Vechicle/Owner";
 import Agency from "./components/Vechicle/Agency";
 import Vechicle from "./components/Vechicle/Vehicle";
 import VehicleTypes from "./components/Vechicle/VehicleDetails";
+import EmployeeList from "./components/employee/EmployeeList/AddEmployee";
+import Attendance from "./components/employee/Attendance";
 
 export default function App() {
 
@@ -53,6 +55,8 @@ export default function App() {
               <Route path="/vehicletypes" element={<VehicleTypes/>}/>
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
+              <Route path="/employeelist" element={<EmployeeList/>}/>
+              <Route path="/attendance" element={<Attendance/>}/>
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
 
