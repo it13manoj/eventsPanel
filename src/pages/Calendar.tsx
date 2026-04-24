@@ -45,6 +45,23 @@ const Calendar: React.FC = () => {
 
   const calendarRef = useRef<FullCalendar>(null);
   const { isOpen, openModal, closeModal } = useModal();
+  const [checkStock, setCheckStock] = useState({
+    categories_id: 0,
+    sub_categories_id: 0,
+    quntites:0,
+    width:null,
+    height:null
+
+  })
+
+  const [categories, setCategories] = useState([{
+    id: "",
+    name: ""
+  }]);
+  const [subCategories, setSubCategories] = useState([{
+    id: "",
+    name: ""
+  }]);
 
   // --- Handlers ---
 
@@ -124,6 +141,11 @@ const Calendar: React.FC = () => {
       tc: transportCharges,
       sr: specialRequest,
       amount: amountTaxes,
+      quntites:checkStock.quntites,
+      width: checkStock.width,
+      height: checkStock.height,
+      categories_id:checkStock.categories_id,
+      sub_categories_id:checkStock.sub_categories_id
     };
 
     await apiClient.post("admin/Events/create", data);
@@ -163,16 +185,6 @@ const Calendar: React.FC = () => {
 
 
 
-  const [categories, setCategories] = useState([{
-    id: "",
-    name: ""
-  }]);
-  const [subCategories, setSubCategories] = useState([{
-    id: "",
-    name: ""
-  }]);
-
-
   const getCategories = async () => {
     try {
       const results = await apiClient.get("/admin/category/find");
@@ -198,6 +210,39 @@ const Calendar: React.FC = () => {
     }
 
   }
+
+  const [status] = useState({
+    0: "Enquriy",
+    1: "Confirm/Live",
+    2: "Installation Ongoing",
+    3: "Event Finished",
+    4: "Cancelled/Postpone",
+  })
+
+  const [stocksData, setStockData] = useState({
+    "quntites": 0,
+    "height": 0,
+    "width": 0
+  });
+  const [messages, setMessage] = useState();
+  const getGoods = async () => {
+    try {
+      const results = await apiClient(`/admin/Inverntory/calculate/${checkStock.categories_id}/${checkStock.sub_categories_id}`)
+      setStockData(results?.data)
+      console.log(results?.data.quntites);
+
+      const resultsevents = await apiClient(`/admin/Events/calculate/${dateOfEvent}/${bookingDays}/${checkStock.categories_id}/${checkStock.sub_categories_id}`)
+      
+      console.log(resultsevents);
+      
+
+    } catch {
+
+    }
+
+  }
+
+
 
   return (
     <>
@@ -309,7 +354,10 @@ const Calendar: React.FC = () => {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Category</label>
                 <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="categories_id" onChange={(e: any) => {
                   eventHandler(e);
-
+                  setCheckStock({
+                    ...checkStock,
+                    [e.target.name]: e.target.value
+                  })
                 }}>
                   <option value={0}> Select Category</option>
                   {categories && categories?.map(rows => (
@@ -322,7 +370,10 @@ const Calendar: React.FC = () => {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sub-Category</label>
 
 
-                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id">
+                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id" onChange={(e) => setCheckStock({
+                  ...checkStock,
+                  [e.target.name]: e.target.value
+                })}>
                   <option value={0}> Select Sub Category</option>
                   {subCategories && subCategories.map(rows => (
                     <option value={rows?.id}>{rows.name}</option>
@@ -334,8 +385,34 @@ const Calendar: React.FC = () => {
 
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Goods</label>
-                <input type="text" value={placeOfBooking} onChange={(e) => setPlaceOfBooking(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Qunities</label>
+                <input type="text" onChange={(e) => {
+                  getGoods();
+                  setCheckStock({
+                    ...checkStock,
+                    [e.target.name]: e.target.value
+                  });
+                }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
+              </div>
+               <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Width(ft)</label>
+                <input type="text" onChange={(e) => {
+                  getGoods();
+                  setCheckStock({
+                    ...checkStock,
+                    [e.target.name]: e.target.value
+                  });
+                }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
+              </div>
+               <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Height(ft)</label>
+                <input type="text" onChange={(e) => {
+                  getGoods();
+                  setCheckStock({
+                    ...checkStock,
+                    [e.target.name]: e.target.value
+                  });
+                }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
               </div>
 
 
@@ -344,16 +421,33 @@ const Calendar: React.FC = () => {
                 <input type="text" value={placeOfBooking} onChange={(e) => setPlaceOfBooking(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
               <div className="md:col-span-2">
-
+                {
+                  stocksData?.quntites && <span >{stocksData?.quntites}</span>
+                }
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Transport Charges</label>
                 <input type="number" value={transportCharges} onChange={(e) => setTransportCharges(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Amount + Taxes</label>
                 <input type="number" value={amountTaxes} onChange={(e) => setAmountTaxes(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Status</label>
+                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" >
+                  <option value={0} >Select Status</option>
+                  {Object.entries(status).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+
               <div className="md:col-span-2">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Special Request</label>
                 <textarea value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} className="dark:bg-dark-900 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"></textarea>
