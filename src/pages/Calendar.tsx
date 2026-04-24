@@ -49,7 +49,7 @@ const Calendar: React.FC = () => {
   // --- Handlers ---
 
   console.log(eventStartDate, eventLevel, eventEndDate);
-  
+
 
   const resetModalFields = () => {
     setEventTitle("");
@@ -83,10 +83,10 @@ const Calendar: React.FC = () => {
 
         const color =
           item.status == 0 ? "#FFA500" :
-          item.status == 1 ? "#008000" :
-          item.status == 2 ? "#8B4513" :
-          item.status == 3 ? "#87CEEB" :
-          item.status == 4 ? "#FF0000" : "#ffffff";
+            item.status == 1 ? "#008000" :
+              item.status == 2 ? "#8B4513" :
+                item.status == 3 ? "#87CEEB" :
+                  item.status == 4 ? "#FF0000" : "#ffffff";
 
         return [
           {
@@ -127,7 +127,7 @@ const Calendar: React.FC = () => {
     };
 
     await apiClient.post("admin/Events/create", data);
-    getEvents(); 
+    getEvents();
     closeModal();
     resetModalFields();
   };
@@ -147,6 +147,58 @@ const Calendar: React.FC = () => {
     return () => window.removeEventListener("click", hideMenu);
   }, []);
 
+
+
+  const formatDateLocal = (date: Date) => {
+    return date.getFullYear() + "-" +
+      String(date.getMonth() + 1).padStart(2, "0") + "-" +
+      String(date.getDate()).padStart(2, "0");
+  };
+
+
+
+
+
+
+
+
+
+  const [categories, setCategories] = useState([{
+    id: "",
+    name: ""
+  }]);
+  const [subCategories, setSubCategories] = useState([{
+    id: "",
+    name: ""
+  }]);
+
+
+  const getCategories = async () => {
+    try {
+      const results = await apiClient.get("/admin/category/find");
+      setCategories(results?.data?.results)
+
+    } catch {
+
+    }
+  }
+  useEffect(() => {
+    getCategories();
+  }, [])
+
+
+
+  const eventHandler = async (e: any) => {
+    try {
+      const id = e.target.value;
+      const results = await apiClient.get(`/admin/subCategory/findByid/${id}`)
+      setSubCategories(results?.data?.results)
+    } catch {
+
+    }
+
+  }
+
   return (
     <>
       <PageMeta title="Calendar" description="Event Management" />
@@ -154,12 +206,12 @@ const Calendar: React.FC = () => {
       {/* CUSTOM CONTEXT MENU */}
 
       {menuVisible && (
-        <div 
-          className="fixed z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl dark:bg-gray-800 dark:border-gray-700 py-2"
+        <div
+          className="absolute z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl dark:bg-gray-800 dark:border-gray-700 py-2"
           style={{ top: menuPosition.y, left: menuPosition.x }}
         >
-          <button 
-           onClick={() => {
+          <button
+            onClick={() => {
               resetModalFields();
               if (contextData.date) {
                 setEventStartDate(contextData.date);
@@ -172,7 +224,7 @@ const Calendar: React.FC = () => {
             ➕ Create Event
           </button>
           {contextData.event && (
-            <button 
+            <button
               onClick={() => {
                 const event = contextData.event;
                 setSelectedEvent(event);
@@ -206,13 +258,13 @@ const Calendar: React.FC = () => {
               Yearly: { type: "multiMonth", duration: { months: 12 } },
             }}
             events={events}
-            
+
             // REMOVED: click and select events
-            selectable={false} 
-            
+            selectable={false}
+
             // ATTACH: Right-click listeners
             dayCellDidMount={(arg) => {
-              arg.el.addEventListener("contextmenu", (e) => handleContextMenu(e, arg.date.toISOString().split("T")[0]));
+              arg.el.addEventListener("contextmenu", (e) => handleContextMenu(e, formatDateLocal(arg.date)));
             }}
             eventDidMount={(arg) => {
               arg.el.addEventListener("contextmenu", (e) => {
@@ -220,7 +272,7 @@ const Calendar: React.FC = () => {
                 handleContextMenu(e, undefined, arg.event);
               });
             }}
-            
+
             eventContent={renderEventContent}
           />
         </div>
@@ -254,21 +306,59 @@ const Calendar: React.FC = () => {
                 <input type="number" min="1" value={bookingDays} onChange={(e) => setBookingDays(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
               <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Category</label>
+                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="categories_id" onChange={(e: any) => {
+                  eventHandler(e);
+
+                }}>
+                  <option value={0}> Select Category</option>
+                  {categories && categories?.map(rows => (
+                    <option value={rows?.id}> {rows.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sub-Category</label>
+
+
+                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id">
+                  <option value={0}> Select Sub Category</option>
+                  {subCategories && subCategories.map(rows => (
+                    <option value={rows?.id}>{rows.name}</option>
+                  ))}
+                </select>
+
+
+              </div>
+
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Goods</label>
+                <input type="text" value={placeOfBooking} onChange={(e) => setPlaceOfBooking(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+              </div>
+
+
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Place Of Booking</label>
                 <input type="text" value={placeOfBooking} onChange={(e) => setPlaceOfBooking(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+              </div>
+              <div className="md:col-span-2">
+
               </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Transport Charges</label>
                 <input type="number" value={transportCharges} onChange={(e) => setTransportCharges(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
-              <div className="md:col-span-2">
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Special Request</label>
-                <textarea value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} className="dark:bg-dark-900 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"></textarea>
-              </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Amount + Taxes</label>
                 <input type="number" value={amountTaxes} onChange={(e) => setAmountTaxes(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
+              <div className="md:col-span-2">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Special Request</label>
+                <textarea value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} className="dark:bg-dark-900 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"></textarea>
+              </div>
+
             </div>
 
             <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end">

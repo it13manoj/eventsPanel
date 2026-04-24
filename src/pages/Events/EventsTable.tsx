@@ -20,7 +20,7 @@ export default function EventsTable() {
     })
     const { isOpen, openModal, closeModal } = useModal();
     const [events, setEvents] = useState([{
-        "id": "",
+        "id": 0,
         "c_name": "",
         "vanus": "",
         "doe": "",
@@ -57,20 +57,88 @@ export default function EventsTable() {
         return statusColors[Number(status)] || "#ffffff";
     };
 
+     useEffect(() => {
+        getEvents()
+    }, [isOpen])
+
     useEffect(() => {
         getEvents()
     }, [0])
 
     const getEventsByID = (id: any) => {
-        setEId({id:id});
+        setEId({ id: id });
     }
 
-console.log(eid);
+    const [teamSizes, setTeamSizes] = useState<{ [key: number]: number }>({});
+
+    const getTeamMember = async (id: number) => {
+        try {
+            if (id > 0) {
+                const res = await apiClient(`/admin/teamAssign/find/${id}`);
+                const size = res?.data?.data?.TeamAssignUser?.length || 0;
+
+                setTeamSizes(prev => ({
+                    ...prev,
+                    [id]: size
+                }));
+            }
+        } catch {
+            setTeamSizes(prev => ({
+                ...prev,
+                [id]: 0
+            }));
+        }
+    };
+
+    useEffect(() => {
+        events.forEach((row: any) => {
+            if (!teamSizes[row.id]) {
+                getTeamMember(row.id);
+            }
+        });
+    }, [events]);
+
+// ============================================================Resize Able Table=================================
+
+
+useEffect(() => {
+  const thElements = document.querySelectorAll(".resizable-table th");
+
+  thElements.forEach((th: any) => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault(); // stop page scroll
+
+      const delta = e.deltaY;
+
+      const currentWidth = th.offsetWidth;
+
+      // scroll up = increase, scroll down = decrease
+      let newWidth = delta < 0 
+        ? currentWidth + 20 
+        : currentWidth - 20;
+
+      // min width protection
+      newWidth = Math.max(80, newWidth);
+
+      th.style.width = newWidth + "px";
+    };
+
+    th.addEventListener("wheel", handleWheel, { passive: false });
+  });
+
+  return () => {
+    thElements.forEach((th: any) => {
+      th.removeEventListener("wheel", () => {});
+    });
+  };
+}, []);
+
+
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
             <div className="max-w-full overflow-x-scroll" style={{ whiteSpace: "nowrap" }}>
-                <Table>
+                <Table className="resizable-table">
                     {/* Table Header */}
                     <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                         <TableRow>
@@ -274,10 +342,16 @@ console.log(eid);
                                     }
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    0
+                                    {teamSizes[rows.id] ?? 0}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" onClick={() => { openModal(); getEventsByID(rows.id); }}>Assign Team</button>
+                                    {(teamSizes[rows.id] ?? 0) > 0 ? (
+                                        <button type="button" className="btn btn-dander btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" >Team Assigned</button>
+
+                                    ) : (
+                                        <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" onClick={() => { openModal(); getEventsByID(rows.id); }}>Assign Team</button>
+
+                                    )}
                                 </TableCell>
                             </TableRow>
                         ))}

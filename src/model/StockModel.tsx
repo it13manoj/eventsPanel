@@ -46,7 +46,6 @@ export default function StockModel({ isOpen, closeModal}: any) {
 
         }
 
-
     }
 
 

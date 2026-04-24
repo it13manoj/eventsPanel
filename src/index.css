@@ -791,7 +791,9 @@ span.flatpickr-weekday,
   @apply opacity-100;
 }
 
-
+.btn-dander{
+ background-color: #f58536 !important;
+}
 
 th {
   position: relative;
@@ -850,3 +852,19 @@ th {
     width: 100%;
 }
 
+
+/* =====================================================Resize Table======================================= */
+/* Table layout */
+.resizable-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.resizable-table th,
+.resizable-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}

@@ -3,7 +3,8 @@ import { Modal } from "../components/ui/modal";
 import apiClient from "../hooks/api/apiClient";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 
 export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
@@ -14,7 +15,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
   const [selected, setSelected] = useState<number[]>([]);
   const [users, setUsers] = useState([{
     id: 0,
-   name:""
+    name: ""
   }])
 
   const [categories, setCategories] = useState([{
@@ -28,29 +29,32 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
 
   const [events, setEvents] = useState({
     "id": 1,
-    "c_name": "Manoj",
-    "vanus": "Test",
-    "doe": "2026-04-05T00:00:00.000Z",
-    "v_location": "test",
-    "v_a_d": "2026-04-18T09:25:00.000Z",
+    "c_name": "",
+    "vanus": "",
+    "doe": "",
+    "v_location": "",
+    "v_a_d": "",
     "nodb": 6,
-    "pob": "buxar",
+    "pob": "",
     "tc": "0",
-    "sr": "test",
+    "sr": "",
     "amount": 0,
     "status": "1",
-    "created_at": "2026-04-18T05:53:13.000Z",
-    "updated_at": "2026-04-18T05:53:13.000Z"
+    "created_at": "",
+    "updated_at": ""
   })
   // const [inventory, setInventory] = useState({})
   const [wareHouse, setWarehouse] = useState([{
     id: "",
-     WareHouse:{address: ""}
+    WareHouse: { address: "" }
   }])
   const [getCateData, setCatDate] = useState({
-    categories_id: "",
-    sub_categories_id: ""
+    inventoryCategory: "",
+    inventorySubcategories: ""
   });
+
+
+  const [assignTeam, setAssignTeam] = useState({ employee: [] })
 
   const toggleSelect = (id: number) => {
     setSelected((prev) =>
@@ -108,6 +112,9 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
       const results = await apiClient.get(`/admin/Events/findByPk/${eid?.id}`)
       setEvents(results?.data?.results)
 
+      console.log(results?.data?.results.doe);
+      // setDate(new Date(results?.data?.results.doe))
+      
     }
   }
 
@@ -118,14 +125,14 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
 
 
   useEffect(() => {
-    if (events?.v_a_d) {
-      setDate(new Date(events.v_a_d)); // convert string → Date object
+    if (events?.doe) {
+      setDate(new Date(events.doe)); // convert string → Date object
     }
   }, [events]);
 
   useEffect(() => {
     if (events?.v_a_d) {
-      setTime(new Date(events.v_a_d)); // convert string → Date object
+      setTime(new Date(events.doe)); // convert string → Date object
     }
   }, [events]);
 
@@ -134,18 +141,52 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     setCatDate(preState => ({ ...preState, [e.target.name]: e.target.value }))
   }
 
-  const fetchStock = async (cid:any, sid:any) => {
-    if (cid && sid){
+  const fetchStock = async (cid: any, sid: any) => {
+    console.log(getCateData);
+    
+    if (cid && sid) {
+      console.log(cid && sid);
+      
       const results = await apiClient.get(`/admin/Inverntory/findBycategoriesAndSubCategories/${cid}/${sid}`)
-     setWarehouse(results.data.results)
-       
+      setWarehouse(results.data.results)
+
     }
   }
 
-  useEffect(() => {
-    fetchStock(getCateData.categories_id, getCateData.sub_categories_id)
-  }, [getCateData.categories_id, getCateData.sub_categories_id])
 
+  useEffect(() => {
+    fetchStock(getCateData.inventoryCategory, getCateData.inventorySubcategories)
+  }, [getCateData])
+
+
+  const assignTeamHendler = (e: any) => {
+    setAssignTeam(preState => ({ ...preState, [e.target.name]: e.target.value }))
+  }
+
+
+  const TeamSubmitHendler = async (e: any) => {
+    e.preventDefault();
+    try {
+      const d = new Date(date);
+      const params = {
+        ...assignTeam,
+        date: d.toLocaleDateString("en-CA"),
+        time:d.toTimeString().split(" ")[0],
+        inventoryCategory:getCateData.inventoryCategory,
+        inventorySubcategories:getCateData.inventorySubcategories,
+        location:events?.v_location,
+        venue:events?.vanus,
+        employees: selected,
+        event_id: eid?.id
+      }
+
+      const results = await apiClient.post("/admin/teamAssign/create", params)
+         toast.success("Successfully Created!", results);
+         closeModal(); 
+    } catch (error) {
+
+    }
+  }
 
 
 
@@ -165,9 +206,16 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
             {"Team Assign"}
           </h5>
         </div>
-
+          <ToastContainer
+                position="bottom-left"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={true}
+                closeOnClick
+                pauseOnHover
+            />
         {/* Form: 2-column grid */}
-        <form >
+        <form onSubmit={TeamSubmitHendler}>
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -210,9 +258,10 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Inventory Category
               </label>
-              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="categories_id" onChange={(e: any) => {
+              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="inventoryCategory" onChange={(e: any) => {
                 eventHandler(e);
-                selectHendler(e)
+                selectHendler(e);
+               
               }}>
                 <option value={0}> Select Inventory Category</option>
 
@@ -227,8 +276,9 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Goods
               </label>
-              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id" onChange={(e: any) => {
+              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="inventorySubcategories" onChange={(e: any) => {
                 selectHendler(e)
+              
               }}>
                 <option value={0}> Select Goods </option>
                 {subCategories && subCategories.map(rows => (
@@ -246,10 +296,11 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
                 </label>
                 <DatePicker
                   selected={date}
-                  onChange={(d: any) => setDate(d)}
+                  onChange={(d: any) => { setDate(d); assignTeamHendler(d) }}
                   dateFormat="yyyy-MM-dd"
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
 
+                  name="date"
                 />
               </div>
               <div>
@@ -258,13 +309,13 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
                 </label>
                 <DatePicker
                   selected={time}
-                  onChange={(t: any) => setTime(t)}
+                  onChange={(t: any) => { setTime(t); assignTeamHendler(t) }}
                   showTimeSelect
                   showTimeSelectOnly
                   timeIntervals={15}
                   timeCaption="Time"
                   dateFormat="h:mm aa"
-
+                  name="time"
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                 />
               </div>
@@ -279,7 +330,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Venue
               </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="height" value={`${events?.vanus}`} />
+              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="venue" value={`${events?.vanus}`}  />
 
             </div>
 
@@ -287,7 +338,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Location
               </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quantity" value={`${events?.v_location}`} />
+              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="location" value={`${events?.v_location}`}  />
 
             </div>
           </div>
@@ -297,7 +348,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Installation and Uninstalling Time Day/Night:
               </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="price" />
+              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="installation" onChange={assignTeamHendler} />
 
             </div>
 
@@ -305,12 +356,12 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Stock Location
               </label>
-              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quality" >
+              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="stockLocation" onChange={assignTeamHendler}  >
                 <option >Select Store Location</option>
-                    {wareHouse && wareHouse.map(rows=>(
-                      <option key={rows.id} value={rows.id} >{rows?.WareHouse?.address?.toUpperCase()}</option>
-                    ))}
-                </select>
+                {wareHouse && wareHouse.map(rows => (
+                  <option key={rows.id} value={rows.id} >{rows?.WareHouse?.address?.toUpperCase()}</option>
+                ))}
+              </select>
             </div>
           </div>
 

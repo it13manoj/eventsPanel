@@ -46,11 +46,44 @@ export default function BasicTableOne() {
     getInvetory()
   }, [0])
 
+// =============================Resize able table ========================
+    useEffect(() => {
+  const thElements = document.querySelectorAll(".resizable-table th");
+
+  thElements.forEach((th: any) => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault(); // stop page scroll
+
+      const delta = e.deltaY;
+
+      const currentWidth = th.offsetWidth;
+
+      // scroll up = increase, scroll down = decrease
+      let newWidth = delta < 0 
+        ? currentWidth + 20 
+        : currentWidth - 20;
+
+      // min width protection
+      newWidth = Math.max(80, newWidth);
+
+      th.style.width = newWidth + "px";
+    };
+
+    th.addEventListener("wheel", handleWheel, { passive: false });
+  });
+
+  return () => {
+    thElements.forEach((th: any) => {
+      th.removeEventListener("wheel", () => {});
+    });
+  };
+}, []);
+
 
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
       <div className="max-w-full overflow-x-auto">
-        <Table>
+        <Table className="resizable-table">
           {/* Table Header */}
           <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
             <TableRow>
