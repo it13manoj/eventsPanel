@@ -20,6 +20,10 @@ export default function UserInfoCard() {
             Personal Information
           </h4>
 
+          <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
+              <img src="/images/user/owner.jpg" alt="user" />
+            </div>
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
             <div>
               <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
