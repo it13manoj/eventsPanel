@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, } from "react";
 import PageMeta from "../common/PageMeta";
 import PageBreadcrumb from "../common/PageBreadCrumb";
 import { Table, TableCell, TableHeader, TableRow } from "../ui/table";
 
+
 export default function Vechicle() {
+
 
 
   // ✅ Resize Logic

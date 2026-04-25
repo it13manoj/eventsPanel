@@ -11,11 +11,17 @@ import { useEffect, useState } from "react";
 import apiClient from "../../../hooks/api/apiClient";
 
 export default function CategoryList() {
-    const [categories, setCategories] = useState([]);
+    const [categories, setCategories] = useState([{
+        id:0,
+        name:"",
+        code:"",
+        status:0,
+        description:"",
+    }]);
 
     const getCategories = async () => {
         try {
-            const res = await apiClient.get("admin/category/find");
+            const res = await apiClient.get("/admin/category/find");
             setCategories(res?.data?.results || []);
         } catch (error) {
             console.log("Error fetching categories");
@@ -26,33 +32,68 @@ export default function CategoryList() {
         getCategories();
     }, []);
 
-    // ================= Resize Table =================
+
+
+ const handleEdit = (e:any)=>{
+    console.log(e);
+    
+ }
+
+const handleDelete = (e:any) =>{
+ console.log(e);
+ 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// =============================Resize able table ========================
     useEffect(() => {
-        const thElements = document.querySelectorAll(".resizable-table th");
+  const thElements = document.querySelectorAll(".resizable-table th");
 
-        thElements.forEach((th) => {
-            const handleWheel = (e) => {
-                e.preventDefault();
-                const delta = e.deltaY;
-                const currentWidth = th.offsetWidth;
+  thElements.forEach((th: any) => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault(); // stop page scroll
 
-                let newWidth = delta < 0
-                    ? currentWidth + 20
-                    : currentWidth - 20;
+      const delta = e.deltaY;
 
-                newWidth = Math.max(80, newWidth);
-                th.style.width = newWidth + "px";
-            };
+      const currentWidth = th.offsetWidth;
 
-            th.addEventListener("wheel", handleWheel, { passive: false });
-        });
+      // scroll up = increase, scroll down = decrease
+      let newWidth = delta < 0 
+        ? currentWidth + 20 
+        : currentWidth - 20;
 
-        return () => {
-            thElements.forEach((th) => {
-                th.removeEventListener("wheel", () => { });
-            });
-        };
-    }, []);
+      // min width protection
+      newWidth = Math.max(80, newWidth);
+
+      th.style.width = newWidth + "px";
+    };
+
+    th.addEventListener("wheel", handleWheel, { passive: false });
+  });
+
+  return () => {
+    thElements.forEach((th: any) => {
+      th.removeEventListener("wheel", () => {});
+    });
+  };
+}, []);
+
+
+
+
+
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -145,13 +186,13 @@ export default function CategoryList() {
                                     <div className="flex gap-2">
 
                                         {/* Edit Button */}
-                                        <button onClick={() => handleEdit(rows)} className="text-blue-500 hover:text-blue-700">
+                                        <button onClick={() => handleEdit(item.id)} className="text-blue-500 hover:text-blue-700">
                                             ✏️Edit
                                         </button>
 
 
                                         {/* Delete Button */}
-                                        <button onClick={() => handleDelete(rows?.id)} className="text-red-500 hover:text-red-700">
+                                        <button onClick={() => handleDelete(item?.id)} className="text-red-500 hover:text-red-700">
                                             🗑️Delete
                                         </button>
 

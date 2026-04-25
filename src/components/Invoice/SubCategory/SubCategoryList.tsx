@@ -11,11 +11,18 @@ import { useEffect, useState } from "react";
 import apiClient from "../../../hooks/api/apiClient";
 
 export default function SubCategoryList() {
-    const [categories, setCategories] = useState([]);
+    const [categories, setCategories] = useState([{
+        id: 0,
+        categories:{name:""},
+        name: "",
+        code: "",
+        status: 0,
+        description: ""
+    }]);
 
     const getCategories = async () => {
         try {
-            const res = await apiClient.get("admin/category/find");
+            const res = await apiClient.get("/admin/subCategory/find");
             setCategories(res?.data?.results || []);
         } catch (error) {
             console.log("Error fetching categories");
@@ -26,21 +33,44 @@ export default function SubCategoryList() {
         getCategories();
     }, []);
 
-    // ================= Resize Table =================
+
+
+    const handleEdit = (e: any) => {
+            console.log(e);
+            
+    }
+
+    const handleDelete = (e: any) => {
+        console.log(e);
+        
+    }
+
+
+
+
+
+
+
+    // =============================Resize able table ========================
     useEffect(() => {
         const thElements = document.querySelectorAll(".resizable-table th");
 
-        thElements.forEach((th) => {
-            const handleWheel = (e) => {
-                e.preventDefault();
+        thElements.forEach((th: any) => {
+            const handleWheel = (e: WheelEvent) => {
+                e.preventDefault(); // stop page scroll
+
                 const delta = e.deltaY;
+
                 const currentWidth = th.offsetWidth;
 
+                // scroll up = increase, scroll down = decrease
                 let newWidth = delta < 0
                     ? currentWidth + 20
                     : currentWidth - 20;
 
+                // min width protection
                 newWidth = Math.max(80, newWidth);
+
                 th.style.width = newWidth + "px";
             };
 
@@ -48,11 +78,12 @@ export default function SubCategoryList() {
         });
 
         return () => {
-            thElements.forEach((th) => {
+            thElements.forEach((th: any) => {
                 th.removeEventListener("wheel", () => { });
             });
         };
     }, []);
+
 
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -120,7 +151,7 @@ export default function SubCategoryList() {
                                 {/* Category Name */}
                                 <TableCell className="px-5 py-4">
                                     <span className="font-medium text-gray-800 dark:text-white">
-                                        {item?.cat_name}
+                                        {item?.categories?.name}
                                     </span>
                                 </TableCell>
 
@@ -152,18 +183,18 @@ export default function SubCategoryList() {
                                 <TableCell className="px-5 py-4 text-gray-500">
                                     {item?.description || "N/A"}
                                 </TableCell>
-                                
+
                                 <TableCell className="px-5 py-4 text-start">
                                     <div className="flex gap-2">
 
                                         {/* Edit Button */}
-                                        <button onClick={() => handleEdit(rows)} className="text-blue-500 hover:text-blue-700">
+                                        <button onClick={() => handleEdit(item.id)} className="text-blue-500 hover:text-blue-700">
                                             ✏️Edit
                                         </button>
 
 
                                         {/* Delete Button */}
-                                        <button onClick={() => handleDelete(rows?.id)} className="text-red-500 hover:text-red-700">
+                                        <button onClick={() => handleDelete(item?.id)} className="text-red-500 hover:text-red-700">
                                             🗑️Delete
                                         </button>
 

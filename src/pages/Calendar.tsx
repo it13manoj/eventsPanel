@@ -219,11 +219,11 @@ const Calendar: React.FC = () => {
     4: "Cancelled/Postpone",
   })
 
-  const [stocksData, setStockData] = useState({
-    "quntites": 0,
-    "height": 0,
-    "width": 0
-  });
+  // const [stocksData, setStockData] = useState({
+  //   "quntites": 0,
+  //   "height": 0,
+  //   "width": 0
+  // });
   const [messages, setMessage] = useState<string>("");
 
   const getGoods = async (e:any) => {

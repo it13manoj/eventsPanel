@@ -8,6 +8,7 @@ import CategoryList from "./CotegoryList";
 export default function StockPages() {
 
     const { isOpen, openModal, closeModal } = useModal();
+  
 
     return (
         <div>
