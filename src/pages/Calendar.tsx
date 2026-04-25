@@ -48,9 +48,9 @@ const Calendar: React.FC = () => {
   const [checkStock, setCheckStock] = useState({
     categories_id: 0,
     sub_categories_id: 0,
-    quntites:0,
-    width:null,
-    height:null
+    quntites: 0,
+    width: null,
+    height: null
 
   })
 
@@ -141,11 +141,11 @@ const Calendar: React.FC = () => {
       tc: transportCharges,
       sr: specialRequest,
       amount: amountTaxes,
-      quntites:checkStock.quntites,
+      quntites: checkStock.quntites,
       width: checkStock.width,
       height: checkStock.height,
-      categories_id:checkStock.categories_id,
-      sub_categories_id:checkStock.sub_categories_id
+      categories_id: checkStock.categories_id,
+      sub_categories_id: checkStock.sub_categories_id
     };
 
     await apiClient.post("admin/Events/create", data);
@@ -224,25 +224,70 @@ const Calendar: React.FC = () => {
     "height": 0,
     "width": 0
   });
-  const [messages, setMessage] = useState();
-  const getGoods = async () => {
+  const [messages, setMessage] = useState<string>("");
+
+  const getGoods = async (e:any) => {
     try {
-      const results = await apiClient(`/admin/Inverntory/calculate/${checkStock.categories_id}/${checkStock.sub_categories_id}`)
-      setStockData(results?.data)
-      console.log(results?.data.quntites);
+      const results = await apiClient(
+        `/admin/Inverntory/calculate/${checkStock.categories_id}/${checkStock.sub_categories_id}`
+      );
 
-      const resultsevents = await apiClient(`/admin/Events/calculate/${dateOfEvent}/${bookingDays}/${checkStock.categories_id}/${checkStock.sub_categories_id}`)
+      const resultsevents = await apiClient(
+        `/admin/Events/calculate/${dateOfEvent}/${bookingDays}/${checkStock.categories_id}/${checkStock.sub_categories_id}`
+      );
+
+      // ✅ Convert to number (VERY IMPORTANT)
+      const totalStock = Number(results?.data?.quntites) || 0;
+      const bookedStock = Number(resultsevents?.data?.quntites) || 0;
+      const requestedStock = Number(e.target.value) || 0;
+
+      const remainingStock = totalStock - bookedStock;
+      const afterBooking = remainingStock - requestedStock;
+
+      let messageHtml = "";
+
+      console.log(bookedStock, requestedStock , afterBooking);
       
-      console.log(resultsevents);
-      
 
-    } catch {
+      if (bookedStock + requestedStock > totalStock) {
+        messageHtml = `
+          <span style="color:red">
+            IN THIS DATE BETWEEN WE DON'T HAVE ANY STOCK LIMIT.
+            CURRENT STOCK: ${remainingStock}
+            AFTER BOOKING: ${afterBooking}
+          </span>
+        `;
+      } else if(afterBooking < 0 ){
+          messageHtml = `
+          <span style="color:red">
+            IN THIS DATE BETWEEN WE DON'T HAVE ANY STOCK LIMIT.
+            CURRENT STOCK: ${remainingStock}
+            AFTER BOOKING: ${afterBooking}
+          </span>
+        `;
+      }else{
+        messageHtml = `
+          <span style="color:green">
+            STOCK AVAILABLE
+            CURRENT STOCK: ${remainingStock}
+            AFTER BOOKING: ${afterBooking}
+          </span>
+        `;
+      }
 
+      setMessage(`<div>${messageHtml}</div>`);
+    } catch (error) {
+      console.error(error);
+
+      setMessage(`
+        <span style="color:red">
+          Something went wrong while fetching stock data.
+        </span>
+      `);
     }
+  };
 
-  }
-
-
+  console.log(messages);
 
   return (
     <>
@@ -387,27 +432,27 @@ const Calendar: React.FC = () => {
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Qunities</label>
                 <input type="text" onChange={(e) => {
-                  getGoods();
+                  getGoods(e);
                   setCheckStock({
                     ...checkStock,
                     [e.target.name]: e.target.value
                   });
                 }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
               </div>
-               <div>
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Width(ft)</label>
                 <input type="text" onChange={(e) => {
-                  getGoods();
+                  getGoods(e);
                   setCheckStock({
                     ...checkStock,
                     [e.target.name]: e.target.value
                   });
                 }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
               </div>
-               <div>
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Height(ft)</label>
                 <input type="text" onChange={(e) => {
-                  getGoods();
+                  getGoods(e);
                   setCheckStock({
                     ...checkStock,
                     [e.target.name]: e.target.value
@@ -420,11 +465,10 @@ const Calendar: React.FC = () => {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Place Of Booking</label>
                 <input type="text" value={placeOfBooking} onChange={(e) => setPlaceOfBooking(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
-              <div className="md:col-span-2">
-                {
-                  stocksData?.quntites && <span >{stocksData?.quntites}</span>
-                }
-              </div>
+              <div className="md:col-span-2" dangerouslySetInnerHTML={{
+                    __html: messages ?? "",
+                  }}>
+             </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Transport Charges</label>
                 <input type="number" value={transportCharges} onChange={(e) => setTransportCharges(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
