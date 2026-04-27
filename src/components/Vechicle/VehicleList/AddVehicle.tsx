@@ -6,10 +6,12 @@ import { useModal } from "../../../hooks/useModal";
 import VehicleDetails from "./VehicleDetails";
 import VehicleModal from "../../../model/VehicleModel";
 
+
 export default function AddVehicle() {
 
     const { isOpen, openModal, closeModal } = useModal();
-  
+
+
 
     return (
         <div>
@@ -30,7 +32,7 @@ export default function AddVehicle() {
                     </button>
                 </div>
 
-                <VehicleDetails />
+                <VehicleDetails  closeModal={isOpen} />
             </div>
 
             {/* Modal Component */}

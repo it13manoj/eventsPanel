@@ -10,27 +10,34 @@ import {
 import { useEffect, useState } from "react";
 import apiClient from "../../../hooks/api/apiClient";
 
-export default function VehicleDetails() {
-    const [categories, setCategories] = useState([{
+export default function VehicleDetails({closeModal }: any) {
+    const [vType, setvType] = useState([{
         id:0,
         name:"",
-        code:"",
-        status:0,
+        wheel:"",
+        capacity:"",
+        isActive:"",
         description:"",
+        fuel_type:"",
     }]);
 
-    const getCategories = async () => {
+    const getVechicleType = async () => {
         try {
-            const res = await apiClient.get("/admin/category/find");
-            setCategories(res?.data?.results || []);
+            const res = await apiClient.get("/admin/vehicle/find");
+            setvType(res?.data?.results || []);
         } catch (error) {
             console.log("Error fetching categories");
         }
     };
 
     useEffect(() => {
-        getCategories();
+        getVechicleType();
     }, []);
+
+    useEffect(() => {
+        getVechicleType();
+    }, [closeModal]);
+
 
 
 
@@ -152,7 +159,7 @@ const handleDelete = (e:any) =>{
 
                     {/* Body */}
                     <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                        {categories.map((item, index) => (
+                        {vType && vType.map((item, index) => (
                             <TableRow key={item?.id}>
 
                                 {/* ID */}
@@ -170,7 +177,7 @@ const handleDelete = (e:any) =>{
                                 {/* wheel type */}
                                 <TableCell className="px-5 py-4">
                                     <span className="font-medium text-gray-800 dark:text-white">
-                                        {item?.wheel_type}
+                                        {item?.wheel}
                                     </span>
                                 </TableCell>
 
