@@ -27,7 +27,7 @@ import SubCategory from "./components/Invoice/SubCategory/SubCategory";
 import Owner from "./components/Vechicle/Owner";
 import Agency from "./components/Vechicle/Agency";
 import Vechicle from "./components/Vechicle/Vehicle";
-import VehicleTypes from "./components/Vechicle/VehicleDetails";
+import AddVehicle from "./components/Vechicle/VehicleList/AddVehicle";
 import WareHouseList from "./components/Invoice/WareHouseList";
 import EmployeeList from "./components/employee/EmployeeList/AddEmployee";
 import Attendance from "./components/employee/Attendance";
@@ -53,7 +53,7 @@ export default function App() {
               <Route path="/owner-vahicle" element={<Owner />} />
               <Route path="/agency-vehicle" element={<Agency />} />
               <Route path="/vehicle" element={<Vechicle />} />
-              <Route path="/vehicletypes" element={<VehicleTypes/>}/>
+              <Route path="/addvehicle" element={<AddVehicle/>}/>
               <Route path="/warehouselist" element={<WareHouseList/>}/>
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
