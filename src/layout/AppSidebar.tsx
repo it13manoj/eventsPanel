@@ -53,7 +53,7 @@ const navItems: NavItem[] = [
   {
     icon: <Truck  />,
     name: "Vehicle Management",
-    subItems: [{ name: "Vehicle Types", path: "/vehicletypes", pro: false },{ name: "Owner Vehicle", path: "/owner-vahicle", pro: false }, { name: "Agency Vehicle", path: "/agency-vehicle", pro: false }, { name: "Vehicle", path: "/vehicle", pro: false }],
+    subItems: [{ name: "Vehicle Types", path: "/addvehicle", pro: false },{ name: "Owner Vehicle", path: "/owner-vahicle", pro: false }, { name: "Agency Vehicle", path: "/agency-vehicle", pro: false }, { name: "Vehicle", path: "/vehicle", pro: false }],
   },
 
 
