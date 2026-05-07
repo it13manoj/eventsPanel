@@ -7,7 +7,7 @@ import apiClient from "../hooks/api/apiClient";
 
 export default function SubCategoryModel({ isOpen, closeModal }: any) {
 
-
+    const [enabled, setEnabled] = useState(false);
 
 
 
@@ -23,8 +23,12 @@ export default function SubCategoryModel({ isOpen, closeModal }: any) {
 
     const submitCategory = async (e: any) => {
         e.preventDefault();
+        const data ={
+            ...from,
+            is_enable: enabled
+        }
         try {
-            const results = await apiClient.post("/admin/subCategory/create", from);
+            const results = await apiClient.post("/admin/subCategory/create", data);
             console.log(results);
             closeModal()
         } catch {
@@ -121,7 +125,23 @@ export default function SubCategoryModel({ isOpen, closeModal }: any) {
                             </select>
                         </div>
                     </div>
+                    <div className="mt-4 flex items-center gap-3">
+                        <span>Dynamic Enable ?</span>
 
+                        <button
+                            type="button"
+                            onClick={() => setEnabled(!enabled)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${enabled ? "bg-green-500" : "bg-gray-300"
+                                }`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${enabled ? "translate-x-6" : "translate-x-1"
+                                    }`}
+                            />
+                        </button>
+
+
+                    </div>
                     {/* Description */}
                     <div className="mt-8">
                         <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">

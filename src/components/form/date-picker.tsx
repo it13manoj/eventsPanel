@@ -31,6 +31,7 @@ export default function DatePicker({
       dateFormat: "Y-m-d",
       defaultDate,
       onChange,
+
     });
 
     return () => {

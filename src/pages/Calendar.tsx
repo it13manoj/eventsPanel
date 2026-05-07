@@ -9,6 +9,13 @@ import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import apiClient from "../hooks/api/apiClient";
+import AutoComplete from "../components/utils/ChosenSelect";
+import DatePicker from "../components/form/date-picker";
+
+
+
+
+
 
 interface CalendarEvent extends EventInput {
   extendedProps?: {
@@ -19,10 +26,12 @@ interface CalendarEvent extends EventInput {
 
 
 
+
 const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-
+  const [date, setDate] = useState<Date[]>([]);
   // Original Form States
+  const [selectedTech, setSelectedTech] = useState<string>("");
   const [eventTitle, setEventTitle] = useState("");
   const [vanus, setVanus] = useState("");
   const [dateOfEvent, setDateOfEvent] = useState("");
@@ -59,9 +68,93 @@ const Calendar: React.FC = () => {
     name: ""
   }]);
   const [subCategories, setSubCategories] = useState([{
-    id: "",
-    name: ""
+    id: 0,
+    name: "",
+    is_enable: false
   }]);
+
+  const [appendsAll, setAppendsAll] = useState([
+    {
+      categories: { id: 0, name: "" },
+      subCategories: { id: 0, name: "", is_enable: false },
+      inputs: {
+        value: 0,
+        width: "",
+        height: ""
+      }
+    }
+  ]);
+
+
+
+  const setCategoresAnd_SubCategories = (
+    e: any,
+    type: "category" | "subCategory"
+  ) => {
+    const id = Number(e.target.value);
+    const name = e.target.options[e.target.selectedIndex].text;
+
+    setAppendsAll((prev: any) => {
+      const updated = [...prev];
+      const lastIndex = updated.length - 1;
+
+      // ✅ CATEGORY SELECT → ADD NEW ROW
+      if (type === "category") {
+        updated.push({
+          categories: { id, name },
+          subCategories: { id: 0, name: "", is_enable: false },
+          inputs: {
+            value: 0,
+            width: 0,
+            height: 0,
+          },
+        });
+
+        return updated;
+      }
+
+      // ✅ SUBCATEGORY SELECT → UPDATE LAST ROW
+      if (type === "subCategory") {
+        // find is_enable from your subCategories list
+        const selectedSub = subCategories.find(
+          (r: any) => r.id === id
+        );
+
+        updated[lastIndex] = {
+          ...updated[lastIndex],
+          subCategories: {
+            id,
+            name,
+            is_enable: selectedSub?.is_enable || false,
+          },
+        };
+
+        return updated;
+      }
+
+      return prev;
+    });
+  };
+
+  const handleInputChange = (
+    index: number,
+    field: "value" | "width" | "height",
+    value: string
+  ) => {
+    setAppendsAll((prev: any) => {
+      const updated = [...prev];
+
+      updated[index] = {
+        ...updated[index],
+        inputs: {
+          ...updated[index].inputs,
+          [field]: value
+        }
+      };
+
+      return updated;
+    });
+  };
 
   // --- Handlers ---
 
@@ -130,13 +223,21 @@ const Calendar: React.FC = () => {
   };
 
   const handleAddOrUpdateEvent = async () => {
+    const start = new Date(dateOfEvent);
+    const end = new Date(date[0]);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    const diffTime = end.getTime() - start.getTime();
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
     const data = {
+      designName: selectedTech,
       c_name: eventTitle,
       vanus: vanus,
       doe: dateOfEvent,
       v_location: locationOfVanus,
       v_a_d: venueAvailabiliyDate,
-      nodb: bookingDays,
+      nodb: diffDays,
       pob: placeOfBooking,
       tc: transportCharges,
       sr: specialRequest,
@@ -145,8 +246,10 @@ const Calendar: React.FC = () => {
       width: checkStock.width,
       height: checkStock.height,
       categories_id: checkStock.categories_id,
-      sub_categories_id: checkStock.sub_categories_id
+      sub_categories_id: checkStock.sub_categories_id,
+      bookedItems: appendsAll.filter(r => r.categories.id != 0)
     };
+
 
     await apiClient.post("admin/Events/create", data);
     getEvents();
@@ -226,7 +329,7 @@ const Calendar: React.FC = () => {
   // });
   const [messages, setMessage] = useState<string>("");
 
-  const getGoods = async (e:any) => {
+  const getGoods = async (e: any) => {
     try {
       const results = await apiClient(
         `/admin/Inverntory/calculate/${checkStock.categories_id}/${checkStock.sub_categories_id}`
@@ -246,8 +349,8 @@ const Calendar: React.FC = () => {
 
       let messageHtml = "";
 
-      console.log(bookedStock, requestedStock , afterBooking);
-      
+      console.log(bookedStock, requestedStock, afterBooking);
+
 
       if (bookedStock + requestedStock > totalStock) {
         messageHtml = `
@@ -257,15 +360,15 @@ const Calendar: React.FC = () => {
             AFTER BOOKING: ${afterBooking}
           </span>
         `;
-      } else if(afterBooking < 0 ){
-          messageHtml = `
+      } else if (afterBooking < 0) {
+        messageHtml = `
           <span style="color:red">
             IN THIS DATE BETWEEN WE DON'T HAVE ANY STOCK LIMIT.
             CURRENT STOCK: ${remainingStock}
             AFTER BOOKING: ${afterBooking}
           </span>
         `;
-      }else{
+      } else {
         messageHtml = `
           <span style="color:green">
             STOCK AVAILABLE
@@ -287,7 +390,8 @@ const Calendar: React.FC = () => {
     }
   };
 
-  console.log(messages);
+  console.log(date);
+
 
   return (
     <>
@@ -367,9 +471,23 @@ const Calendar: React.FC = () => {
           />
         </div>
 
-        <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[100%] p-6 lg:p-10">
-          <div className="overflow-y-auto custom-scrollbar">
+        <Modal isOpen={isOpen} onClose={closeModal} className="max-w-8xl w-full mx-auto p-0 rounded-2xl overflow-hidden [&>button]:hidden">
+          <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+                <h2 className="text-lg font-semibold text-white">
+                    {selectedEvent ? "Update Event" : "Create Event"}
+                </h2>
+                <button
+                    onClick={() => closeModal()}
+                    className="text-white hover:text-red-200 text-xl"
+                >
+                    ✕
+                </button>
+            </div>
+          <div className="overflow-y-auto custom-scrollbar p-5">
             {/* SAME DESIGN AS PREVIOUS */}
+            <AutoComplete setSelectedTech={setSelectedTech}
+
+            />
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Client Name</label>
@@ -383,22 +501,31 @@ const Calendar: React.FC = () => {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Date Of Event</label>
                 <input type="date" value={dateOfEvent} onChange={(e) => setDateOfEvent(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Location Of VANUS</label>
-                <input type="text" value={locationOfVanus} onChange={(e) => setLocationOfVanus(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
-              </div>
+
+              <DatePicker
+                id="date-picker"
+                label="Last Booking Day"
+                placeholder="Select a date"
+                onChange={(dates: Date[]) => setDate(dates)}
+              />
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Venue Availability Date & Time</label>
                 <input type="datetime-local" value={venueAvailabiliyDate} onChange={(e) => setVenueAvailalityDate(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Number Of Days of Booking</label>
-                <input type="number" min="1" value={bookingDays} onChange={(e) => setBookingDays(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Location Of VANUS</label>
+                  <input type="text" value={locationOfVanus} onChange={(e) => setLocationOfVanus(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
+                </div>
               </div>
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Category</label>
                 <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="categories_id" onChange={(e: any) => {
                   eventHandler(e);
+                  setCategoresAnd_SubCategories(e, "category");
                   setCheckStock({
                     ...checkStock,
                     [e.target.name]: e.target.value
@@ -411,25 +538,86 @@ const Calendar: React.FC = () => {
                 </select>
               </div>
 
-              <div>
+              <div >
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sub-Category</label>
-
-
-                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="sub_categories_id" onChange={(e) => setCheckStock({
-                  ...checkStock,
-                  [e.target.name]: e.target.value
-                })}>
+                <select
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  name="sub_categories_id"
+                  onChange={(e) => {
+                    setCategoresAnd_SubCategories(e, "subCategory")
+                    setCheckStock((prev) => ({
+                      ...prev,
+                      [e.target.name]: e.target.value,
+                    }));
+                  }}
+                >
                   <option value={0}> Select Sub Category</option>
                   {subCategories && subCategories.map(rows => (
                     <option value={rows?.id}>{rows.name}</option>
                   ))}
                 </select>
 
-
               </div>
 
 
-              <div>
+
+
+              <div className="md:col-span-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {appendsAll && appendsAll.map((rows, i) => (
+                    rows.categories.id != 0 &&
+                    <div
+                      key={i}
+                      className="grid grid-cols-9 gap-3 rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm"
+                    >
+                      {/* Category */}
+                      <div className="col-span-3 h-11 flex items-center px-2 text-sm text-gray-800 dark:text-white/90">
+                        {rows.categories?.name}
+                      </div>
+
+                      {/* Sub Category */}
+                      <div className="col-span-3 h-11 flex items-center px-2 text-sm text-gray-800 dark:text-white/90">
+                        {rows.subCategories?.name}
+                      </div>
+
+                      {/* Input */}
+
+                      {rows.subCategories.is_enable ? (
+                        <>
+                          <input
+                            type="text"
+                            placeholder="Width"
+                            value={rows.inputs.width || ""}
+                            onChange={(e) =>
+                              handleInputChange(i, "width", e.target.value)
+                            }
+                          />
+
+                          <input
+                            type="text"
+                            placeholder="Height"
+                            value={rows.inputs.height || ""}
+                            onChange={(e) =>
+                              handleInputChange(i, "height", e.target.value)
+                            }
+                          />
+                        </>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Quantity"
+                          value={rows.inputs.value || ""}
+                          onChange={(e) =>
+                            handleInputChange(i, "value", e.target.value)
+                          }
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="hidden">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Qunities</label>
                 <input type="text" onChange={(e) => {
                   getGoods(e);
@@ -437,9 +625,9 @@ const Calendar: React.FC = () => {
                     ...checkStock,
                     [e.target.name]: e.target.value
                   });
-                }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
+                }} className=" dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
               </div>
-              <div>
+              <div className="hidden">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Width(ft)</label>
                 <input type="text" onChange={(e) => {
                   getGoods(e);
@@ -449,7 +637,7 @@ const Calendar: React.FC = () => {
                   });
                 }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
               </div>
-              <div>
+              <div className="hidden">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Height(ft)</label>
                 <input type="text" onChange={(e) => {
                   getGoods(e);
@@ -457,6 +645,7 @@ const Calendar: React.FC = () => {
                     ...checkStock,
                     [e.target.name]: e.target.value
                   });
+
                 }} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="quntites" />
               </div>
 
@@ -465,14 +654,15 @@ const Calendar: React.FC = () => {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Place Of Booking</label>
                 <input type="text" value={placeOfBooking} onChange={(e) => setPlaceOfBooking(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
-              <div className="md:col-span-2" dangerouslySetInnerHTML={{
-                    __html: messages ?? "",
-                  }}>
-             </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Transport Charges</label>
                 <input type="number" value={transportCharges} onChange={(e) => setTransportCharges(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
+              <div className="md:col-span-2" dangerouslySetInnerHTML={{
+                __html: messages ?? "",
+              }}>
+              </div>
+
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Amount + Taxes</label>

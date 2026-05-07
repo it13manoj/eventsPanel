@@ -114,7 +114,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
 
       console.log(results?.data?.results.doe);
       // setDate(new Date(results?.data?.results.doe))
-      
+
     }
   }
 
@@ -143,10 +143,10 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
 
   const fetchStock = async (cid: any, sid: any) => {
     console.log(getCateData);
-    
+
     if (cid && sid) {
       console.log(cid && sid);
-      
+
       const results = await apiClient.get(`/admin/Inverntory/findBycategoriesAndSubCategories/${cid}/${sid}`)
       setWarehouse(results.data.results)
 
@@ -171,18 +171,18 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
       const params = {
         ...assignTeam,
         date: d.toLocaleDateString("en-CA"),
-        time:d.toTimeString().split(" ")[0],
-        inventoryCategory:getCateData.inventoryCategory,
-        inventorySubcategories:getCateData.inventorySubcategories,
-        location:events?.v_location,
-        venue:events?.vanus,
+        time: d.toTimeString().split(" ")[0],
+        inventoryCategory: getCateData.inventoryCategory,
+        inventorySubcategories: getCateData.inventorySubcategories,
+        location: events?.v_location,
+        venue: events?.vanus,
         employees: selected,
         event_id: eid?.id
       }
 
       const results = await apiClient.post("/admin/teamAssign/create", params)
-         toast.success("Successfully Created!", results);
-         closeModal(); 
+      toast.success("Successfully Created!", results);
+      closeModal();
     } catch (error) {
 
     }
@@ -199,21 +199,34 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     <Modal
       isOpen={isOpen}
       onClose={closeModal}
-      className="max-w-[100%] p-6 lg:p-10">
-      <div className="overflow-y-auto custom-scrollbar">
+       className="max-w-8xl w-full mx-auto p-0 rounded-2xl overflow-hidden [&>button]:hidden" >
+
+      <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+        <h2 className="text-lg font-semibold text-white">
+          Event Details
+        </h2>
+        <button
+          onClick={() => closeModal(false)}
+          className="text-white hover:text-red-200 text-xl"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="overflow-y-auto custom-scrollbar  p-5">
         <div>
           <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
             {"Team Assign"}
           </h5>
         </div>
-          <ToastContainer
-                position="bottom-left"
-                autoClose={3000}
-                hideProgressBar={false}
-                newestOnTop={true}
-                closeOnClick
-                pauseOnHover
-            />
+        <ToastContainer
+          position="bottom-left"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          pauseOnHover
+        />
         {/* Form: 2-column grid */}
         <form onSubmit={TeamSubmitHendler}>
           <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -261,7 +274,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="inventoryCategory" onChange={(e: any) => {
                 eventHandler(e);
                 selectHendler(e);
-               
+
               }}>
                 <option value={0}> Select Inventory Category</option>
 
@@ -278,7 +291,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               </label>
               <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="inventorySubcategories" onChange={(e: any) => {
                 selectHendler(e)
-              
+
               }}>
                 <option value={0}> Select Goods </option>
                 {subCategories && subCategories.map(rows => (
@@ -330,7 +343,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Venue
               </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="venue" value={`${events?.vanus}`}  />
+              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="venue" value={`${events?.vanus}`} />
 
             </div>
 
@@ -338,7 +351,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Location
               </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="location" value={`${events?.v_location}`}  />
+              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="location" value={`${events?.v_location}`} />
 
             </div>
           </div>
