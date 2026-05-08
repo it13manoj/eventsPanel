@@ -11,14 +11,42 @@ import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
 import EventAssignModel from "../../model/EventAssignModel";
 import { useModal } from "../../hooks/useModal";
+import ItemsModel from "../../model/ItemModel";
+import EventDetailsModal from "../../model/EventDetailsModal";
+import AssignTeam from "../../model/AssignTeam";
 
 
+interface BookedItem {
+    id: number;
+    categories_id: number;
+    categories_name: string;
+    subCategories_id: number;
+    subCategories_name: string;
+    width: string;
+    height: string;
+    qt: number;
+    event_id: number;
+    created_at: string;
+    updated_at: string;
+}
 
 export default function EventsTable() {
     const [eid, setEId] = useState({
         id: ""
     })
     const { isOpen, openModal, closeModal } = useModal();
+    const [isOpens, setIsOpens] = useState(false);
+    const [bookedItems, setBookedItems] = useState<Record<number, BookedItem[]>>({});
+    const [selectedItems, setSelectedItems] = useState<BookedItem[] | null>(null);
+    
+    const [isOpenes, setIsOpenes] = useState(false);
+    const [selectedRow, setSelectedRow] = useState<any>(null);
+
+
+    const [isOpenTeam, setIsOpenTeam] = useState(false);
+    const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+
+
     const [events, setEvents] = useState([{
         "id": 0,
         "c_name": "",
@@ -57,7 +85,7 @@ export default function EventsTable() {
         return statusColors[Number(status)] || "#ffffff";
     };
 
-     useEffect(() => {
+    useEffect(() => {
         getEvents()
     }, [isOpen])
 
@@ -98,40 +126,71 @@ export default function EventsTable() {
         });
     }, [events]);
 
-// ============================================================Resize Able Table=================================
 
 
-useEffect(() => {
-  const thElements = document.querySelectorAll(".resizable-table th");
+    const getBookedItems = async (id: number) => {
+        try {
+            const res = await apiClient(`/admin/Events/bookedEvents/items/${id}`);
+            const items: BookedItem[] = res?.data?.results || [];
 
-  thElements.forEach((th: any) => {
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault(); // stop page scroll
-
-      const delta = e.deltaY;
-
-      const currentWidth = th.offsetWidth;
-
-      // scroll up = increase, scroll down = decrease
-      let newWidth = delta < 0 
-        ? currentWidth + 20 
-        : currentWidth - 20;
-
-      // min width protection
-      newWidth = Math.max(80, newWidth);
-
-      th.style.width = newWidth + "px";
+            setBookedItems(prev => ({
+                ...prev,
+                [id]: items
+            }));
+        } catch {
+            setBookedItems(prev => ({
+                ...prev,
+                [id]: []
+            }));
+        }
     };
 
-    th.addEventListener("wheel", handleWheel, { passive: false });
-  });
 
-  return () => {
-    thElements.forEach((th: any) => {
-      th.removeEventListener("wheel", () => {});
-    });
-  };
-}, []);
+    useEffect(() => {
+        events.forEach((row: any) => {
+            if (row.id && bookedItems[row.id] === undefined) {
+                getBookedItems(row.id);
+            }
+        });
+    }, [events, bookedItems]);
+
+
+
+
+    // ============================================================Resize Able Table=================================
+
+
+    useEffect(() => {
+        const thElements = document.querySelectorAll(".resizable-table th");
+
+        thElements.forEach((th: any) => {
+            const handleWheel = (e: WheelEvent) => {
+                e.preventDefault(); // stop page scroll
+
+                const delta = e.deltaY;
+
+                const currentWidth = th.offsetWidth;
+
+                // scroll up = increase, scroll down = decrease
+                let newWidth = delta < 0
+                    ? currentWidth + 20
+                    : currentWidth - 20;
+
+                // min width protection
+                newWidth = Math.max(80, newWidth);
+
+                th.style.width = newWidth + "px";
+            };
+
+            th.addEventListener("wheel", handleWheel, { passive: false });
+        });
+
+        return () => {
+            thElements.forEach((th: any) => {
+                th.removeEventListener("wheel", () => { });
+            });
+        };
+    }, []);
 
 
 
@@ -175,19 +234,19 @@ useEffect(() => {
                             </TableCell>
                             <TableCell
                                 isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Location Of VANUS
                             </TableCell>
                             <TableCell
                                 isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Venue Availability Date & Time
                             </TableCell>
                             <TableCell
                                 isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Number Of Days of Booking
                             </TableCell>
@@ -201,14 +260,14 @@ useEffect(() => {
 
                             <TableCell
                                 isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Transport Charges
                             </TableCell>
 
                             <TableCell
                                 isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Special Request
                             </TableCell>
@@ -216,7 +275,7 @@ useEffect(() => {
 
                             <TableCell
                                 isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
                                 Amount + Taxes
                             </TableCell>
@@ -242,6 +301,12 @@ useEffect(() => {
                             >
                                 Team
                             </TableCell>
+                            <TableCell
+                                isHeader
+                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                            >
+                                Booked Items
+                            </TableCell>
 
                             <TableCell
                                 isHeader
@@ -265,14 +330,15 @@ useEffect(() => {
                                     </div>
                                 </TableCell>
                                 <TableCell className="px-5 py-4 sm:px-6 text-start">
-                                    <div>
-                                        <div>
-                                            <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
-                                                {rows?.c_name}
-                                            </span>
-
-                                        </div>
-                                    </div>
+                                    <span
+                                        className="block font-medium text-gray-800 text-theme-sm dark:text-white/90 cursor-pointer hover:text-blue-600"
+                                        onClick={() => {
+                                            setSelectedRow(rows);
+                                            setIsOpenes(true);
+                                        }}
+                                    >
+                                        {rows?.c_name}
+                                    </span>
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                     {rows?.vanus}
@@ -303,27 +369,27 @@ useEffect(() => {
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                     {rows?.v_location}
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {/* {rows?.v_a_d} */}
                                     {rows?.v_a_d && !isNaN(new Date(rows.v_a_d).getTime()) ? new Date(rows?.v_a_d)
                                         .toISOString()
                                         .slice(0, 19)
                                         .replace("T", " ") : "_"}
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {rows?.nodb}
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {rows?.pob}
 
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {rows?.tc}
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {rows?.sr}
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {rows?.amount}
                                 </TableCell>
 
@@ -341,8 +407,34 @@ useEffect(() => {
 
                                     }
                                 </TableCell>
+
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {teamSizes[rows.id] ?? 0}
+                                    <span
+                                        className="cursor-pointer text-blue-600 hover:underline"
+                                        onClick={() => {
+                                            setSelectedTeamId(rows.id);
+                                            setIsOpenTeam(true);
+                                        }}
+                                    >
+                                        {teamSizes[rows.id] ?? 0}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                    {bookedItems[rows.id] ? (
+                                        <span
+                                            className="text-blue-600 cursor-pointer underline"
+                                            onClick={() => {
+                                                setSelectedItems(bookedItems[rows.id]);
+                                                setIsOpens(true);
+                                            }}
+                                        >
+                                            {bookedItems[rows.id].reduce((sum, item) => {
+                                                return sum + item.qt + (item.width.length > 1 ? 1 : 0);
+                                            }, 0)}
+                                        </span>
+                                    ) : (
+                                        "Loading..."
+                                    )}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {(teamSizes[rows.id] ?? 0) > 0 ? (
@@ -363,6 +455,23 @@ useEffect(() => {
                 isOpen={isOpen}
                 openModal={openModal}
                 closeModal={closeModal} />
+
+            <ItemsModel
+                selectedItems={selectedItems || []}
+                isOpens={isOpens}
+                setIsOpens={setIsOpens}
+
+            />
+
+            <EventDetailsModal
+                isOpen={isOpenes}
+                onClose={() => setIsOpenes(false)}
+                data={selectedRow}
+                bookedItems = {bookedItems}
+            />
+            <AssignTeam isOpen={isOpenTeam}
+                onClose={() => setIsOpenTeam(false)}
+                id={selectedTeamId } />
         </div>
     );
 }

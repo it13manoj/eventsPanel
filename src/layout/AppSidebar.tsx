@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
   {
     icon: <Users />,
     name: "Employee",
-    subItems: [{name: "Employee Profile", path:"/profile", pro: false}, {name: "Employee List", path: "/employeelist", pro: false}, {name: "Attendance", path: "/attendance", pro: false}, {name: "Salary", path: "/employeesalary", pro: false}]
+    subItems: [{name: "Employee Profile", path:"/profile", pro: false}, {name: "Employee List", path: "/employeelist", pro: false}, {name: "Attendance", path: "/attendance", pro: false}, {name: "Salary", path: "/salary", pro: false}]
   },
 
   {
@@ -55,12 +55,7 @@ const navItems: NavItem[] = [
   },
 
 
-  {
-    icon: <Briefcase />,
-    name: "Labour Managemnt",
-    path: "/attendance",
-  },
-
+  
  
 
   // {
