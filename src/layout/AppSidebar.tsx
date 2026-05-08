@@ -3,12 +3,10 @@ import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
 import {
-  CalenderIcon,
   ChevronDownIcon,
-  GridIcon,
   HorizontaLDots,
 } from "../icons";
-import { Users, Warehouse } from "lucide-react";
+import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Briefcase, Settings } from "lucide-react";
 import { Truck  } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -22,18 +20,18 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    icon: <GridIcon />,
+    icon: <LayoutDashboard />,
     name: "Dashboard",
     subItems: [{ name: "Ecommerce", path: "/", pro: false }],
   },
   {
-    icon: <CalenderIcon />,
+    icon: <CalendarDays />,
     name: "Calendar Booking",
     path: "/calendar",
   },
 
   {
-    icon: <CalenderIcon />,
+    icon: <ClipboardList />,
     name: "Events List",
     path: "/events",
   },
@@ -41,7 +39,7 @@ const navItems: NavItem[] = [
   {
     icon: <Users />,
     name: "Employee",
-    subItems: [{name: "Employee Profile", path:"/profile", pro: false}, {name: "Employee List", path: "/employeelist", pro: false}, {name: "Attendance", path: "/attendance", pro: false}]
+    subItems: [{name: "Employee Profile", path:"/profile", pro: false}, {name: "Employee List", path: "/employeelist", pro: false}, {name: "Attendance", path: "/attendance", pro: false}, {name: "Salary", path: "/employeesalary", pro: false}]
   },
 
   {
@@ -58,7 +56,7 @@ const navItems: NavItem[] = [
 
 
   {
-    icon: <CalenderIcon />,
+    icon: <Briefcase />,
     name: "Labour Managemnt",
     path: "/attendance",
   },
@@ -78,7 +76,7 @@ const navItems: NavItem[] = [
   // },
 
   {
-    icon: <CalenderIcon />,
+    icon: <Settings />,
     name: "Setting",
     path: "/setting",
   },

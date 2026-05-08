@@ -31,6 +31,7 @@ import AddVehicle from "./components/Vechicle/VehicleList/AddVehicle";
 import WareHouseList from "./components/Invoice/WareHouseList";
 import EmployeeList from "./components/employee/EmployeeList/AddEmployee";
 import Attendance from "./components/employee/Attendance";
+import EmployeeSalary from "./components/employee/Salary/EmployeeSalaryList";
 
 export default function App() {
 
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/employeelist" element={<EmployeeList/>}/>
               <Route path="/attendance" element={<Attendance/>}/>
+              <Route path="/employeesalary" element={<EmployeeSalary/>}/>
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
 
