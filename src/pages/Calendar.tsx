@@ -78,9 +78,13 @@ const Calendar: React.FC = () => {
       categories: { id: 0, name: "" },
       subCategories: { id: 0, name: "", is_enable: false },
       inputs: {
-        value: 0,
         width: "",
-        height: ""
+        height: "",
+        vertical: false,
+        horizontal: false,
+        verticalValue: "",
+        horizontalValue: "",
+        value: "" // ✅ important if used
       }
     }
   ]);
@@ -138,8 +142,15 @@ const Calendar: React.FC = () => {
 
   const handleInputChange = (
     index: number,
-    field: "value" | "width" | "height",
-    value: string
+    field:
+      | "width"
+      | "height"
+      | "value"
+      | "vertical"
+      | "horizontal"
+      | "verticalValue"
+      | "horizontalValue",
+    value: string | boolean
   ) => {
     setAppendsAll((prev: any) => {
       const updated = [...prev];
@@ -473,16 +484,16 @@ const Calendar: React.FC = () => {
 
         <Modal isOpen={isOpen} onClose={closeModal} className="max-w-8xl w-full mx-auto p-0 rounded-2xl overflow-hidden [&>button]:hidden">
           <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
-                <h2 className="text-lg font-semibold text-white">
-                    {selectedEvent ? "Update Event" : "Create Event"}
-                </h2>
-                <button
-                    onClick={() => closeModal()}
-                    className="text-white hover:text-red-200 text-xl"
-                >
-                    ✕
-                </button>
-            </div>
+            <h2 className="text-lg font-semibold text-white">
+              {selectedEvent ? "Update Event" : "Create Event"}
+            </h2>
+            <button
+              onClick={() => closeModal()}
+              className="text-white hover:text-red-200 text-xl"
+            >
+              ✕
+            </button>
+          </div>
           <div className="overflow-y-auto custom-scrollbar p-5">
             {/* SAME DESIGN AS PREVIOUS */}
             <AutoComplete setSelectedTech={setSelectedTech}
@@ -528,7 +539,8 @@ const Calendar: React.FC = () => {
                   setCategoresAnd_SubCategories(e, "category");
                   setCheckStock({
                     ...checkStock,
-                    [e.target.name]: e.target.value
+                    [e.target.name]: e.target.value,
+                    sub_categories_id: 0,
                   })
                 }}>
                   <option value={0}> Select Category</option>
@@ -541,6 +553,7 @@ const Calendar: React.FC = () => {
               <div >
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sub-Category</label>
                 <select
+                  value={checkStock.sub_categories_id || 0}
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                   name="sub_categories_id"
                   onChange={(e) => {
@@ -564,59 +577,100 @@ const Calendar: React.FC = () => {
 
               <div className="md:col-span-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {appendsAll && appendsAll.map((rows, i) => (
-                    rows.categories.id != 0 &&
-                    <div
-                      key={i}
-                      className="grid grid-cols-9 gap-3 rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm"
-                    >
-                      {/* Category */}
-                      <div className="col-span-3 h-11 flex items-center px-2 text-sm text-gray-800 dark:text-white/90">
-                        {rows.categories?.name}
-                      </div>
+                  {appendsAll &&
+                    appendsAll.map((rows, i) =>
+                      rows.categories.id != 0 ? (
+                        <div
+                          key={i}
+                          className="relative flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm"
+                        >
+                          {/* ❌ Remove Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = appendsAll.filter((_, index) => index !== i);
+                              setAppendsAll(updated);
+                            }}
+                            className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
+                          >
+                            ✕
+                          </button>
 
-                      {/* Sub Category */}
-                      <div className="col-span-3 h-11 flex items-center px-2 text-sm text-gray-800 dark:text-white/90">
-                        {rows.subCategories?.name}
-                      </div>
+                          {/* Category */}
+                          <div className="text-sm font-medium text-gray-800 dark:text-white/90 min-w-[120px]">
+                            {rows.categories?.name}
+                          </div>
 
-                      {/* Input */}
+                          {/* Sub Category */}
+                          <div className="text-sm text-gray-700 dark:text-white/80 min-w-[120px]">
+                            {rows.subCategories?.name}
+                          </div>
 
-                      {rows.subCategories.is_enable ? (
-                        <>
-                          <input
-                            type="text"
-                            placeholder="Width"
-                            value={rows.inputs.width || ""}
-                            onChange={(e) =>
-                              handleInputChange(i, "width", e.target.value)
-                            }
-                          />
+                          {/* Inputs */}
+                          {rows.subCategories.is_enable ? (
+                            <>
+                              <label className="flex items-center gap-1 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={rows.inputs.vertical || false}
+                                  onChange={(e) =>
+                                    handleInputChange(i, "vertical", e.target.checked)
+                                  }
+                                />
+                                Vertical
+                              </label>
 
-                          <input
-                            type="text"
-                            placeholder="Height"
-                            value={rows.inputs.height || ""}
-                            onChange={(e) =>
-                              handleInputChange(i, "height", e.target.value)
-                            }
-                          />
-                        </>
-                      ) : (
-                        <input
-                          type="text"
-                          placeholder="Quantity"
-                          value={rows.inputs.value || ""}
-                          onChange={(e) =>
-                            handleInputChange(i, "value", e.target.value)
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
+                              <label className="flex items-center gap-1 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={rows.inputs.horizontal || false}
+                                  onChange={(e) =>
+                                    handleInputChange(i, "horizontal", e.target.checked)
+                                  }
+                                />
+                                Horizontal
+                              </label>
+
+                              {rows.inputs.vertical && (
+                                <input
+                                  className="border rounded px-2 py-1 text-sm w-40"
+                                  type="text"
+                                  placeholder="Vertical Value"
+                                  value={rows.inputs.verticalValue || ""}
+                                  onChange={(e) =>
+                                    handleInputChange(i, "verticalValue", e.target.value)
+                                  }
+                                />
+                              )}
+
+                              {rows.inputs.horizontal && (
+                                <input
+                                  className="border rounded px-2 py-1 text-sm w-40"
+                                  type="text"
+                                  placeholder="Horizontal Value"
+                                  value={rows.inputs.horizontalValue || ""}
+                                  onChange={(e) =>
+                                    handleInputChange(i, "horizontalValue", e.target.value)
+                                  }
+                                />
+                              )}
+                            </>
+                          ) : (
+                            <input
+                              className="border rounded px-2 py-1 text-sm w-40"
+                              type="text"
+                              placeholder="Quantity"
+                              value={rows.inputs.value || ""}
+                              onChange={(e) =>
+                                handleInputChange(i, "value", e.target.value)
+                              }
+                            />
+                          )}
+                        </div>
+                      ) : null
+                    )}
                 </div>
               </div>
-
               <div className="hidden">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Qunities</label>
                 <input type="text" onChange={(e) => {

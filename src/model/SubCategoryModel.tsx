@@ -126,7 +126,7 @@ export default function SubCategoryModel({ isOpen, closeModal }: any) {
                         </div>
                     </div>
                     <div className="mt-4 flex items-center gap-3">
-                        <span>Dynamic Enable ?</span>
+                        <span>Dimension Enable ?</span>
 
                         <button
                             type="button"

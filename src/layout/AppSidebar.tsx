@@ -6,7 +6,7 @@ import {
   ChevronDownIcon,
   HorizontaLDots,
 } from "../icons";
-import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Briefcase, Settings } from "lucide-react";
+import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Settings } from "lucide-react";
 import { Truck  } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -330,7 +330,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div
-        className={`py-8 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
+        className={`py-4 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
           }`}
       >
         <Link to="/">
@@ -338,7 +338,7 @@ const AppSidebar: React.FC = () => {
             <>
               <img
                 className="dark:hidden"
-                src="/images/logo/logo.svg"
+                src="/images/logo/logo1.png"
                 alt="Logo"
                 width={150}
                 height={40}

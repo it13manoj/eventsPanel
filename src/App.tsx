@@ -32,10 +32,27 @@ import WareHouseList from "./components/Invoice/WareHouseList";
 import EmployeeList from "./components/employee/EmployeeList/AddEmployee";
 import Attendance from "./components/employee/Attendance";
 import Salary from "./components/employee/EmployeeList/Salary";
+import { useEffect, useState } from "react";
 
 export default function App() {
+  const [is_enabled, setEnabled] = useState(false);
 
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F4") {
+        setEnabled(true);
+      } else {
+        setEnabled(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   return (
     <>
@@ -54,13 +71,13 @@ export default function App() {
               <Route path="/owner-vahicle" element={<Owner />} />
               <Route path="/agency-vehicle" element={<Agency />} />
               <Route path="/vehicle" element={<Vechicle />} />
-              <Route path="/addvehicle" element={<AddVehicle/>}/>
-              <Route path="/warehouselist" element={<WareHouseList/>}/>
+              <Route path="/addvehicle" element={<AddVehicle />} />
+              <Route path="/warehouselist" element={<WareHouseList />} />
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
-              <Route path="/employeelist" element={<EmployeeList/>}/>
-              <Route path="/attendance" element={<Attendance/>}/>
-              <Route path="/salary" element={<Salary/>}/>
+              <Route path="/employeelist" element={<EmployeeList />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/salary" element={<Salary />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
 
@@ -85,14 +102,16 @@ export default function App() {
           </Route>
           {/* Auth Layout */}
           <Route path="/" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
+          {is_enabled == true &&
+            <Route path="/signup" element={<SignUp />} />
+          }
 
           {/* Fallback Route */}
           <Route path="*" element={<NotFound />} />
         </Routes>
 
       </Router>
-      
+
     </>
   );
 }

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import {  EyeCloseIcon, EyeIcon } from "../../icons";
+import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
 import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
@@ -11,15 +11,16 @@ import { loginUser } from "../../hooks/api/authService";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [is_enabled, setEnabled] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const navigation = useNavigate();
-  const [login, setLogin] =  useState({
-        email:"",
-        password:""
+  const [login, setLogin] = useState({
+    email: "",
+    password: ""
   });
 
-  const eventHendler =  (e: React.ChangeEvent<HTMLInputElement>) =>{
-      setLogin(preState=>({...preState,[e.target.name]:e.target.value}))
+  const eventHendler = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLogin(preState => ({ ...preState, [e.target.name]: e.target.value }))
   }
 
   const loginHandler = async (e: React.FormEvent) => {
@@ -27,7 +28,7 @@ export default function SignInForm() {
     try {
       const res = await loginUser(login);
       console.log();
-      
+
       localStorage.setItem("token", res.results.token);
 
       navigation("/dashboard");
@@ -38,7 +39,21 @@ export default function SignInForm() {
 
   }
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F4") {
+        setEnabled(true);
+      } else {
+        setEnabled(false);
+      }
+    };
 
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
 
 
@@ -65,7 +80,7 @@ export default function SignInForm() {
                   <Label>
                     Email <span className="text-error-500">*</span>{" "}
                   </Label>
-                  <Input placeholder="info@gmail.com" name="email" onChange={eventHendler}/>
+                  <Input placeholder="info@gmail.com" name="email" onChange={eventHendler} />
                 </div>
                 <div>
                   <Label>
@@ -76,7 +91,7 @@ export default function SignInForm() {
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       name="password"
-                       onChange={eventHendler}
+                      onChange={eventHendler}
                     />
                     <span
                       onClick={() => setShowPassword(!showPassword)}
@@ -111,18 +126,21 @@ export default function SignInForm() {
                 </div>
               </div>
             </form>
+            {is_enabled == true &&
+              <div className="mt-5">
+                <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
+                  Don&apos;t have an account? {""}
+                  <Link
+                    to="/signup"
+                    className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                  >
+                    Sign Up
+                  </Link>
+                </p>
+              </div>
+            }
 
-            <div className="mt-5">
-              <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-                Don&apos;t have an account? {""}
-                <Link
-                  to="/signup"
-                  className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                >
-                  Sign Up
-                </Link>
-              </p>
-            </div>
+
           </div>
         </div>
       </div>
