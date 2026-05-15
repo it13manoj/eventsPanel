@@ -1,7 +1,6 @@
 import { useModal } from "../../../hooks/useModal";
 import { Modal } from "../../ui/modal";
 import Button from "../../ui/button/Button";
-import Input from "../../form/input/InputField";
 import Label from "../../form/Label";
 
 export default function UserAddressCard() {
@@ -23,7 +22,7 @@ export default function UserAddressCard() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-7 2xl:gap-x-32">
               <div>
                 <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                  Country
+                  Employee ID Proof Document
                 </p>
                 <p className="text-sm font-medium text-gray-800 dark:text-white/90">
                   United States.
@@ -32,30 +31,14 @@ export default function UserAddressCard() {
 
               <div>
                 <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                  City/State
+                  Employee's full address                  
                 </p>
                 <p className="text-sm font-medium text-gray-800 dark:text-white/90">
                   Phoenix, Arizona, United States.
                 </p>
               </div>
 
-              <div>
-                <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                  Postal Code
-                </p>
-                <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                  ERT 2489
-                </p>
-              </div>
-
-              <div>
-                <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
-                  TAX ID
-                </p>
-                <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                  AS4568384
-                </p>
-              </div>
+              
             </div>
           </div>
 
@@ -96,24 +79,34 @@ export default function UserAddressCard() {
             <div className="px-2 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
                 <div>
-                  <Label>Country</Label>
-                  <Input type="text" value="United States" />
+                  <Label>ID Proof</Label>
+                  <select>
+                    <option>Select Id</option>
+                  </select>
                 </div>
 
                 <div>
-                  <Label>City/State</Label>
-                  <Input type="text" value="Arizona, United States." />
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    ID Proof Image
+                  </label>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4
+    file:rounded-lg file:border-0 file:text-sm file:font-semibold
+    file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
+                    name="image"
+                  />
                 </div>
 
-                <div>
-                  <Label>Postal Code</Label>
-                  <Input type="text" value="ERT 2489" />
-                </div>
 
                 <div>
-                  <Label>TAX ID</Label>
-                  <Input type="text" value="AS4568384" />
-                </div>
+                  <Label>Full Address with postal address</Label>
+                  <textarea placeholder="Enter full address with postal address!" ></textarea>
+                </div>  
+
+                
               </div>
             </div>
             <div className="flex items-center gap-3 px-2 mt-6 lg:justify-end">
