@@ -10,8 +10,11 @@ import PageMeta from "../components/common/PageMeta";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import apiClient from "../hooks/api/apiClient";
 import AutoComplete from "../components/utils/ChosenSelect";
-import DatePicker from "../components/form/date-picker";
-
+// import DatePicker from "../components/form/date-picker";
+import { Link } from "react-router";
+import AvaliableItems from "../model/AvaliableItems";
+import ReactDatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 
 
@@ -24,12 +27,76 @@ interface CalendarEvent extends EventInput {
   };
 }
 
+// interface ItemState {
+//   categoryId: number;
+//   subCategoryId: number;
+//   isEnable: boolean;
+//   dateOfEvent?: string;
+//   bookedDate?: string;
+//   value: string;
+//   horizontalValue: string;
+//   verticalValue: string;
+// }
 
+type ItemState = {
+  categoryId: number;
+  subCategoryId: number;
+  isEnable: boolean;
+
+  dateOfEvent?: string;
+  bookedDate?: string;
+
+  width?: string;
+  height?: string;
+
+  value?: string;
+
+  vertical?: boolean;
+  horizontal?: boolean;
+
+  verticalValue?: string;
+  horizontalValue?: string;
+
+  verticalUnit?: string;
+  horizontalUnit?: string;
+
+  verticalPcs?: string;
+  horizontalPcs?: string;
+};
 
 
 const Calendar: React.FC = () => {
+  const [isOpens, setIsOpens] = useState(false);
+
+ const [getItemsIs_enabled, itemsDate] = useState<ItemState>({
+  categoryId: 0,
+  subCategoryId: 0,
+
+  isEnable: false,
+
+  dateOfEvent: "",
+  bookedDate: "",
+
+  width: "",
+  height: "",
+
+  value: "",
+
+  vertical: false,
+  horizontal: false,
+
+  verticalValue: "",
+  horizontalValue: "",
+
+  verticalUnit: "ft",
+  horizontalUnit: "ft",
+
+  verticalPcs: "",
+  horizontalPcs: "",
+});
+
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [date, setDate] = useState<Date[]>([]);
+  const [date, setDate] = useState<Date | null>(new Date());
   // Original Form States
   const [selectedTech, setSelectedTech] = useState<string>("");
   const [eventTitle, setEventTitle] = useState("");
@@ -84,6 +151,10 @@ const Calendar: React.FC = () => {
         horizontal: false,
         verticalValue: "",
         horizontalValue: "",
+        verticalUnit: "ft",
+        horizontalUnit: "ft",
+        verticalPcs: "",
+        horizontalPcs: "",
         value: "" // ✅ important if used
       }
     }
@@ -149,7 +220,11 @@ const Calendar: React.FC = () => {
       | "vertical"
       | "horizontal"
       | "verticalValue"
-      | "horizontalValue",
+      | "horizontalValue"
+      | "verticalUnit"
+      | "horizontalUnit"
+      | "verticalPcs"
+      | "horizontalPcs",
     value: string | boolean
   ) => {
     setAppendsAll((prev: any) => {
@@ -159,17 +234,16 @@ const Calendar: React.FC = () => {
         ...updated[index],
         inputs: {
           ...updated[index].inputs,
-          [field]: value
-        }
+          [field]: value,
+        },
       };
 
       return updated;
     });
   };
-
   // --- Handlers ---
 
-  console.log(eventStartDate, eventLevel, eventEndDate);
+  // console.log(eventStartDate, eventLevel, eventEndDate);
 
 
   const resetModalFields = () => {
@@ -188,58 +262,49 @@ const Calendar: React.FC = () => {
     setEventLevel("");
     setSelectedEvent(null);
   };
-
   const getEvents = async () => {
     try {
-      const results = await apiClient.get("admin/Events/find");
+      const results = await apiClient.get("/admin/Events/find");
       const apiEvents = results?.data?.results || [];
 
       const formattedEvents: CalendarEvent[] = apiEvents.flatMap((item: any) => {
-        const startDate = new Date(item.doe);
-        const endDate = new Date(item.doe);
-        endDate.setDate(endDate.getDate() + Number(item.nodb));
 
-        const start = startDate.toISOString().split("T")[0];
-        const end = endDate.toISOString().split("T")[0];
+        const startDate = new Date(item.doe);
+        const endDate = new Date(item.nodb);
 
         const color =
           item.status == 0 ? "#FFA500" :
             item.status == 1 ? "#008000" :
               item.status == 2 ? "#8B4513" :
                 item.status == 3 ? "#87CEEB" :
-                  item.status == 4 ? "#FF0000" : "#ffffff";
+                  item.status == 4 ? "#FF0000" :
+                    "#ffffff";
 
         return [
           {
             id: "event-" + item.id,
             title: `${item.c_name} (${item.vanus})`,
-            start,
-            end,
-            allDay: true,
-            extendedProps: { ...item, calendar: "Primary" },
-          },
-          {
-            id: "bg-" + item.id,
-            start,
-            end,
-            display: "background",
+            start: startDate,
+            end: endDate,
+            allDay: false,
             backgroundColor: color,
+            borderColor: color,
+            extendedProps: {
+              ...item,
+              calendar: "Primary",
+            },
           },
         ];
       });
+
       setEvents(formattedEvents);
+
     } catch (error) {
       console.log(error);
     }
   };
 
   const handleAddOrUpdateEvent = async () => {
-    const start = new Date(dateOfEvent);
-    const end = new Date(date[0]);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
-    const diffTime = end.getTime() - start.getTime();
-    const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
     const data = {
       designName: selectedTech,
@@ -248,7 +313,7 @@ const Calendar: React.FC = () => {
       doe: dateOfEvent,
       v_location: locationOfVanus,
       v_a_d: venueAvailabiliyDate,
-      nodb: diffDays,
+      nodb: date,
       pob: placeOfBooking,
       tc: transportCharges,
       sr: specialRequest,
@@ -261,7 +326,8 @@ const Calendar: React.FC = () => {
       bookedItems: appendsAll.filter(r => r.categories.id != 0)
     };
 
-
+ 
+    
     await apiClient.post("admin/Events/create", data);
     getEvents();
     closeModal();
@@ -401,7 +467,75 @@ const Calendar: React.FC = () => {
     }
   };
 
-  console.log(date);
+
+
+  const fillEventForm = (event: any) => {
+    const data = event.extendedProps || {};
+
+    setSelectedEvent(event);
+
+    const formatDate = (d: string) =>
+      d ? new Date(d).toISOString().split("T")[0] : "";
+
+    const formatDateTimeLocal = (d: string) => {
+      if (!d) return "";
+      const date = new Date(d);
+      const pad = (n: number) => String(n).padStart(2, "0");
+
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
+    // ✅ Fill fields
+    setEventTitle(data.c_name || "");
+    setVanus(data.vanus || "");
+    setDateOfEvent(formatDate(data.doe));
+    setEventStartDate(formatDate(data.doe));
+
+    if (data.doe && data.nodb) {
+      const start = new Date(data.doe);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + Number(data.nodb));
+
+      setDate(end);
+      setEventEndDate(formatDate(end.toISOString()));
+      setBookingDays(String(data.nodb));
+    }
+
+    setVenueAvailalityDate(formatDateTimeLocal(data.v_a_d));
+    setLocationOfVanus(data.v_location || "");
+    setPlaceOfBooking(data.pob || "");
+    setTransportCharges(data.tc || "");
+    setSpecialRequest(data.sr || "");
+    setAmountTaxes(data.amount || "");
+
+    // category
+    setCheckStock({
+      categories_id: data.categories_id || 0,
+      sub_categories_id: data.sub_categories_id || 0,
+      quntites: data.quntites || 0,
+      width: data.width || null,
+      height: data.height || null
+    });
+
+    // load subcategory list
+    if (data.categories_id) {
+      eventHandler({ target: { value: data.categories_id } });
+    }
+
+    // booked items
+    if (data.bookedItems) {
+      setAppendsAll(data.bookedItems);
+    }
+  };
+
+
+  const getBookData = (categoryId: number, subCategoryId: number) => {
+    // console.log(dateOfEvent, appendsAll);
+    console.log(categoryId);
+    console.log(subCategoryId);
+
+  }
 
 
   return (
@@ -431,12 +565,7 @@ const Calendar: React.FC = () => {
           {contextData.event && (
             <button
               onClick={() => {
-                const event = contextData.event;
-                setSelectedEvent(event);
-                setEventTitle(event.title);
-                setEventStartDate(event.start?.toISOString().split("T")[0] || "");
-                // Populate from extendedProps
-                setVanus(event.extendedProps?.vanus || "");
+                fillEventForm(contextData.event);
                 openModal();
               }}
               className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
@@ -513,12 +642,53 @@ const Calendar: React.FC = () => {
                 <input type="date" value={dateOfEvent} onChange={(e) => setDateOfEvent(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
 
-              <DatePicker
+              {/* <DatePicker
                 id="date-picker"
                 label="Last Booking Day"
                 placeholder="Select a date"
                 onChange={(dates: Date[]) => setDate(dates)}
-              />
+              /> */}
+
+
+              <div className="relative w-full z-50">
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Last Booking Date & Time
+                </label>
+
+                <ReactDatePicker
+                  selected={date}
+                  onChange={(date: Date | null) => setDate(date)}
+                  showTimeSelect
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  dateFormat="dd-MM-yyyy hh:mm aa"
+                  placeholderText="Select Date & Time"
+                  popperPlacement="bottom-start"
+                  popperClassName="z-[9999]"
+                  className="
+                  dark:bg-dark-900
+                  h-11
+                  w-full
+                  rounded-lg
+                  border
+                  border-gray-300
+                  bg-transparent
+                  px-4
+                  py-2.5
+                  text-sm
+                  text-gray-800
+                  shadow-theme-xs
+                  placeholder:text-gray-400
+                  focus:border-brand-300
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-brand-500/10
+                  dark:border-gray-700
+                  dark:bg-gray-900
+                  dark:text-white/90
+                "
+                />
+              </div>
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Venue Availability Date & Time</label>
@@ -576,101 +746,383 @@ const Calendar: React.FC = () => {
 
 
               <div className="md:col-span-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                   {appendsAll &&
                     appendsAll.map((rows, i) =>
-                      rows.categories.id != 0 ? (
+                      rows.categories.id !== 0 ? (
                         <div
                           key={i}
-                          className="relative flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm"
+                          className="
+              relative
+              rounded-3xl
+              border
+              border-gray-200
+              dark:border-gray-700
+              bg-white
+              dark:bg-gray-900
+              p-6
+              shadow-sm
+              hover:shadow-lg
+              transition-all
+              duration-300
+              space-y-6
+            "
                         >
-                          {/* ❌ Remove Button */}
+                          {/* REMOVE */}
                           <button
                             type="button"
                             onClick={() => {
-                              const updated = appendsAll.filter((_, index) => index !== i);
+                              const updated = appendsAll.filter(
+                                (_, index) => index !== i
+                              );
                               setAppendsAll(updated);
                             }}
-                            className="absolute top-2 right-2 text-gray-500 hover:text-red-500"
+                            className="
+                absolute
+                top-4
+                right-4
+                h-9
+                w-9
+                rounded-full
+                bg-red-50
+                text-red-500
+                hover:bg-red-100
+                flex
+                items-center
+                justify-center
+              "
                           >
                             ✕
                           </button>
 
-                          {/* Category */}
-                          <div className="text-sm font-medium text-gray-800 dark:text-white/90 min-w-[120px]">
-                            {rows.categories?.name}
+                          {/* CATEGORY */}
+                          <div className="flex flex-wrap gap-4">
+                            <div className="rounded-2xl bg-blue-50 dark:bg-blue-900/20 px-4 py-3 min-w-[150px]">
+                              <p className="text-xs text-gray-500 mb-1">
+                                Category
+                              </p>
+
+                              <h3 className="font-semibold text-gray-800 dark:text-white text-lg">
+                                {rows.categories?.name}
+                              </h3>
+                            </div>
+
+                            <div className="rounded-2xl bg-green-50 dark:bg-green-900/20 px-4 py-3 min-w-[180px]">
+                              <p className="text-xs text-gray-500 mb-1">
+                                Sub Category
+                              </p>
+
+                              <h3 className="font-semibold text-gray-800 dark:text-white text-lg">
+                                {rows.subCategories?.name}
+                              </h3>
+                            </div>
                           </div>
 
-                          {/* Sub Category */}
-                          <div className="text-sm text-gray-700 dark:text-white/80 min-w-[120px]">
-                            {rows.subCategories?.name}
-                          </div>
-
-                          {/* Inputs */}
+                          {/* SIZE SECTION */}
                           {rows.subCategories.is_enable ? (
-                            <>
-                              <label className="flex items-center gap-1 text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={rows.inputs.vertical || false}
-                                  onChange={(e) =>
-                                    handleInputChange(i, "vertical", e.target.checked)
-                                  }
-                                />
-                                Vertical
-                              </label>
+                            <div className="space-y-6">
+                              {/* CHECKBOXES */}
+                              <div className="flex flex-wrap gap-6">
+                                <label className="flex items-center gap-2 text-sm font-medium">
+                                  <input
+                                    type="checkbox"
+                                    checked={rows.inputs.vertical || false}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        i,
+                                        "vertical",
+                                        e.target.checked
+                                      )
+                                    }
+                                  />
+                                  Vertical
+                                </label>
 
-                              <label className="flex items-center gap-1 text-sm">
-                                <input
-                                  type="checkbox"
-                                  checked={rows.inputs.horizontal || false}
-                                  onChange={(e) =>
-                                    handleInputChange(i, "horizontal", e.target.checked)
-                                  }
-                                />
-                                Horizontal
-                              </label>
+                                <label className="flex items-center gap-2 text-sm font-medium">
+                                  <input
+                                    type="checkbox"
+                                    checked={rows.inputs.horizontal || false}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        i,
+                                        "horizontal",
+                                        e.target.checked
+                                      )
+                                    }
+                                  />
+                                  Horizontal
+                                </label>
+                              </div>
 
+                              {/* VERTICAL */}
                               {rows.inputs.vertical && (
-                                <input
-                                  className="border rounded px-2 py-1 text-sm w-40"
-                                  type="text"
-                                  placeholder="Vertical Value"
-                                  value={rows.inputs.verticalValue || ""}
-                                  onChange={(e) =>
-                                    handleInputChange(i, "verticalValue", e.target.value)
-                                  }
-                                />
+                                <div className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                                  <h4 className="font-semibold text-gray-800 dark:text-white">
+                                    Vertical Details
+                                  </h4>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* SIZE */}
+                                    <div>
+                                      <label className="mb-2 block text-sm font-medium">
+                                        Vertical Size
+                                      </label>
+
+                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
+                                        <input
+                                          type="text"
+                                          placeholder="Enter Vertical Size"
+                                          value={
+                                            rows.inputs.verticalValue || ""
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "verticalValue",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
+                                        />
+
+                                        <select
+                                          value={
+                                            rows.inputs.verticalUnit ||
+                                            "ft"
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "verticalUnit",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="h-12 border-l border-gray-300 dark:border-gray-700 px-4 bg-gray-50 dark:bg-gray-800 outline-none"
+                                        >
+                                          <option value="ft">FT</option>
+                                          <option value="m">M</option>
+                                          <option value="mm">MM</option>
+                                          <option value="in">IN</option>
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    {/* PCS */}
+                                    <div>
+                                      <label className="mb-2 block text-sm font-medium">
+                                        Vertical PCS
+                                      </label>
+
+                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
+                                        <input
+                                          type="number"
+                                          placeholder="Enter PCS"
+                                          value={
+                                            rows.inputs.verticalPcs || ""
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "verticalPcs",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
+                                        />
+
+                                        <div className="h-12 px-5 flex items-center border-l border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-semibold">
+                                          PCS
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               )}
 
+                              {/* HORIZONTAL */}
                               {rows.inputs.horizontal && (
-                                <input
-                                  className="border rounded px-2 py-1 text-sm w-40"
-                                  type="text"
-                                  placeholder="Horizontal Value"
-                                  value={rows.inputs.horizontalValue || ""}
-                                  onChange={(e) =>
-                                    handleInputChange(i, "horizontalValue", e.target.value)
-                                  }
-                                />
+                                <div className="space-y-4 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+                                  <h4 className="font-semibold text-gray-800 dark:text-white">
+                                    Horizontal Details
+                                  </h4>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    {/* SIZE */}
+                                    <div>
+                                      <label className="mb-2 block text-sm font-medium">
+                                        Horizontal Size
+                                      </label>
+
+                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
+                                        <input
+                                          type="text"
+                                          placeholder="Enter Horizontal Size"
+                                          value={
+                                            rows.inputs.horizontalValue ||
+                                            ""
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "horizontalValue",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
+                                        />
+
+                                        <select
+                                          value={
+                                            rows.inputs.horizontalUnit ||
+                                            "ft"
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "horizontalUnit",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="h-12 border-l border-gray-300 dark:border-gray-700 px-4 bg-gray-50 dark:bg-gray-800 outline-none"
+                                        >
+                                          <option value="ft">FT</option>
+                                          <option value="m">M</option>
+                                          <option value="mm">MM</option>
+                                          <option value="in">IN</option>
+                                        </select>
+                                      </div>
+                                    </div>
+
+                                    {/* PCS */}
+                                    <div>
+                                      <label className="mb-2 block text-sm font-medium">
+                                        Horizontal PCS
+                                      </label>
+
+                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
+                                        <input
+                                          type="number"
+                                          placeholder="Enter PCS"
+                                          value={
+                                            rows.inputs.horizontalPcs || ""
+                                          }
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "horizontalPcs",
+                                              e.target.value
+                                            )
+                                          }
+                                          className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
+                                        />
+
+                                        <div className="h-12 px-5 flex items-center border-l border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-semibold">
+                                          PCS
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               )}
-                            </>
+                            </div>
                           ) : (
-                            <input
-                              className="border rounded px-2 py-1 text-sm w-40"
-                              type="text"
-                              placeholder="Quantity"
-                              value={rows.inputs.value || ""}
-                              onChange={(e) =>
-                                handleInputChange(i, "value", e.target.value)
-                              }
-                            />
+                            /* NORMAL QUANTITY */
+                            <div>
+                              <label className="mb-2 block text-sm font-medium">
+                                Quantity
+                              </label>
+
+                              <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
+                                <input
+                                  type="number"
+                                  placeholder="Enter Quantity"
+                                  value={rows.inputs.value || ""}
+                                  onChange={(e) =>
+                                    handleInputChange(
+                                      i,
+                                      "value",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
+                                />
+
+                                <div className="h-12 px-5 flex items-center border-l border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm font-semibold">
+                                  PCS
+                                </div>
+                              </div>
+                            </div>
                           )}
+
+                          {/* BUTTON */}
+                          <div className="pt-2">
+                            <Link
+                              to=""
+                              onClick={() => {
+                                setIsOpens(true);
+
+                                itemsDate({
+                                  categoryId: rows.categories?.id,
+                                  subCategoryId:
+                                    rows.subCategories?.id,
+                                  isEnable:
+                                    rows.subCategories?.is_enable,
+
+                                  bookedDate: dateOfEvent,
+
+                                  value: rows.inputs?.value,
+
+                                  horizontalValue:
+                                    rows.inputs?.horizontalValue,
+
+                                  verticalValue:
+                                    rows.inputs?.verticalValue,
+
+                                  horizontalPcs:
+                                    rows.inputs?.horizontalPcs,
+
+                                  verticalPcs:
+                                    rows.inputs?.verticalPcs,
+                                });
+
+                                getBookData(
+                                  rows.categories?.id,
+                                  rows.subCategories?.id
+                                );
+                              }}
+                              className="
+                  inline-flex
+                  items-center
+                  justify-center
+                  rounded-2xl
+                  bg-gradient-to-r
+                  from-blue-600
+                  to-blue-500
+                  px-6
+                  py-3
+                  text-sm
+                  font-semibold
+                  text-white
+                  shadow-md
+                  hover:scale-[1.02]
+                  hover:shadow-lg
+                  transition-all
+                "
+                            >
+                              Available Stock
+                            </Link>
+                          </div>
                         </div>
                       ) : null
                     )}
                 </div>
               </div>
+
+
+
+
+
+
               <div className="hidden">
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Qunities</label>
                 <input type="text" onChange={(e) => {
@@ -752,6 +1204,9 @@ const Calendar: React.FC = () => {
           </div>
         </Modal>
       </div>
+
+
+      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} getItemsIs_enabled={getItemsIs_enabled} />
     </>
   );
 };
