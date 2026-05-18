@@ -255,11 +255,12 @@ export default function StockModel({ isOpen, closeModal }: any) {
                                             <div className="border rounded-lg p-4 mb-4 bg-gray-50">
 
                                                 {/* First Row */}
-                                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                                                <div className="flex items-center font-medium">
+                                                    Vertical
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
 
-                                                    <div className="flex items-center font-medium">
-                                                        Vertical
-                                                    </div>
+
 
                                                     {/* Size */}
                                                     <input
@@ -296,20 +297,6 @@ export default function StockModel({ isOpen, closeModal }: any) {
                                                         }
                                                         className="h-11 border rounded-lg px-3"
                                                     />
-
-                                                    {/* Delete Button */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => deleteRow(index)}
-                                                        className="h-11 bg-red-500 text-white rounded-lg px-4"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-
-                                                {/* Second Row -> Good / Bad / Missing */}
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-
                                                     {/* Good */}
                                                     <div>
                                                         <label className="block text-sm font-medium mb-1">
@@ -360,8 +347,7 @@ export default function StockModel({ isOpen, closeModal }: any) {
                                                             className="h-11 w-full border rounded-lg px-3"
                                                         />
                                                     </div>
-
-                                                </div>
+                                                </div>                                                
                                             </div>
                                         )}
 
@@ -371,11 +357,12 @@ export default function StockModel({ isOpen, closeModal }: any) {
                                             <div className="border rounded-lg p-4 mb-4 bg-gray-50">
 
                                                 {/* First Row */}
-                                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                                                <div className="flex items-center font-medium">
+                                                    Horizontal
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
 
-                                                    <div className="flex items-center font-medium">
-                                                        Horizontal
-                                                    </div>
+
 
                                                     {/* Size */}
                                                     <input
@@ -412,19 +399,6 @@ export default function StockModel({ isOpen, closeModal }: any) {
                                                         }
                                                         className="h-11 border rounded-lg px-3"
                                                     />
-
-                                                    {/* Delete Button */}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => deleteRow(index)}
-                                                        className="h-11 bg-red-500 text-white rounded-lg px-4"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </div>
-
-                                                {/* Second Row */}
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
 
                                                     {/* Good */}
                                                     <div>
@@ -473,7 +447,6 @@ export default function StockModel({ isOpen, closeModal }: any) {
                                                             className="h-11 w-full border rounded-lg px-3"
                                                         />
                                                     </div>
-
                                                 </div>
                                             </div>
                                         )}
@@ -515,10 +488,10 @@ export default function StockModel({ isOpen, closeModal }: any) {
                         />
                     </div>
 
-                   
+
 
                     {/*✅ Show only when enabled */}
-                    {enabled == false && 
+                    {enabled == false &&
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
 
                             {/* Good */}
