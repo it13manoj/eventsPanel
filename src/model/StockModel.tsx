@@ -252,89 +252,229 @@ export default function StockModel({ isOpen, closeModal }: any) {
 
                                         {/* Vertical Row */}
                                         {checked && (
-                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                                                <div className="flex items-center font-medium">
-                                                    Vertical
+                                            <div className="border rounded-lg p-4 mb-4 bg-gray-50">
+
+                                                {/* First Row */}
+                                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+
+                                                    <div className="flex items-center font-medium">
+                                                        Vertical
+                                                    </div>
+
+                                                    {/* Size */}
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Size (e.g. 10x10)"
+                                                        value={row.size}
+                                                        onChange={(e) =>
+                                                            handleRowChange(index, "size", e.target.value)
+                                                        }
+                                                        className="h-11 border rounded-lg px-3"
+                                                    />
+
+                                                    {/* Unit */}
+                                                    <select
+                                                        className="h-11 border rounded-lg px-3"
+                                                        value={row.unit}
+                                                        onChange={(e) =>
+                                                            handleRowChange(index, "unit", e.target.value)
+                                                        }
+                                                    >
+                                                        <option value="ft">Feet (FT)</option>
+                                                        <option value="m">Meter (M)</option>
+                                                        <option value="mm">Millimeter (MM)</option>
+                                                        <option value="in">Inch (IN)</option>
+                                                    </select>
+
+                                                    {/* Quantity */}
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Quantity"
+                                                        value={row.quantity}
+                                                        onChange={(e) =>
+                                                            handleRowChange(index, "quantity", e.target.value)
+                                                        }
+                                                        className="h-11 border rounded-lg px-3"
+                                                    />
+
+                                                    {/* Delete Button */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => deleteRow(index)}
+                                                        className="h-11 bg-red-500 text-white rounded-lg px-4"
+                                                    >
+                                                        Delete
+                                                    </button>
                                                 </div>
 
-                                                <input
-                                                    type="text"
-                                                    placeholder="Vertical Size"
-                                                    value={row.size}
-                                                    onChange={(e) =>
-                                                        handleRowChange(index, "size", e.target.value)
-                                                    }
-                                                    className="h-11 border rounded-lg px-3"
-                                                />
+                                                {/* Second Row -> Good / Bad / Missing */}
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
 
-                                                <select className="h-11 border rounded-lg px-3">
-                                                    <option value="ft">Feet (FT)</option>
-                                                    <option value="m">Meter (M)</option>
-                                                    <option value="mm">Millimeter (MM)</option>
-                                                    <option value="in">Inch (IN)</option>
-                                                </select>
+                                                    {/* Good */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">
+                                                            Good Wares
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            name="good"
+                                                            placeholder="Good Quantity"
+                                                            value={row.good}
+                                                            onChange={(e) =>
+                                                                handleRowChange(index, "good", e.target.value)
+                                                            }
+                                                            className="h-11 w-full border rounded-lg px-3"
+                                                        />
+                                                    </div>
 
-                                                <input
-                                                    type="number"
-                                                    placeholder="Quantity"
-                                                    value={row.quantity}
-                                                    onChange={(e) =>
-                                                        handleRowChange(index, "quantity", e.target.value)
-                                                    }
-                                                    className="h-11 border rounded-lg px-3"
-                                                />
+                                                    {/* Bad */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">
+                                                            Bad Wares
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            name="bad"
+                                                            placeholder="Bad Quantity"
+                                                            value={row.bad}
+                                                            onChange={(e) =>
+                                                                handleRowChange(index, "bad", e.target.value)
+                                                            }
+                                                            className="h-11 w-full border rounded-lg px-3"
+                                                        />
+                                                    </div>
 
-                                                <button
-                                                    type="button"
-                                                    onClick={() => deleteRow(index)}
-                                                    className="h-11 bg-red-500 text-white rounded-lg"
-                                                >
-                                                    Delete
-                                                </button>
+                                                    {/* Missing */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">
+                                                            Missing Wares
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            name="missing"
+                                                            placeholder="Missing Quantity"
+                                                            value={row.missing}
+                                                            onChange={(e) =>
+                                                                handleRowChange(index, "missing", e.target.value)
+                                                            }
+                                                            className="h-11 w-full border rounded-lg px-3"
+                                                        />
+                                                    </div>
+
+                                                </div>
                                             </div>
                                         )}
 
+
                                         {/* Horizontal Row */}
                                         {Hchecked && (
-                                            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                                <div className="flex items-center font-medium">
-                                                    Horizontal
+                                            <div className="border rounded-lg p-4 mb-4 bg-gray-50">
+
+                                                {/* First Row */}
+                                                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+
+                                                    <div className="flex items-center font-medium">
+                                                        Horizontal
+                                                    </div>
+
+                                                    {/* Size */}
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Size (e.g. 10x10)"
+                                                        value={row.hsize}
+                                                        onChange={(e) =>
+                                                            handleRowChange(index, "hsize", e.target.value)
+                                                        }
+                                                        className="h-11 border rounded-lg px-3"
+                                                    />
+
+                                                    {/* Unit */}
+                                                    <select
+                                                        className="h-11 border rounded-lg px-3"
+                                                        value={row.hunit}
+                                                        onChange={(e) =>
+                                                            handleRowChange(index, "hunit", e.target.value)
+                                                        }
+                                                    >
+                                                        <option value="ft">Feet (FT)</option>
+                                                        <option value="m">Meter (M)</option>
+                                                        <option value="mm">Millimeter (MM)</option>
+                                                        <option value="in">Inch (IN)</option>
+                                                    </select>
+
+                                                    {/* Quantity */}
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Quantity"
+                                                        value={row.hquantity}
+                                                        onChange={(e) =>
+                                                            handleRowChange(index, "hquantity", e.target.value)
+                                                        }
+                                                        className="h-11 border rounded-lg px-3"
+                                                    />
+
+                                                    {/* Delete Button */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => deleteRow(index)}
+                                                        className="h-11 bg-red-500 text-white rounded-lg px-4"
+                                                    >
+                                                        Delete
+                                                    </button>
                                                 </div>
 
-                                                <input
-                                                    type="text"
-                                                    placeholder="Horizontal Size"
-                                                    value={row.size}
-                                                    onChange={(e) =>
-                                                        handleRowChange(index, "size", e.target.value)
-                                                    }
-                                                    className="h-11 border rounded-lg px-3"
-                                                />
+                                                {/* Second Row */}
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
 
-                                                <select className="h-11 border rounded-lg px-3">
-                                                    <option value="ft">Feet (FT)</option>
-                                                    <option value="m">Meter (M)</option>
-                                                    <option value="mm">Millimeter (MM)</option>
-                                                    <option value="in">Inch (IN)</option>
-                                                </select>
+                                                    {/* Good */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">
+                                                            Good Wares
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Good Quantity"
+                                                            value={row.hgood}
+                                                            onChange={(e) =>
+                                                                handleRowChange(index, "hgood", e.target.value)
+                                                            }
+                                                            className="h-11 w-full border rounded-lg px-3"
+                                                        />
+                                                    </div>
 
-                                                <input
-                                                    type="number"
-                                                    placeholder="Quantity"
-                                                    value={row.quantity}
-                                                    onChange={(e) =>
-                                                        handleRowChange(index, "quantity", e.target.value)
-                                                    }
-                                                    className="h-11 border rounded-lg px-3"
-                                                />
+                                                    {/* Bad */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">
+                                                            Bad Wares
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Bad Quantity"
+                                                            value={row.hbad}
+                                                            onChange={(e) =>
+                                                                handleRowChange(index, "hbad", e.target.value)
+                                                            }
+                                                            className="h-11 w-full border rounded-lg px-3"
+                                                        />
+                                                    </div>
 
-                                                <button
-                                                    type="button"
-                                                    onClick={() => deleteRow(index)}
-                                                    className="h-11 bg-red-500 text-white rounded-lg"
-                                                >
-                                                    Delete
-                                                </button>
+                                                    {/* Missing */}
+                                                    <div>
+                                                        <label className="block text-sm font-medium mb-1">
+                                                            Missing Wares
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            placeholder="Missing Quantity"
+                                                            value={row.hmissing}
+                                                            onChange={(e) =>
+                                                                handleRowChange(index, "hmissing", e.target.value)
+                                                            }
+                                                            className="h-11 w-full border rounded-lg px-3"
+                                                        />
+                                                    </div>
+
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -375,47 +515,49 @@ export default function StockModel({ isOpen, closeModal }: any) {
                         />
                     </div>
 
-                    {/* Price + Quality */}
-                    {/* Switch */}
+                   
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    {/*✅ Show only when enabled */}
+                    {enabled == false && 
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
 
-                        {/* Good */}
-                        <div>
-                            <Label>Good Wares</Label>
-                            <input
-                                name="good"
-                                placeholder="Good Quantity"
-                                onChange={datahandler}
-                                className="h-11 w-full border rounded-lg px-3"
-                            />
+                            {/* Good */}
+                            <div>
+                                <Label>Good Wares</Label>
+                                <input
+                                    name="good"
+                                    placeholder="Good Quantity"
+                                    onChange={datahandler}
+                                    className="h-11 w-full border rounded-lg px-3"
+                                />
+                            </div>
+
+                            {/* Bad */}
+                            <div>
+                                <Label>Bad Wares</Label>
+                                <input
+                                    name="bad"
+                                    placeholder="Bad Quantity"
+                                    onChange={datahandler}
+                                    className="h-11 w-full border rounded-lg px-3"
+                                />
+                            </div>
+
+                            {/* Missing */}
+                            <div>
+                                <Label>Missing Wares</Label>
+                                <input
+                                    name="missing"
+                                    placeholder="Missing Quantity"
+                                    onChange={datahandler}
+                                    className="h-11 w-full border rounded-lg px-3"
+                                />
+                            </div>
+
                         </div>
+                    }
 
-                        {/* Bad */}
-                        <div>
-                            <Label>Bad Wares</Label>
-                            <input
-                                name="bad"
-                                placeholder="Bad Quantity"
-                                onChange={datahandler}
-                                className="h-11 w-full border rounded-lg px-3"
-                            />
-                        </div>
 
-                        {/* Missing */}
-                        <div>
-                            <Label>Missing Wares</Label>
-                            <input
-                                name="missing"
-                                placeholder="Missing Quantity"
-                                onChange={datahandler}
-                                className="h-11 w-full border rounded-lg px-3"
-                            />
-                        </div>
-
-                    </div>
-
-                    
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div className="mt-4 flex items-center gap-3">
