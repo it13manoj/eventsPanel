@@ -178,6 +178,8 @@ const Calendar: React.FC = () => {
   ]);
 
 
+  
+
 
   const setCategoresAnd_SubCategories = (
     e: any,
@@ -1114,8 +1116,14 @@ const Calendar: React.FC = () => {
                                   horizontalValue:
                                     rows.inputs?.horizontalValue,
 
+                                    horizontalUnit:
+                                    rows.inputs?.horizontalUnit,
+
                                   verticalValue:
                                     rows.inputs?.verticalValue,
+
+                                    verticalUnit:
+                                    rows.inputs?.verticalUnit,
 
                                   horizontalPcs:
                                     rows.inputs?.horizontalPcs,
@@ -1245,7 +1253,7 @@ const Calendar: React.FC = () => {
       </div>
 
 
-      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} />
+      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} />
     </>
   );
 };

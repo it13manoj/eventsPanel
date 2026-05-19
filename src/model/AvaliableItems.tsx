@@ -82,6 +82,7 @@ interface ItemsModelProps {
     setAppendsAll: React.Dispatch<
         React.SetStateAction<any[]>
     >;
+    appendsAll: any[];
 
 }
 
@@ -89,13 +90,25 @@ export default function AvaliableItems({
     isOpens,
     setIsOpens,
     getItemsIs_enabled,
-    setAppendsAll
+    setAppendsAll,
+    appendsAll
 }: ItemsModelProps) {
     if (!isOpens) return null;
     const [inventory, setInventory] = useState<
         InventoryType[]
     >([]);
+
+
+    const [stockAddToEvents, setStockAddToEvents] = useState({
+        stock: [],
+        events: [],
+    });
+
+
+
+
     const [remaining, setRemaining] = useState<any>({});
+    const [remainingS, setRemainingS] = useState<any>({});
     const [quantities, setQuantities] = useState<any>(
         {}
     );
@@ -126,10 +139,51 @@ export default function AvaliableItems({
     }])
 
 
+    const handleAdd = (
+        type: "stock" | "event",
+        item: any
+    ) => {
+        console.log(getItemsIs_enabled);
+        
+        
+        if (type === "stock") {
+            setStockAddToEvents((prev: any) => ({
+                ...prev,
+                stock: [
+                    ...prev.stock,
+                    {
+                        stockId: item.id,
+                        stockname: item.wareHouse.name,
+                        Categories: item.categories.id,
+                        SubCategoreis: item.subCategories.id,
+                        quntiry:getItemsIs_enabled.value,
+                    },
+                ],
+            }));
+        }
+
+        if (type === "event") {
+            console.log(item);
+            
+            setStockAddToEvents((prev: any) => ({
+                ...prev,
+                events: [
+                    ...prev.events,
+                    {
+                        id: item.id,
+                        name: item.vanus,
+                        categories: item.categories_id,
+                        subcategores: item.subCategories_id,
+                        quntity: getItemsIs_enabled.value,
+                    },
+                ],
+            }));
+        }
+    };
     const getInventory = async () => {
         try {
             const results = await apiClient.get(
-                "/admin/Inverntory/find"
+                `/admin/Inverntory/items/eventStocks/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
             );
 
             setInventory(results?.data?.results || []);
@@ -312,6 +366,126 @@ export default function AvaliableItems({
     ]);
 
 
+
+    // ---------------------------------------------
+
+
+
+    useEffect(() => {
+        const calculatedRemainings: any = {};
+
+        // ============================================
+        // CLEAN NUMBER
+        // ============================================
+
+        const cleanNumber = (value: any) => {
+            return parseFloat(
+                String(value || "0").replace(
+                    /[^\d.]/g,
+                    ""
+                )
+            );
+        };
+
+        // ============================================
+        // LOOP
+        // ============================================
+        console.log(inventory);
+
+
+        inventory.forEach(
+            (rows: any, index: number) => {
+                // ============================================
+                // SIZE BASED
+                // ============================================
+                console.log(rows);
+                if (
+                    rows.verticalSizes.length == 1 ||
+                    rows.horizontalSizes.length == 1
+                ) {
+                    // =========================
+                    // BOOKED VALUES
+                    // =========================
+
+
+                    const bookedVertical =
+                        rows.verticalSizes.find(
+                            (r: any) => r.unit === getItemsIs_enabled.verticalUnit
+                        )?.quantity;
+
+                    const bookedHorizontal =
+                        rows.horizontalSizes.find(
+                            (r: any) => r.unit === getItemsIs_enabled.horizontalUnit
+                        )?.quantity;
+
+                    console.log(bookedVertical, bookedHorizontal);
+
+                    // =========================
+                    // CURRENT INPUT VALUES
+                    // =========================
+
+                    const currentVertical =
+                        cleanNumber(
+                            getItemsIs_enabled.verticalPcs
+                        );
+
+                    const currentHorizontal =
+                        cleanNumber(
+                            getItemsIs_enabled.horizontalPcs
+                        );
+
+                    // =========================
+                    // REMAINING
+                    // =========================
+
+                    const vertical =
+                        bookedVertical -
+                        currentVertical;
+
+                    const horizontal =
+                        bookedHorizontal -
+                        currentHorizontal;
+
+                    calculatedRemainings[index] = {
+                        vertical,
+                        horizontal,
+                    };
+                } else {
+                    // ============================================
+                    // NORMAL QUANTITY
+                    // ============================================
+
+                    const bookedQty =
+                        Number(rows.good || 0);
+
+
+
+
+                    const currentQty =
+                        Number(
+                            getItemsIs_enabled.value || 0
+                        );
+                    ;
+
+                    const qty =
+                        bookedQty - currentQty;
+
+                    calculatedRemainings[index] = {
+                        qty,
+                    };
+                }
+            }
+        );
+
+        // ============================================
+        // SET STATE
+        // ============================================
+
+        setRemainingS(calculatedRemainings);
+    }, [
+        inventory,
+        getItemsIs_enabled,
+    ]);
     // ============================================================Resize Able Table=================================
 
 
@@ -346,6 +520,10 @@ export default function AvaliableItems({
             });
         };
     }, []);
+
+
+    console.log(stockAddToEvents);
+    
     return (
         <Modal
             isOpen={isOpens}
@@ -446,6 +624,18 @@ export default function AvaliableItems({
                                         >
                                             Sizes
                                         </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                        >
+                                            Remainin Items
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                        >
+                                            Action
+                                        </TableCell>
                                     </TableRow>
                                 </TableHeader>
 
@@ -453,7 +643,7 @@ export default function AvaliableItems({
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                                     {inventory &&
                                         inventory.length > 0 ? (
-                                        inventory.map((rows) => (
+                                        inventory.map((rows, index) => (
                                             <TableRow key={rows.id}>
                                                 {/* ====================================================== */}
                                                 {/* ID */}
@@ -610,6 +800,51 @@ export default function AvaliableItems({
                                                             </span>
                                                         )}
                                                     </div>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 sm:px-6 text-start">
+                                                    {rows.verticalSizes.length > 0 ||
+                                                        rows.horizontalSizes.length > 0 ? (
+                                                        <span
+                                                            className={`block font-medium text-theme-sm ${remainingS[index]
+                                                                ?.horizontal <
+                                                                0 ||
+                                                                remainingS[index]
+                                                                    ?.vertical < 0
+                                                                ? "text-red-500"
+                                                                : "text-green-500"
+                                                                }`}
+                                                        >
+                                                            V:
+                                                            {" "}
+                                                            {remainingS[index]
+                                                                ?.vertical ??
+                                                                0}
+
+                                                            {" | "}
+
+                                                            H:
+                                                            {" "}
+                                                            {remainingS[index]
+                                                                ?.horizontal ??
+                                                                0}
+                                                        </span>
+                                                    ) : (
+                                                        <span
+                                                            className={`block font-medium text-theme-sm ${remainingS[index]
+                                                                ?.qty < 0
+                                                                ? "text-red-500"
+                                                                : "text-green-500"
+                                                                }`}
+                                                        >
+                                                            {remainingS[index]
+                                                                ?.qty ?? 0}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 sm:px-6 text-start">
+                                                    <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400" onClick={() => handleAdd("stock", rows)}>
+                                                        Sync
+                                                    </span>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -917,47 +1152,7 @@ export default function AvaliableItems({
                                                     {/* ================================================= */}
 
                                                     <TableCell className="px-5 py-4 sm:px-6 text-start">
-                                                        <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400" onClick={() => {
-                                                            setAppendsAll((prev: any) =>
-                                                                prev.map((item: any) => {
-                                                                    // match same category + subcategory
-                                                                    if (
-                                                                        item.categories.id === rows.categories_id &&
-                                                                        item.subCategories.id ===
-                                                                        rows.subCategories_id
-                                                                    ) {
-                                                                        return {
-                                                                            ...item,
-
-                                                                            inputs: {
-                                                                                ...item.inputs,
-
-                                                                                // =========================
-                                                                                // UPDATE ONLY EVENT DATA
-                                                                                // =========================
-
-                                                                                eventsName:
-                                                                                    rows.c_name || "",
-
-                                                                                eventsId:
-                                                                                    rows.event_id || 0,
-
-                                                                                stockName:
-                                                                                    rows.subCategories_name || "",
-
-                                                                                stockId:
-                                                                                    rows.id || 0,
-                                                                            },
-                                                                        };
-                                                                    }
-
-                                                                    return item;
-                                                                })
-                                                            );
-
-                                                            // close popup
-                                                            () => setIsOpens(false)
-                                                        }}>
+                                                        <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400"   onClick={() => handleAdd("event", rows)}>
                                                             Sync
                                                         </span>
                                                     </TableCell>
