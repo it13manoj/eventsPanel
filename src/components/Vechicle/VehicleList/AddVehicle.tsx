@@ -32,7 +32,7 @@ export default function AddVehicle() {
                     </button>
                 </div>
 
-                <VehicleDetails  closeModal={isOpen} />
+                <VehicleDetails closeModal={isOpen} />
             </div>
 
             {/* Modal Component */}
