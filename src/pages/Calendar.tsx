@@ -62,38 +62,48 @@ type ItemState = {
 
   verticalPcs?: string;
   horizontalPcs?: string;
+
+  eventsName?: string;
+  eventsId?: number;
+  stockName?: string;
+  stockId?: number
 };
 
 
 const Calendar: React.FC = () => {
   const [isOpens, setIsOpens] = useState(false);
 
- const [getItemsIs_enabled, itemsDate] = useState<ItemState>({
-  categoryId: 0,
-  subCategoryId: 0,
+  const [getItemsIs_enabled, itemsDate] = useState<ItemState>({
+    categoryId: 0,
+    subCategoryId: 0,
 
-  isEnable: false,
+    isEnable: false,
 
-  dateOfEvent: "",
-  bookedDate: "",
+    dateOfEvent: "",
+    bookedDate: "",
 
-  width: "",
-  height: "",
+    width: "",
+    height: "",
 
-  value: "",
+    value: "",
 
-  vertical: false,
-  horizontal: false,
+    vertical: false,
+    horizontal: false,
 
-  verticalValue: "",
-  horizontalValue: "",
+    verticalValue: "",
+    horizontalValue: "",
 
-  verticalUnit: "ft",
-  horizontalUnit: "ft",
+    verticalUnit: "ft",
+    horizontalUnit: "ft",
 
-  verticalPcs: "",
-  horizontalPcs: "",
-});
+    verticalPcs: "",
+    horizontalPcs: "",
+
+    eventsName: "",
+    eventsId: 0,
+    stockName: "",
+    stockId: 0
+  });
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [date, setDate] = useState<Date | null>(new Date());
@@ -130,6 +140,9 @@ const Calendar: React.FC = () => {
 
   })
 
+  console.log(eventStartDate, eventEndDate, eventLevel);
+
+
   const [categories, setCategories] = useState([{
     id: "",
     name: ""
@@ -155,7 +168,11 @@ const Calendar: React.FC = () => {
         horizontalUnit: "ft",
         verticalPcs: "",
         horizontalPcs: "",
-        value: "" // ✅ important if used
+        value: "", // ✅ important if used
+        eventsName: "",
+        eventsId: 0,
+        stockName: "",
+        stockId: 0
       }
     }
   ]);
@@ -326,8 +343,8 @@ const Calendar: React.FC = () => {
       bookedItems: appendsAll.filter(r => r.categories.id != 0)
     };
 
- 
-    
+
+
     await apiClient.post("admin/Events/create", data);
     getEvents();
     closeModal();
@@ -474,8 +491,15 @@ const Calendar: React.FC = () => {
 
     setSelectedEvent(event);
 
-    const formatDate = (d: string) =>
-      d ? new Date(d).toISOString().split("T")[0] : "";
+    const formatDate = (d: string) => {
+      if (!d) return "";
+
+      const date = new Date(d);
+
+      if (isNaN(date.getTime())) return "";
+
+      return date.toISOString().split("T")[0];
+    };
 
     const formatDateTimeLocal = (d: string) => {
       if (!d) return "";
@@ -492,14 +516,29 @@ const Calendar: React.FC = () => {
     setEventStartDate(formatDate(data.doe));
 
     if (data.doe && data.nodb) {
+
+      // START DATE
       const start = new Date(data.doe);
 
-      const end = new Date(start);
-      end.setDate(start.getDate() + Number(data.nodb));
+      // END DATE
+      const end = new Date(data.nodb);
 
       setDate(end);
+
+      // EVENT START DATE
+      setEventStartDate(formatDate(start.toISOString()));
+
+      // EVENT END DATE
       setEventEndDate(formatDate(end.toISOString()));
-      setBookingDays(String(data.nodb));
+
+      // OPTIONAL: calculate booking days difference
+      const diffTime = end.getTime() - start.getTime();
+
+      const diffDays = Math.ceil(
+        diffTime / (1000 * 60 * 60 * 24)
+      );
+
+      setBookingDays(String(diffDays));
     }
 
     setVenueAvailalityDate(formatDateTimeLocal(data.v_a_d));
@@ -1206,7 +1245,7 @@ const Calendar: React.FC = () => {
       </div>
 
 
-      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} getItemsIs_enabled={getItemsIs_enabled} />
+      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} />
     </>
   );
 };

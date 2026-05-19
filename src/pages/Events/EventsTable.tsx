@@ -359,9 +359,7 @@ export default function EventsTable() {
                                             const startDate = new Date(rows.doe);
                                             if (isNaN(startDate.getTime())) return "-";
 
-                                            startDate.setDate(startDate.getDate() + Number(rows?.nodb || 0));
-
-                                            return startDate.toISOString().split("T")[0];
+                                            return rows?.nodb.split("T")[0];
                                         })()}
                                     </div>
                                 </TableCell>
@@ -429,7 +427,7 @@ export default function EventsTable() {
                                             }}
                                         >
                                             {bookedItems[rows.id].reduce((sum, item) => {
-                                                return sum + item.qt + (item.width.length > 1 ? 1 : 0);
+                                                return sum + item.qt ;
                                             }, 0)}
                                         </span>
                                     ) : (
