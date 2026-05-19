@@ -2,49 +2,81 @@ import { useEffect, useState } from "react";
 import { Modal } from "../components/ui/modal";
 import apiClient from "../hooks/api/apiClient";
 import Label from "../components/form/Label";
+import { Plus } from "lucide-react";
 
-
-type RowType = {
+type VerticalRowType = {
     size: string;
     quantity: string;
+    unit: string;
+};
+
+type HorizontalRowType = {
+    size: string;
+    quantity: string;
+    unit: string;
 };
 
 export default function StockModel({ isOpen, closeModal }: any) {
-    if (!isOpen) return null; // ✅ FIXED
+    if (!isOpen) return null;
+
+    // ================= STATES =================
 
     const [categories, setCategories] = useState<any[]>([]);
     const [subCategories, setSubCategories] = useState<any[]>([]);
     const [wareHouse, setWarehouse] = useState<any[]>([]);
 
     const [inventory, setInventory] = useState<any>({});
+
     const [enabled, setEnabled] = useState(false);
     const [enabledprice, setEnabledprice] = useState(false);
-    const [checked, setChecked] = useState(false);
-    const [Hchecked, setHchecked] = useState(false);
 
+    const [verticalEnabled, setVerticalEnabled] = useState(false);
+    const [horizontalEnabled, setHorizontalEnabled] = useState(false);
 
-    const [rows, setRows] = useState<RowType[]>([
-        { size: "", quantity: "" }
+    // ================= VERTICAL ROWS =================
+
+    const [verticalRows, setVerticalRows] = useState<VerticalRowType[]>([
+        {
+            size: "",
+            quantity: "",
+            unit: "ft",
+        },
     ]);
 
-    const addRow = () => {
-        setRows((prev) => [...prev, { size: "", quantity: "" }]);
+    // ================= HORIZONTAL ROWS =================
+
+    const [horizontalRows, setHorizontalRows] = useState<
+        HorizontalRowType[]
+    >([
+        {
+            size: "",
+            quantity: "",
+            unit: "ft",
+        },
+    ]);
+
+    // ================= HANDLERS =================
+
+    const datahandler = (e: any) => {
+        setInventory((prev: any) => ({
+            ...prev,
+            [e.target.name]: e.target.value,
+        }));
     };
 
-    const deleteRow = (index: number) => {
-        setRows((prev) => prev.filter((_, i) => i !== index));
-    };
+    const eventHandler = async (e: any) => {
+        try {
+            const id = e.target.value;
 
-    const handleRowChange = (
-        index: number,
-        field: keyof RowType,   // ✅ FIX
-        value: string
-    ) => {
-        const updated = [...rows];
-        updated[index][field] = value;
-        setRows(updated);
-    };
+            const results = await apiClient.get(
+                `/admin/subCategory/findByid/${id}`
+            );
 
+            setSubCategories(results?.data?.results || []);
+        } catch (err) {
+            console.log(err);
+        }
+    };
 
     // ================= GET DATA =================
 
@@ -71,30 +103,8 @@ export default function StockModel({ isOpen, closeModal }: any) {
         wareHouses();
     }, []);
 
-    // ================= HANDLERS =================
+    // ================= ENABLE =================
 
-    const eventHandler = async (e: any) => {
-        try {
-            const id = e.target.value;
-            const results = await apiClient.get(
-                `/admin/subCategory/findByid/${id}`
-            );
-            setSubCategories(results?.data?.results || []);
-        } catch (err) {
-            console.log(err);
-        }
-    };
-
-    const datahandler = (e: any) => {
-        setInventory((prev: any) => ({
-            ...prev,
-            [e.target.name]: e.target.value,
-        }));
-    };
-
-
-
-    // sync switch value to inventory
     useEffect(() => {
         setInventory((prev: any) => ({
             ...prev,
@@ -102,49 +112,119 @@ export default function StockModel({ isOpen, closeModal }: any) {
         }));
     }, [enabled]);
 
+    // ================= VERTICAL =================
+
+    const addVerticalRow = () => {
+        setVerticalRows((prev) => [
+            ...prev,
+            {
+                size: "",
+                quantity: "",
+                unit: "ft",
+            },
+        ]);
+    };
+
+    const handleVerticalChange = (
+        index: number,
+        field: keyof VerticalRowType,
+        value: string
+    ) => {
+        const updated = [...verticalRows];
+        updated[index][field] = value;
+        setVerticalRows(updated);
+    };
+
+    // ================= HORIZONTAL =================
+
+    const addHorizontalRow = () => {
+        setHorizontalRows((prev) => [
+            ...prev,
+            {
+                size: "",
+                quantity: "",
+                unit: "ft",
+            },
+        ]);
+    };
+
+    const handleHorizontalChange = (
+        index: number,
+        field: keyof HorizontalRowType,
+        value: string
+    ) => {
+        const updated = [...horizontalRows];
+        updated[index][field] = value;
+        setHorizontalRows(updated);
+    };
+
+    // ================= SUBMIT =================
+
     const submitHandler = async (e: any) => {
         e.preventDefault();
-        let data = rows.filter(r => r.size != "" || r.quantity != "");
-        let stocks = { ...inventory, data }
-        console.log(stocks);
+
+        const verticalData = verticalRows.filter(
+            (r) => r.size || r.quantity
+        );
+
+        const horizontalData = horizontalRows.filter(
+            (r) => r.size || r.quantity
+        );
+
+        const payload = {
+            ...inventory,
+            have_size: enabled ? 1 : 0,
+
+            vertical_enabled: verticalEnabled ? 1 : 0,
+            horizontal_enabled: horizontalEnabled ? 1 : 0,
+
+            vertical_data: verticalData,
+            horizontal_data: horizontalData,
+        };
+
+        console.log(payload);
 
         try {
             const results = await apiClient.post(
                 "/admin/Inverntory/create",
-                stocks
+                payload
             );
+
             console.log(results);
+
             closeModal();
         } catch (err) {
             console.log(err);
         }
     };
 
-    // ================= UI =================
-
     return (
         <Modal
             isOpen={isOpen}
             onClose={closeModal}
-            className="max-w-[100%] p-6 lg:p-10"
+            className="relative mx-auto my-10 w-[95%] max-w-7xl rounded-2xl overflow-hidden bg-white dark:bg-gray-900"
         >
-            <div className="overflow-y-auto custom-scrollbar">
-                <h5 className="mb-4 font-semibold text-gray-800 text-xl dark:text-white">
-                    Stock
-                </h5>
+            {/* HEADER */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
+                <h2 className="text-xl font-semibold text-white">
+                    Inventory Stock
+                </h2>
+            </div>
 
-                <form onSubmit={submitHandler}>
+            {/* BODY */}
+            <div className="p-5 overflow-y-auto max-h-[90vh]">
+                <form onSubmit={submitHandler} className="space-y-6">
+                    {/* WAREHOUSE */}
+                    <div>
+                        <Label>Warehouse</Label>
 
-
-                    {/* Warehouse */}
-                    <div className="mt-4 ">
-                        <label className="text-sm">Warehouse</label>
                         <select
                             name="ware_house_id"
                             onChange={datahandler}
-                            className="h-11 w-full border rounded-lg px-3"
+                            className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                         >
                             <option value={0}>Select Warehouse</option>
+
                             {wareHouse.map((row) => (
                                 <option key={row.id} value={row.id}>
                                     {row.name}
@@ -153,21 +233,21 @@ export default function StockModel({ isOpen, closeModal }: any) {
                         </select>
                     </div>
 
-
-
-                    {/* Category + SubCategory */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4  mt-4">
+                    {/* CATEGORY */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm">Category</label>
+                            <Label>Category</Label>
+
                             <select
                                 name="categories_id"
                                 onChange={(e) => {
                                     eventHandler(e);
                                     datahandler(e);
                                 }}
-                                className="h-11 w-full border rounded-lg px-3"
+                                className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                             >
                                 <option value={0}>Select Category</option>
+
                                 {categories.map((row) => (
                                     <option key={row.id} value={row.id}>
                                         {row.name}
@@ -177,13 +257,15 @@ export default function StockModel({ isOpen, closeModal }: any) {
                         </div>
 
                         <div>
-                            <label className="text-sm">Sub Category</label>
+                            <Label>Sub Category</Label>
+
                             <select
                                 name="sub_categories_id"
                                 onChange={datahandler}
-                                className="h-11 w-full border rounded-lg px-3"
+                                className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                             >
                                 <option value={0}>Select Sub Category</option>
+
                                 {subCategories.map((row) => (
                                     <option key={row.id} value={row.id}>
                                         {row.name}
@@ -193,10 +275,11 @@ export default function StockModel({ isOpen, closeModal }: any) {
                         </div>
                     </div>
 
-
-                    {/* Switch */}
-                    <div className="mt-4 flex items-center gap-3">
-                        <span>Have you Width and Length ?</span>
+                    {/* SIZE ENABLE */}
+                    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <span className="font-medium">
+                            Have Width & Height ?
+                        </span>
 
                         <button
                             type="button"
@@ -210,374 +293,370 @@ export default function StockModel({ isOpen, closeModal }: any) {
                             />
                         </button>
 
-                        {/* ✅ Show only when enabled */}
-                        {enabled == false && <div> <input
-                            name="quantity"
-                            placeholder="Quantity"
-                            onChange={datahandler}
-                            className="h-11 border rounded-lg px-3"
-                        /> </div>}
-                    </div>
-
-                    <div className="md:col-span-1">
-                        {enabled && (
-                            <div className="space-y-4 p-5">
-                                {rows.map((row, index) => (
-                                    <div
-                                        key={index}
-                                        className="border rounded-lg p-4 bg-gray-50"
-                                    >
-                                        {/* Checkbox Row */}
-                                        <div className="flex gap-6 mb-4">
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={checked}
-                                                    onChange={() => setChecked(!checked)}
-                                                    className="h-4 w-4"
-                                                />
-                                                <label>Vertical</label>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={Hchecked}
-                                                    onChange={() => setHchecked(!Hchecked)}
-                                                    className="h-4 w-4"
-                                                />
-                                                <label>Horizontal</label>
-                                            </div>
-                                        </div>
-
-                                        {/* Vertical Row */}
-                                        {checked && (
-                                            <div className="border rounded-lg p-4 mb-4 bg-gray-50">
-
-                                                {/* First Row */}
-                                                <div className="flex items-center font-medium">
-                                                    Vertical
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-
-
-
-                                                    {/* Size */}
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Size (e.g. 10x10)"
-                                                        value={row.size}
-                                                        onChange={(e) =>
-                                                            handleRowChange(index, "size", e.target.value)
-                                                        }
-                                                        className="h-11 border rounded-lg px-3"
-                                                    />
-
-                                                    {/* Unit */}
-                                                    <select
-                                                        className="h-11 border rounded-lg px-3"
-                                                        value={row.unit}
-                                                        onChange={(e) =>
-                                                            handleRowChange(index, "unit", e.target.value)
-                                                        }
-                                                    >
-                                                        <option value="ft">Feet (FT)</option>
-                                                        <option value="m">Meter (M)</option>
-                                                        <option value="mm">Millimeter (MM)</option>
-                                                        <option value="in">Inch (IN)</option>
-                                                    </select>
-
-                                                    {/* Quantity */}
-                                                    <input
-                                                        type="number"
-                                                        placeholder="Quantity"
-                                                        value={row.quantity}
-                                                        onChange={(e) =>
-                                                            handleRowChange(index, "quantity", e.target.value)
-                                                        }
-                                                        className="h-11 border rounded-lg px-3"
-                                                    />
-                                                    {/* Good */}
-                                                    <div>
-                                                        <label className="block text-sm font-medium mb-1">
-                                                            Good Wares
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            name="good"
-                                                            placeholder="Good Quantity"
-                                                            value={row.good}
-                                                            onChange={(e) =>
-                                                                handleRowChange(index, "good", e.target.value)
-                                                            }
-                                                            className="h-11 w-full border rounded-lg px-3"
-                                                        />
-                                                    </div>
-
-                                                    {/* Bad */}
-                                                    <div>
-                                                        <label className="block text-sm font-medium mb-1">
-                                                            Bad Wares
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            name="bad"
-                                                            placeholder="Bad Quantity"
-                                                            value={row.bad}
-                                                            onChange={(e) =>
-                                                                handleRowChange(index, "bad", e.target.value)
-                                                            }
-                                                            className="h-11 w-full border rounded-lg px-3"
-                                                        />
-                                                    </div>
-
-                                                    {/* Missing */}
-                                                    <div>
-                                                        <label className="block text-sm font-medium mb-1">
-                                                            Missing Wares
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            name="missing"
-                                                            placeholder="Missing Quantity"
-                                                            value={row.missing}
-                                                            onChange={(e) =>
-                                                                handleRowChange(index, "missing", e.target.value)
-                                                            }
-                                                            className="h-11 w-full border rounded-lg px-3"
-                                                        />
-                                                    </div>
-                                                </div>                                                
-                                            </div>
-                                        )}
-
-
-                                        {/* Horizontal Row */}
-                                        {Hchecked && (
-                                            <div className="border rounded-lg p-4 mb-4 bg-gray-50">
-
-                                                {/* First Row */}
-                                                <div className="flex items-center font-medium">
-                                                    Horizontal
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
-
-
-
-                                                    {/* Size */}
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Size (e.g. 10x10)"
-                                                        value={row.hsize}
-                                                        onChange={(e) =>
-                                                            handleRowChange(index, "hsize", e.target.value)
-                                                        }
-                                                        className="h-11 border rounded-lg px-3"
-                                                    />
-
-                                                    {/* Unit */}
-                                                    <select
-                                                        className="h-11 border rounded-lg px-3"
-                                                        value={row.hunit}
-                                                        onChange={(e) =>
-                                                            handleRowChange(index, "hunit", e.target.value)
-                                                        }
-                                                    >
-                                                        <option value="ft">Feet (FT)</option>
-                                                        <option value="m">Meter (M)</option>
-                                                        <option value="mm">Millimeter (MM)</option>
-                                                        <option value="in">Inch (IN)</option>
-                                                    </select>
-
-                                                    {/* Quantity */}
-                                                    <input
-                                                        type="number"
-                                                        placeholder="Quantity"
-                                                        value={row.hquantity}
-                                                        onChange={(e) =>
-                                                            handleRowChange(index, "hquantity", e.target.value)
-                                                        }
-                                                        className="h-11 border rounded-lg px-3"
-                                                    />
-
-                                                    {/* Good */}
-                                                    <div>
-                                                        <label className="block text-sm font-medium mb-1">
-                                                            Good Wares
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="Good Quantity"
-                                                            value={row.hgood}
-                                                            onChange={(e) =>
-                                                                handleRowChange(index, "hgood", e.target.value)
-                                                            }
-                                                            className="h-11 w-full border rounded-lg px-3"
-                                                        />
-                                                    </div>
-
-                                                    {/* Bad */}
-                                                    <div>
-                                                        <label className="block text-sm font-medium mb-1">
-                                                            Bad Wares
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="Bad Quantity"
-                                                            value={row.hbad}
-                                                            onChange={(e) =>
-                                                                handleRowChange(index, "hbad", e.target.value)
-                                                            }
-                                                            className="h-11 w-full border rounded-lg px-3"
-                                                        />
-                                                    </div>
-
-                                                    {/* Missing */}
-                                                    <div>
-                                                        <label className="block text-sm font-medium mb-1">
-                                                            Missing Wares
-                                                        </label>
-                                                        <input
-                                                            type="number"
-                                                            placeholder="Missing Quantity"
-                                                            value={row.hmissing}
-                                                            onChange={(e) =>
-                                                                handleRowChange(index, "hmissing", e.target.value)
-                                                            }
-                                                            className="h-11 w-full border rounded-lg px-3"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                        {!enabled && (
+                            <input
+                                name="quantity"
+                                placeholder="Quantity"
+                                onChange={datahandler}
+                                className="h-11 rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                            />
                         )}
                     </div>
 
-                    {/* Width + Height */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 hidden">
-                        <input
-                            name="width"
-                            placeholder="Width (ft)"
-                            onChange={datahandler}
-                            className="h-11 border rounded-lg px-3"
-                        />
-                        <input
-                            name="height"
-                            placeholder="Height (ft)"
-                            onChange={datahandler}
-                            className="h-11 border rounded-lg px-3"
-                        />
-                    </div>
+                    {/* VERTICAL + HORIZONTAL */}
+                    {enabled && (
+                        <div className="space-y-6">
+                            {/* TOGGLE */}
+                            <div className="flex flex-wrap gap-6">
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={verticalEnabled}
+                                        onChange={() =>
+                                            setVerticalEnabled(!verticalEnabled)
+                                        }
+                                    />
+                                    Vertical
+                                </label>
 
-                    {/* Color + Quantity */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 hidden">
-                        <input
-                            type="color"
-                            name="color"
-                            onChange={datahandler}
-                            className="h-11 border rounded-lg px-3"
-                        />
-                        <input
-                            name="quantity"
-                            placeholder="Quantity"
-                            onChange={datahandler}
-                            className="h-11 border rounded-lg px-3"
-                        />
-                    </div>
+                                <label className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={horizontalEnabled}
+                                        onChange={() =>
+                                            setHorizontalEnabled(!horizontalEnabled)
+                                        }
+                                    />
+                                    Horizontal
+                                </label>
+                            </div>
 
+                            {/* VERTICAL */}
+                            {verticalEnabled && (
+                                <div className="rounded-2xl border border-gray-200 p-5 dark:border-gray-700">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-semibold text-lg">
+                                            Vertical Sizes
+                                        </h3>
 
+                                        <button
+                                            type="button"
+                                            onClick={addVerticalRow}
+                                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl"
+                                        >
+                                            <Plus size={16} />
+                                            Add
+                                        </button>
+                                    </div>
 
-                    {/*✅ Show only when enabled */}
-                    {enabled == false &&
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                    <div className="space-y-4">
+                                        {verticalRows.map((row, index) => (
+                                            <div
+                                                key={index}
+                                                className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-end"
+                                            >
+                                                {/* SIZE + UNIT */}
+                                                <div className="flex h-11 overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Size"
+                                                        value={row.size}
+                                                        onChange={(e) =>
+                                                            handleVerticalChange(
+                                                                index,
+                                                                "size",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="flex-1 h-11 px-3 outline-none bg-transparent dark:bg-gray-900"
+                                                    />
 
-                            {/* Good */}
+                                                    <select
+                                                        value={row.unit}
+                                                        onChange={(e) =>
+                                                            handleVerticalChange(
+                                                                index,
+                                                                "unit",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="h-11 border-l border-gray-300 bg-gray-50 px-3 outline-none dark:bg-gray-800 dark:border-gray-700"
+                                                    >
+                                                        <option value="ft">FT</option>
+                                                        <option value="m">M</option>
+                                                        <option value="mm">MM</option>
+                                                        <option value="in">IN</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* QTY */}
+                                                <input
+                                                    type="number"
+                                                    placeholder="Quantity"
+                                                    value={row.quantity}
+                                                    onChange={(e) =>
+                                                        handleVerticalChange(
+                                                            index,
+                                                            "quantity",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="h-11 rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                />
+
+                                                <div>
+                                                    <Label>Good Wares</Label>
+
+                                                    <input
+                                                        name="good"
+                                                        placeholder="Good Quantity"
+                                                        onChange={datahandler}
+                                                        className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <Label>Bad Wares</Label>
+
+                                                    <input
+                                                        name="bad"
+                                                        placeholder="Bad Quantity"
+                                                        onChange={datahandler}
+                                                        className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <Label>Missing Wares</Label>
+
+                                                    <input
+                                                        name="missing"
+                                                        placeholder="Missing Quantity"
+                                                        onChange={datahandler}
+                                                        className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                {/* DELETE BUTTON */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setVerticalRows((prev) =>
+                                                            prev.filter((_, i) => i !== index)
+                                                        )
+                                                    }
+                                                    className="h-11 w-11 rounded-xl bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* HORIZONTAL */}
+                            {horizontalEnabled && (
+                                <div className="rounded-2xl border border-gray-200 p-5 dark:border-gray-700">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-semibold text-lg">
+                                            Horizontal Sizes
+                                        </h3>
+
+                                        <button
+                                            type="button"
+                                            onClick={addHorizontalRow}
+                                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl"
+                                        >
+                                            <Plus size={16} />
+                                            Add
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {horizontalRows.map((row, index) => (
+                                            <div
+                                                key={index}
+                                                className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] gap-4 items-end"
+                                            >
+                                                {/* SIZE + UNIT */}
+                                                <div className="flex items-center overflow-hidden rounded-xl border border-gray-300 dark:border-gray-700">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Size"
+                                                        value={row.size}
+                                                        onChange={(e) =>
+                                                            handleHorizontalChange(
+                                                                index,
+                                                                "size",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="flex-1 h-11 px-3 outline-none bg-transparent dark:bg-gray-900"
+                                                    />
+
+                                                    <select
+                                                        value={row.unit}
+                                                        onChange={(e) =>
+                                                            handleHorizontalChange(
+                                                                index,
+                                                                "unit",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="h-11 border-l border-gray-300 bg-gray-50 px-3 outline-none dark:bg-gray-800 dark:border-gray-700"
+                                                    >
+                                                        <option value="ft">FT</option>
+                                                        <option value="m">M</option>
+                                                        <option value="mm">MM</option>
+                                                        <option value="in">IN</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* QTY */}
+                                                <input
+                                                    type="number"
+                                                    placeholder="Quantity"
+                                                    value={row.quantity}
+                                                    onChange={(e) =>
+                                                        handleHorizontalChange(
+                                                            index,
+                                                            "quantity",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    className="h-11 rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                />
+                                                <div>
+                                                    <Label>Good Wares</Label>
+
+                                                    <input
+                                                        name="good"
+                                                        placeholder="Good Quantity"
+                                                        onChange={datahandler}
+                                                        className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <Label>Bad Wares</Label>
+
+                                                    <input
+                                                        name="bad"
+                                                        placeholder="Bad Quantity"
+                                                        onChange={datahandler}
+                                                        className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <Label>Missing Wares</Label>
+
+                                                    <input
+                                                        name="missing"
+                                                        placeholder="Missing Quantity"
+                                                        onChange={datahandler}
+                                                        className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                                                    />
+                                                </div>
+
+                                                {/* DELETE BUTTON */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setHorizontalRows((prev) =>
+                                                            prev.filter((_, i) => i !== index)
+                                                        )
+                                                    }
+                                                    className="h-11 w-11 rounded-xl bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* GOOD BAD MISSING */}
+                    {!enabled && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <Label>Good Wares</Label>
+
                                 <input
                                     name="good"
                                     placeholder="Good Quantity"
                                     onChange={datahandler}
-                                    className="h-11 w-full border rounded-lg px-3"
+                                    className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                                 />
                             </div>
 
-                            {/* Bad */}
                             <div>
                                 <Label>Bad Wares</Label>
+
                                 <input
                                     name="bad"
                                     placeholder="Bad Quantity"
                                     onChange={datahandler}
-                                    className="h-11 w-full border rounded-lg px-3"
+                                    className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                                 />
                             </div>
 
-                            {/* Missing */}
                             <div>
                                 <Label>Missing Wares</Label>
+
                                 <input
                                     name="missing"
                                     placeholder="Missing Quantity"
                                     onChange={datahandler}
-                                    className="h-11 w-full border rounded-lg px-3"
+                                    className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                                 />
                             </div>
-
                         </div>
-                    }
+                    )}
 
+                    {/* PRICE */}
+                    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <span className="font-medium">Price (₹)</span>
 
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <div className="mt-4 flex items-center gap-3">
-                            <span>Price(₹) ?</span>
-
-                            <button
-                                type="button"
-                                onClick={() => setEnabledprice(!enabledprice)}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${enabledprice ? "bg-green-500" : "bg-gray-300"
+                        <button
+                            type="button"
+                            onClick={() => setEnabledprice(!enabledprice)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${enabledprice ? "bg-green-500" : "bg-gray-300"
+                                }`}
+                        >
+                            <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${enabledprice ? "translate-x-6" : "translate-x-1"
                                     }`}
-                            >
-                                <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${enabledprice ? "translate-x-6" : "translate-x-1"
-                                        }`}
-                                />
-                            </button>
-                            {/* ✅ Show only when enabledprice */}
-                            {enabledprice ? (
-                                <button
-                                    type="button"
-                                    onClick={addRow}
+                            />
+                        </button>
 
-                                > <input
-                                        name="price"
-                                        placeholder="Price"
-                                        onChange={datahandler}
-                                        className="h-11 border rounded-lg px-3"
-                                    />
-                                </button>
-                            ) : <div> </div>}
-                        </div>
+                        {enabledprice && (
+                            <input
+                                name="price"
+                                placeholder="Enter Price"
+                                onChange={datahandler}
+                                className="h-11 rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
+                            />
+                        )}
                     </div>
 
-
-                    {/* Buttons */}
-                    <div className="flex gap-3 mt-6 justify-end">
+                    {/* BUTTONS */}
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
                         <button
                             type="button"
                             onClick={closeModal}
-                            className="px-4 py-2 border rounded-lg"
+                            className="h-11 px-6 rounded-xl border border-gray-300"
                         >
                             Close
                         </button>
 
                         <button
                             type="submit"
-                            className="px-4 py-2 bg-green-500 text-white rounded-lg"
+                            className="h-11 px-6 rounded-xl bg-green-600 text-white"
                         >
                             Submit
                         </button>
