@@ -7,7 +7,7 @@ import {
   HorizontaLDots,
 } from "../icons";
 import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Settings } from "lucide-react";
-import { Truck  } from "lucide-react";
+import { Truck, FileText } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 
@@ -54,8 +54,11 @@ const navItems: NavItem[] = [
     subItems: [{ name: "Vehicle Types", path: "/addvehicle", pro: false },{ name: "Owner Vehicle", path: "/owner-vahicle", pro: false }, { name: "Agency Vehicle", path: "/agency-vehicle", pro: false }, { name: "Vehicle", path: "/vehicle", pro: false }],
   },
 
-
-  
+  {
+    icon: <FileText  />,
+    name: "Invoice ",
+    subItems: [{name: "Invoice List", path: "/invoicelist", pro: false}]
+  }, 
  
 
   // {
