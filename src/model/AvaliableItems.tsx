@@ -9,7 +9,10 @@ type SizeType = {
     quantity: number;
     unit: string;
 };
-
+interface StockAddToEventsType {
+    stock: any[];
+    events: any[];
+}
 type InventoryType = {
     id: number;
 
@@ -44,10 +47,46 @@ type InventoryType = {
 
     verticalSizes: SizeType[];
     horizontalSizes: SizeType[];
-};
 
+    synced?: boolean;
+};
+type ItemState = {
+    categoryId: number;
+    subCategoryId: number;
+    isEnable: boolean;
+
+    dateOfEvent?: string;
+    bookedDate?: string;
+
+    width?: string;
+    height?: string;
+
+    value?: string;
+
+    vertical?: boolean;
+    horizontal?: boolean;
+
+    verticalValue?: string;
+    horizontalValue?: string;
+
+    verticalUnit?: string;
+    horizontalUnit?: string;
+
+    verticalPcs?: string;
+    horizontalPcs?: string;
+
+    eventsName?: string;
+    eventsId?: number;
+    stockName?: string;
+    stockId?: number
+};
 interface ItemsModelProps {
     isOpens: boolean;
+    hideAvailableButton: { [key: number]: boolean };
+
+    setHideAvailableButton: React.Dispatch<
+        React.SetStateAction<{ [key: number]: boolean }>
+    >;
     setIsOpens: (value: boolean) => void;
     getItemsIs_enabled: {
         categoryId: number;
@@ -83,6 +122,17 @@ interface ItemsModelProps {
         React.SetStateAction<any[]>
     >;
     appendsAll: any[];
+    setStockAddToEvents: React.Dispatch<
+        React.SetStateAction<{
+            stock: any[];
+            events: any[];
+        }>
+    >;
+
+    itemsDate: React.Dispatch<
+        React.SetStateAction<ItemState>
+    >;
+    stockAddToEvents: StockAddToEventsType
 
 }
 
@@ -90,8 +140,10 @@ export default function AvaliableItems({
     isOpens,
     setIsOpens,
     getItemsIs_enabled,
-    setAppendsAll,
-    appendsAll
+    setStockAddToEvents,
+    itemsDate,
+    stockAddToEvents,
+    setHideAvailableButton
 }: ItemsModelProps) {
     if (!isOpens) return null;
     const [inventory, setInventory] = useState<
@@ -99,10 +151,6 @@ export default function AvaliableItems({
     >([]);
 
 
-    const [stockAddToEvents, setStockAddToEvents] = useState({
-        stock: [],
-        events: [],
-    });
 
 
 
@@ -112,6 +160,15 @@ export default function AvaliableItems({
     const [quantities, setQuantities] = useState<any>(
         {}
     );
+    const [results_booked, results_bookedSet] = useState<{
+        stock: { [key: number]: number };
+        event: { [key: number]: number };
+    }>({
+        stock: {},
+        event: {}
+    });
+
+
     const [bookEventRecords, setBookEventsRecords] = useState([{
         "id": 1,
         "c_name": "Rahul",
@@ -135,7 +192,8 @@ export default function AvaliableItems({
         "qt": 0,
         "event_id": 1,
         "created_at": "2026-05-15T11:21:45.000Z",
-        "updated_at": "2026-05-15T11:21:45.000Z"
+        "updated_at": "2026-05-15T11:21:45.000Z",
+        synced: true
     }])
 
 
@@ -143,12 +201,35 @@ export default function AvaliableItems({
         type: "stock" | "event",
         item: any
     ) => {
-        console.log(getItemsIs_enabled);
-        
-        
+
+        // ========================= STOCK =========================
         if (type === "stock") {
+            let newAddedQt = getItemsIs_enabled.horizontalPcs || getItemsIs_enabled.verticalPcs || getItemsIs_enabled.value || 0;
+            const verticalQty = Number(
+                item.verticalSizes?.[0]?.quantity || 0
+            );
+
+            const horizontalQty = Number(
+                item.horizontalSizes?.[0]?.quantity || 0
+            );
+
+            const quantity = Number(
+                item.quantity || 0
+            );
+
+            // use only existing qty
+            const usedQty =
+                verticalQty > 0
+                    ? verticalQty
+                    : horizontalQty > 0 ? horizontalQty : quantity;
+
+            // prevent duplicate add
+          
+
+            // add stock
             setStockAddToEvents((prev: any) => ({
                 ...prev,
+
                 stock: [
                     ...prev.stock,
                     {
@@ -156,17 +237,165 @@ export default function AvaliableItems({
                         stockname: item.wareHouse.name,
                         Categories: item.categories.id,
                         SubCategoreis: item.subCategories.id,
-                        quntiry:getItemsIs_enabled.value,
+                        quntiry: Number(newAddedQt) > usedQty ? usedQty : newAddedQt,
                     },
                 ],
             }));
+
+            // update inventory
+            setInventory((prev: InventoryType[]) =>
+                prev.map((row) => {
+
+                    if (row.id !== item.id) return row;
+
+                    return {
+                        ...row,
+
+                        synced: true,
+
+                        verticalSizes: row.verticalSizes.map(
+                            (size) => ({
+                                ...size,
+
+                                quantity:
+                                    size.quantity > 0
+                                        ? Math.max(
+                                            0,
+                                            Number(size.quantity) - usedQty
+                                        )
+                                        : 0,
+                            })
+                        ),
+
+                        horizontalSizes: row.horizontalSizes.map(
+                            (size) => ({
+                                ...size,
+
+                                quantity:
+                                    size.quantity > 0
+                                        ? Math.max(
+                                            0,
+                                            Number(size.quantity) - usedQty
+                                        )
+                                        : 0,
+                            })
+                        ),
+
+                        quantity:
+                            Number(row.quantity || 0) > 0
+                                ? Math.max(
+                                    0,
+                                    Number(row.quantity) - usedQty
+                                )
+                                : 0,
+                    };
+                })
+            );
+
+            // update selected available qty
+            itemsDate((prev: any) => ({
+
+                ...prev,
+
+                verticalPcs:
+                    Number(prev.verticalPcs ?? 0) > 0
+                        ? String(
+                            Math.max(
+                                0,
+                                Number(prev.verticalPcs) - usedQty
+                            )
+                        )
+                        : prev.verticalPcs,
+
+                horizontalPcs:
+                    Number(prev.horizontalPcs ?? 0) > 0
+                        ? String(
+                            Math.max(
+                                0,
+                                Number(prev.horizontalPcs) - usedQty
+                            )
+                        )
+                        : prev.horizontalPcs,
+
+                quantity:
+                    Number(prev.quantity ?? 0) > 0
+                        ? Math.max(
+                            0,
+                            Number(prev.quantity) - usedQty
+                        )
+                        : 0,
+            }));
         }
 
+        // ========================= EVENT =========================
         if (type === "event") {
-            console.log(item);
+            let newAddedQt = getItemsIs_enabled.horizontalPcs || getItemsIs_enabled.verticalPcs || getItemsIs_enabled.value || 0;
+            const verticalQty = Number(
+                item.verticalPcs || 0
+            );
+
+            // console.log(item);
             
+            const horizontalQty = Number(
+                item.horizontalPcs || 0
+            );
+            const qt = Number(
+                item.qt || 0
+            );
+            const usedQty =
+                verticalQty > 0
+                    ? verticalQty
+                    : horizontalQty > 0 ? horizontalQty : qt;
+
+            // prevent duplicate sync
+           
+            console.log(usedQty);
+            
+
+            // if (alreadyAdded) return;
+
+            // add event
+
+            // update records
+            setBookEventsRecords((prev: any[]) =>
+                prev.map((row) => {
+                  
+                    if (row.id !== item.id) return row;
+
+                    return {
+                        ...row,
+
+                        synced: true,
+
+                        verticalPcs:
+                            Number(row.verticalPcs || 0) > 0
+                                ? Math.max(
+                                    0,
+                                    Number(row.verticalPcs) - usedQty
+                                )
+                                : row.verticalPcs,
+
+                        horizontalPcs:
+                            Number(row.horizontalPcs || 0) > 0
+                                ? Math.max(
+                                    0,
+                                    Number(row.horizontalPcs) - usedQty
+                                )
+                                : row.horizontalPcs,
+
+                        qt: Number(row.qt || 0) > 0
+                            ? Math.max(
+                                0,
+                                Number(row.qt) - usedQty
+                            )
+                            : row.qt,
+                    };
+                })
+            );
+
             setStockAddToEvents((prev: any) => ({
                 ...prev,
+
                 events: [
                     ...prev.events,
                     {
@@ -174,21 +403,94 @@ export default function AvaliableItems({
                         name: item.vanus,
                         categories: item.categories_id,
                         subcategores: item.subCategories_id,
-                        quntity: getItemsIs_enabled.value,
+                        quntity: Number(newAddedQt) > usedQty ? usedQty : newAddedQt,
                     },
                 ],
             }));
+            // update selected qty
+            itemsDate((prev: any) => ({
+
+                ...prev,
+
+                verticalPcs:
+                    Number(prev.verticalPcs || 0) > 0
+                        ? String(
+                            Math.max(
+                                0,
+                                Number(prev.verticalPcs) - usedQty
+                            )
+                        )
+                        : prev.verticalPcs,
+
+                horizontalPcs:
+                    Number(prev.horizontalPcs || 0) > 0
+                        ? String(
+                            Math.max(
+                                0,
+                                Number(prev.horizontalPcs) - usedQty
+                            )
+                        )
+                        : prev.horizontalPcs,
+
+                qt:
+                    Number(prev.qt || 0) > 0
+                        ? String(
+                            Math.max(
+                                0,
+                                Number(prev.qt) - usedQty
+                            )
+                        )
+                        : prev.qt,
+            }));
         }
     };
+
+
     const getInventory = async () => {
         try {
             const results = await apiClient.get(
-                `/admin/Inverntory/items/eventStocks/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
+                `/admin/Inverntory/items/eventStocks/${getItemsIs_enabled.bookedDate}/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
             );
 
-            setInventory(results?.data?.results || []);
+            setInventory(results?.data?.results?.results || []);
+            let array: { [key: number]: number } = {};
+            let events: { [key: number]: number } = {};
+
+            results?.data?.results?.results_booked?.forEach((rows: any) => {
+
+                const stockIds = JSON.parse(rows.stock_id || "[]");
+                const quantities = JSON.parse(rows.st_qt || "[]");
+
+                stockIds.forEach((value: number, key: number) => {
+
+                    if (array[value]) {
+                        array[value] += Number(quantities[key]);
+                    } else {
+                        array[value] = Number(quantities[key]);
+                    }
+                });
+
+                const eventsId = JSON.parse(rows.event_stock_id || "[]");
+                const eventQT = JSON.parse(rows.evnt_qt || "[]");
+
+                eventsId.forEach((value: number, key: number) => {
+
+                    if (events[value]) {
+                        events[value] += Number(eventQT[key]);
+                    } else {
+                        events[value] = Number(eventQT[key]);
+                    }
+                });
+            });
+
+            results_bookedSet({
+                stock: { ...array },
+                event: { ...events }
+            });
+
+            // results_bookedSet(results?.data?.results?.results_booked || []);
         } catch (error) {
-            console.log(error);
+            // console.log(error);
         }
     };
 
@@ -240,13 +542,13 @@ export default function AvaliableItems({
             setBookEventsRecords(results.data?.results || []);
 
         } catch (error) {
-            console.log(error);
+            // console.log(error);
         }
     };
 
     useEffect(() => {
         fetchBookedEvents();
-    }, [getItemsIs_enabled])
+    }, [])
 
 
 
@@ -390,7 +692,7 @@ export default function AvaliableItems({
         // ============================================
         // LOOP
         // ============================================
-        console.log(inventory);
+        // console.log(inventory);
 
 
         inventory.forEach(
@@ -398,7 +700,7 @@ export default function AvaliableItems({
                 // ============================================
                 // SIZE BASED
                 // ============================================
-                console.log(rows);
+                // console.log(rows);
                 if (
                     rows.verticalSizes.length == 1 ||
                     rows.horizontalSizes.length == 1
@@ -418,7 +720,7 @@ export default function AvaliableItems({
                             (r: any) => r.unit === getItemsIs_enabled.horizontalUnit
                         )?.quantity;
 
-                    console.log(bookedVertical, bookedHorizontal);
+                    // console.log(bookedVertical, bookedHorizontal);
 
                     // =========================
                     // CURRENT INPUT VALUES
@@ -521,9 +823,9 @@ export default function AvaliableItems({
         };
     }, []);
 
+    console.log(results_booked);
 
-    console.log(stockAddToEvents);
-    
+
     return (
         <Modal
             isOpen={isOpens}
@@ -537,10 +839,18 @@ export default function AvaliableItems({
                     Event Details
                 </h2>
                 <button
-                    onClick={() => setIsOpens(false)}
+                    onClick={() => {
+
+                        setIsOpens(false);
+
+                        setHideAvailableButton((prev) => ({
+                            ...prev,
+                            [getItemsIs_enabled.subCategoryId]: true
+                        }));
+                    }}
                     className="text-white hover:text-red-200 text-xl"
                 >
-                    ✕
+                    Done
                 </button>
             </div>
 
@@ -754,7 +1064,7 @@ export default function AvaliableItems({
                                                                                     {v.unit}
                                                                                     {" - "}
                                                                                     Qty:
-                                                                                    {v.quantity}
+                                                                                    {v.quantity <= (results_booked?.stock?.[rows.id]) ? 0 : v.quantity}
                                                                                 </div>
                                                                             )
                                                                         )}
@@ -784,7 +1094,7 @@ export default function AvaliableItems({
                                                                                     {h.unit}
                                                                                     {" - "}
                                                                                     Qty:
-                                                                                    {h.quantity}
+                                                                                    {h.quantity <= (results_booked?.stock?.[rows.id]) ? 0 : h.quantity}
                                                                                 </div>
                                                                             )
                                                                         )}
@@ -842,9 +1152,46 @@ export default function AvaliableItems({
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 sm:px-6 text-start">
-                                                    <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400" onClick={() => handleAdd("stock", rows)}>
-                                                        Sync
-                                                    </span>
+
+                                                    {(() => {
+
+                                                        const isDisabled =
+                                                            rows.verticalSizes?.some(
+                                                                (v: any) =>
+                                                                    v.quantity <= (results_booked?.stock?.[rows.id])
+                                                            ) ||
+                                                            rows.horizontalSizes?.some(
+                                                                (h: any) =>
+                                                                    h.quantity <= (results_booked?.stock?.[rows.id] || 0)
+                                                            );
+
+                                                        return (
+                                                            <>
+
+                                                                <span
+                                                                    className={`inline-flex rounded-full px-3 py-1 text-xs font-medium
+                                                                ${isDisabled
+                                                                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                                                            : rows.synced
+                                                                                ? "bg-amber-100 text-amber-700 cursor-pointer dark:bg-amber-900/20 dark:text-amber-400"
+                                                                                : "bg-red-100 text-red-700 cursor-pointer dark:bg-red-900/20 dark:text-red-400"
+                                                                        }`}
+                                                                    onClick={() => {
+                                                                        if (!isDisabled) {
+                                                                            handleAdd("stock", rows);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {isDisabled
+                                                                        ? "Disabled"
+                                                                        : rows.synced
+                                                                            ? "Synced"
+                                                                            : "Sync"}
+                                                                </span>
+                                                            </>
+                                                        );
+                                                    })()}
+
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -1151,10 +1498,27 @@ export default function AvaliableItems({
                                                     {/* STATUS */}
                                                     {/* ================================================= */}
 
-                                                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                                                        <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400"   onClick={() => handleAdd("event", rows)}>
-                                                            Sync
+                                                    <TableCell className="px-5 py-4 sm:px-6 text-start"  >
+                                                        <span
+                                                            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium cursor-pointer
+                                                            ${rows.synced
+                                                                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                                                                    : "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+                                                                }`}
+                                                            onClick={() =>
+                                                                handleAdd("event", rows)
+                                                            }
+                                                        >
+                                                            {rows.synced
+                                                                ? "Synced"
+                                                                : "Sync"}
                                                         </span>
+
+
+
+                                                        {/* <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400" onClick={() => handleAdd("event", rows)}>
+                                                            Sync
+                                                        </span> */}
                                                     </TableCell>
                                                 </TableRow>
                                             )

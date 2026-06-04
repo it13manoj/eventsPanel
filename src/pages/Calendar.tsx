@@ -69,10 +69,20 @@ type ItemState = {
   stockId?: number
 };
 
+type StockAddToEventsType = {
+  stock: any[];
+  events: any[];
+};
 
 const Calendar: React.FC = () => {
   const [isOpens, setIsOpens] = useState(false);
-
+  const [hideAvailableButton, setHideAvailableButton] =
+    useState<{ [key: number]: boolean }>({});
+  const [stockAddToEvents, setStockAddToEvents] =
+    useState<StockAddToEventsType>({
+      stock: [],
+      events: [],
+    });
   const [getItemsIs_enabled, itemsDate] = useState<ItemState>({
     categoryId: 0,
     subCategoryId: 0,
@@ -123,8 +133,8 @@ const Calendar: React.FC = () => {
   const [eventEndDate, setEventEndDate] = useState("");
   const [eventLevel, setEventLevel] = useState("");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [setIsWarehouseModalOpen] = useState("");
-const [SelectWarehouse] = useState("");
+  //   const [setIsWarehouseModalOpen] = useState("");
+  // const [SelectWarehouse] = useState("");
 
   // Context Menu States
   const [menuVisible, setMenuVisible] = useState(false);
@@ -142,7 +152,7 @@ const [SelectWarehouse] = useState("");
 
   })
 
-  console.log(eventStartDate, eventEndDate, eventLevel);
+  // console.log(eventStartDate, eventEndDate, eventLevel);
 
 
   const [categories, setCategories] = useState([{
@@ -180,7 +190,7 @@ const [SelectWarehouse] = useState("");
   ]);
 
 
-  
+
 
 
   const setCategoresAnd_SubCategories = (
@@ -321,11 +331,73 @@ const [SelectWarehouse] = useState("");
       setEvents(formattedEvents);
 
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   };
 
   const handleAddOrUpdateEvent = async () => {
+    console.log(stockAddToEvents);
+    
+    // ===============================GROUP BY ITEM AND EVENT FOR BOOKED THE EVNETS ===========================
+    const groupedData = Object.values(
+      stockAddToEvents.stock.reduce((acc: any, item: any) => {
+        const key = `${item.Categories}-${item.SubCategoreis}`;
+
+        if (!acc[key]) {
+          acc[key] = {
+            Categories: item.Categories,
+            SubCategoreis: item.SubCategoreis,
+            stock_id: [],
+            st_qt: [],
+          };
+        }
+
+        const index = acc[key].stock_id.indexOf(
+          item.stockId
+        );
+
+        if (index === -1) {
+          acc[key].stock_id.push(item.stockId);
+
+          acc[key].st_qt.push(Number(item.quntiry));
+        } else {
+          acc[key].st_qt[index] += Number(item.quntiry);
+        }
+
+        return acc;
+      }, {})
+    );
+
+    const groupedEventData = Object.values(
+      stockAddToEvents.events.reduce((acc: any, item: any) => {
+        const key = `${item.categories}-${item.subcategores}`;
+
+        if (!acc[key]) {
+          acc[key] = {
+            Categories: item.categories,
+            SubCategoreis: item.subcategores,
+            event_stock_id: [],
+            evnt_qt: [],
+          };
+        }
+
+        const index = acc[key].event_stock_id.indexOf(
+          item.id
+        );
+
+        if (index === -1) {
+          acc[key].event_stock_id.push(item.id);
+
+          acc[key].evnt_qt.push(Number(item.quntity));
+        } else {
+          acc[key].evnt_qt[index] += Number(item.quntity);
+        }
+
+        return acc;
+      }, {})
+    );
+
+    // ==================================================================================================
 
     const data = {
       designName: selectedTech,
@@ -344,7 +416,9 @@ const [SelectWarehouse] = useState("");
       height: checkStock.height,
       categories_id: checkStock.categories_id,
       sub_categories_id: checkStock.sub_categories_id,
-      bookedItems: appendsAll.filter(r => r.categories.id != 0)
+      bookedItems: appendsAll.filter(r => r.categories.id != 0),
+      stockDetails: groupedData,
+      eventDetails: groupedEventData
     };
 
 
@@ -447,7 +521,7 @@ const [SelectWarehouse] = useState("");
 
       let messageHtml = "";
 
-      console.log(bookedStock, requestedStock, afterBooking);
+      // console.log(bookedStock, requestedStock, afterBooking);
 
 
       if (bookedStock + requestedStock > totalStock) {
@@ -575,10 +649,13 @@ const [SelectWarehouse] = useState("");
 
   const getBookData = (categoryId: number, subCategoryId: number) => {
     // console.log(dateOfEvent, appendsAll);
-    console.log(categoryId);
-    console.log(subCategoryId);
+    // console.log(categoryId);
+    // console.log(subCategoryId);
 
   }
+
+
+  console.log(stockAddToEvents);
 
 
   return (
@@ -819,6 +896,14 @@ const [SelectWarehouse] = useState("");
                                 (_, index) => index !== i
                               );
                               setAppendsAll(updated);
+                              setHideAvailableButton((prev) => {
+
+                                const newState = { ...prev };
+
+                                delete newState[rows.subCategories?.id];
+
+                                return newState;
+                              });
                             }}
                             className="
                 absolute
@@ -1096,71 +1181,97 @@ const [SelectWarehouse] = useState("");
                               </div>
                             </div>
                           )}
+                          {
+                            !hideAvailableButton[rows.subCategories?.id] ? (
+                              <div className="pt-2">
+                                <Link
+                                  to=""
+                                  onClick={() => {
+                                    setIsOpens(true);
 
-                          {/* BUTTON */}
-                          <div className="pt-2">
-                            <Link
-                              to=""
-                              onClick={() => {
-                                setIsOpens(true);
+                                    itemsDate({
+                                      categoryId: rows.categories?.id,
+                                      subCategoryId:
+                                        rows.subCategories?.id,
+                                      isEnable:
+                                        rows.subCategories?.is_enable,
 
-                                itemsDate({
-                                  categoryId: rows.categories?.id,
-                                  subCategoryId:
-                                    rows.subCategories?.id,
-                                  isEnable:
-                                    rows.subCategories?.is_enable,
+                                      bookedDate: dateOfEvent,
 
-                                  bookedDate: dateOfEvent,
+                                      value: rows.inputs?.value,
 
-                                  value: rows.inputs?.value,
+                                      horizontalValue:
+                                        rows.inputs?.horizontalValue,
 
-                                  horizontalValue:
-                                    rows.inputs?.horizontalValue,
+                                      horizontalUnit:
+                                        rows.inputs?.horizontalUnit,
 
-                                    horizontalUnit:
-                                    rows.inputs?.horizontalUnit,
+                                      verticalValue:
+                                        rows.inputs?.verticalValue,
 
-                                  verticalValue:
-                                    rows.inputs?.verticalValue,
+                                      verticalUnit:
+                                        rows.inputs?.verticalUnit,
 
-                                    verticalUnit:
-                                    rows.inputs?.verticalUnit,
+                                      horizontalPcs:
+                                        rows.inputs?.horizontalPcs,
 
-                                  horizontalPcs:
-                                    rows.inputs?.horizontalPcs,
+                                      verticalPcs:
+                                        rows.inputs?.verticalPcs,
 
-                                  verticalPcs:
-                                    rows.inputs?.verticalPcs,
-                                });
+                                      stockId: rows.categories?.id
+                                    });
 
-                                getBookData(
-                                  rows.categories?.id,
-                                  rows.subCategories?.id
-                                );
-                              }}
-                              className="
-                  inline-flex
-                  items-center
-                  justify-center
-                  rounded-2xl
-                  bg-gradient-to-r
-                  from-blue-600
-                  to-blue-500
-                  px-6
-                  py-3
-                  text-sm
-                  font-semibold
-                  text-white
-                  shadow-md
-                  hover:scale-[1.02]
-                  hover:shadow-lg
-                  transition-all
-                "
-                            >
-                              Available Stock
-                            </Link>
-                          </div>
+                                    getBookData(
+                                      rows.categories?.id,
+                                      rows.subCategories?.id
+                                    );
+                                  }}
+                                  className="
+                                    inline-flex
+                                    items-center
+                                    justify-center
+                                    rounded-2xl
+                                    bg-gradient-to-r
+                                    from-blue-600
+                                    to-blue-500
+                                    px-6
+                                    py-3
+                                    text-sm
+                                    font-semibold
+                                    text-white
+                                    shadow-md
+                                    hover:scale-[1.02]
+                                    hover:shadow-lg
+                                    transition-all
+                                    "
+                                >
+                                  Available Stock
+                                </Link>
+                              </div>
+                            ):(<div className="pt-2">
+                                <Link
+                                  to=""
+                                  
+                                  className="
+                                    inline-flex
+                                    items-center
+                                    justify-center
+                                    rounded-2xl
+                                    bg-gradient-to-r
+                                    bg-gray-200 text-gray-500 cursor-not-allowed
+                                    px-6
+                                    py-3
+                                    text-sm
+                                    font-semibold
+                                    text-white
+                                    shadow-md
+                                    "
+                                >
+                                  Added
+                                </Link>
+                              </div>)
+                          }
+                         
                         </div>
                       ) : null
                     )}
@@ -1255,7 +1366,7 @@ const [SelectWarehouse] = useState("");
       </div>
 
 
-      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} />
+      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} itemsDate={itemsDate} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} setStockAddToEvents={setStockAddToEvents} stockAddToEvents={stockAddToEvents} setHideAvailableButton={setHideAvailableButton} hideAvailableButton={hideAvailableButton} />
     </>
   );
 };
