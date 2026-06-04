@@ -32,6 +32,7 @@ import WareHouseList from "./components/Invoice/WareHouseList";
 import EmployeeList from "./components/employee/EmployeeList/AddEmployee";
 import Attendance from "./components/employee/Attendance";
 import Salary from "./components/employee/EmployeeList/Salary";
+import InvoiceList from "./components/Invoice/InvoiceList";
 import { useEffect, useState } from "react";
 
 export default function App() {
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="/salary" element={<Salary />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/blank" element={<Blank />} />
+              <Route path="/invoicelist" element={<InvoiceList/>}/>
 
               {/* Forms */}
               <Route path="/form-elements" element={<FormElements />} />
