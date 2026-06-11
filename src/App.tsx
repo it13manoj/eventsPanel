@@ -21,6 +21,7 @@ import Home from "./pages/Dashboard/Home";
 import PrivateRoute from "./components/PrivateRoute";
 import StockPages from "./pages/Stock/StockPage";
 import EventsList from "./pages/Events/EventList";
+import CompanyProfile from "./pages/Dashboard/CompanyProfile";
 import WhereHouse from "./components/Invoice/wherehouse";
 import Category from "./components/Invoice/Category/Category";
 import SubCategory from "./components/Invoice/SubCategory/SubCategory";
@@ -34,6 +35,7 @@ import Attendance from "./components/employee/Attendance";
 import Salary from "./components/employee/EmployeeList/Salary";
 import InvoiceList from "./components/Invoice/InvoiceList";
 import { useEffect, useState } from "react";
+import AvailableStock from "./pages/Dashboard/AvailableStock";
 
 export default function App() {
   const [is_enabled, setEnabled] = useState(false);
@@ -64,6 +66,8 @@ export default function App() {
             {/* Dashboard Layout */}
             <Route element={<AppLayout />}>
               <Route index path="/dashboard" element={<Home />} />
+              <Route path="/companyprofile" element={<CompanyProfile/>}/>
+              <Route path="/availablestock" element={<AvailableStock/>}/>
               <Route path="/stock" element={<StockPages />} />
               <Route path="/events" element={<EventsList />} />
               <Route path="/wherehouse" element={<WhereHouse />} />

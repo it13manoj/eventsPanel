@@ -22,7 +22,7 @@ const navItems: NavItem[] = [
   {
     icon: <LayoutDashboard />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    subItems: [{ name: "Company Profile", path: "/companyprofile", pro: false}, {name: "Available Stock", path: "/availablestock", pro: false}],
   },
   {
     icon: <CalendarDays />,
