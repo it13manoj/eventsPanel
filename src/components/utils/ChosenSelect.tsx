@@ -8,13 +8,17 @@ interface Option {
 
 interface Props {
   setSelectedTech: React.Dispatch<React.SetStateAction<string>>;
+  designId: any;
 }
 
-const AutoComplete: React.FC<Props> = ({ setSelectedTech }) => {
+const AutoComplete: React.FC<Props> = ({ setSelectedTech, designId }) => {
   const [query, setQuery] = useState("");
   const [allData, setAllData] = useState<Option[]>([]); // full API data
   const [filtered, setFiltered] = useState<Option[]>([]);
   const [show, setShow] = useState(false);
+
+console.log(designId);
+
 
   // ✅ Fetch data once (or you can call on each search if needed)
   const getData = async () => {
@@ -48,21 +52,38 @@ const AutoComplete: React.FC<Props> = ({ setSelectedTech }) => {
       return;
     }
 
-    const result = allData.filter((item) =>
+    let result = allData.filter((item) =>
       item.name.toLowerCase().includes(value.toLowerCase())
     );
 
+
+    // console.log(result);
+    
     setFiltered(result);
     setShow(true);
   };
 
-  // ✅ Handle select
-  const handleSelect = (name: string) => {
-    setQuery(name);
-    setSelectedTech(name);
-    setShow(false);
-  };
+  useEffect(() => {
+  if (designId && allData.length > 0) {
+    const selectedDesign = allData.find(
+      (item) => item.id === Number(designId)
+    );
 
+    if (selectedDesign) {
+      setQuery(selectedDesign.name); // Auto-fill input
+      setSelectedTech(selectedDesign.name); // Send value to parent
+      setFiltered([selectedDesign]); // Optional
+      setShow(false); // Hide dropdown initially
+    }
+  }
+}, [designId, allData]);
+
+  // ✅ Handle select
+const handleSelect = (item: Option) => {
+  setQuery(item.name);
+  setSelectedTech(item.name);
+  setShow(false);
+};
   return (
     <div className="md:col-span-2 relative mt-2">
       <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -83,7 +104,7 @@ const AutoComplete: React.FC<Props> = ({ setSelectedTech }) => {
             <li
               key={item.id}
               className="p-2 cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSelect(item.name)}
+              onClick={() => handleSelect(item)}
             >
               {item.name}
             </li>

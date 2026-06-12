@@ -118,6 +118,8 @@ const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [date, setDate] = useState<Date | null>(new Date());
   // Original Form States
+  const [eventId, setEventId] = useState();
+  const [designId, setDesignId] = useState();
   const [selectedTech, setSelectedTech] = useState<string>("");
   const [eventTitle, setEventTitle] = useState("");
   const [vanus, setVanus] = useState("");
@@ -172,6 +174,9 @@ const Calendar: React.FC = () => {
       inputs: {
         width: "",
         height: "",
+        price: "",
+        vprice: "",
+        hprice: "",
         vertical: false,
         horizontal: false,
         verticalValue: "",
@@ -248,6 +253,9 @@ const Calendar: React.FC = () => {
       | "width"
       | "height"
       | "value"
+      | "price"
+      | "vprice"
+      | "hprice"
       | "vertical"
       | "horizontal"
       | "verticalValue"
@@ -291,7 +299,10 @@ const Calendar: React.FC = () => {
     setEventStartDate("");
     setEventEndDate("");
     setEventLevel("");
+    setDate(null);
     setSelectedEvent(null);
+    setAppendsAll([]);
+    setHideAvailableButton([])
   };
   const getEvents = async () => {
     try {
@@ -328,7 +339,7 @@ const Calendar: React.FC = () => {
         ];
       });
 
-      setEvents(formattedEvents);
+      setEvents(eventsWithSerial(formattedEvents));
 
     } catch (error) {
       // console.log(error);
@@ -400,6 +411,7 @@ const Calendar: React.FC = () => {
     // ==================================================================================================
 
     const data = {
+      id: eventId ? eventId : null, 
       designName: selectedTech,
       c_name: eventTitle,
       vanus: vanus,
@@ -418,7 +430,8 @@ const Calendar: React.FC = () => {
       sub_categories_id: checkStock.sub_categories_id,
       bookedItems: appendsAll.filter(r => r.categories.id != 0),
       stockDetails: groupedData,
-      eventDetails: groupedEventData
+      eventDetails: groupedEventData,
+      status: eventLevel
     };
 
 
@@ -565,6 +578,8 @@ const Calendar: React.FC = () => {
 
 
   const fillEventForm = (event: any) => {
+
+
     const data = event.extendedProps || {};
 
     setSelectedEvent(event);
@@ -588,9 +603,12 @@ const Calendar: React.FC = () => {
     };
 
     // ✅ Fill fields
+    setDesignId(data.design_id);
+    setEventId(data.id);
     setEventTitle(data.c_name || "");
     setVanus(data.vanus || "");
     setDateOfEvent(formatDate(data.doe));
+    setEventLevel(data.status);
     setEventStartDate(formatDate(data.doe));
 
     if (data.doe && data.nodb) {
@@ -644,7 +662,75 @@ const Calendar: React.FC = () => {
     if (data.bookedItems) {
       setAppendsAll(data.bookedItems);
     }
+    getBookedItems(data?.id);
   };
+
+  const getBookedItems = async (id: any) => {
+    try {
+      const res = await apiClient.get("/admin/Events/bookedEvents/items/" + id);
+
+      const results = res.data.results.reduce(
+        (acc: Record<number, boolean>, row: any) => {
+          acc[row.subCategories_id] = true;
+          return acc;
+        },
+        {}
+      );
+
+      setHideAvailableButton(results);
+
+      const mappedData = res.data.results.map((row: any) => ({
+        categories: {
+          id: row.categories_id,
+          name: row.categories_name,
+        },
+
+        subCategories: {
+          id: row.subCategories_id,
+          name: row.subCategories_name,
+          is_enable: row.vertical || row.horizontal,
+        },
+
+
+
+        inputs: {
+          width: "",
+          height: "",
+
+          price: row.price || "0.00",
+          vprice: row.vprice || "0.00",
+          hprice: row.hprice || "0.00",
+
+          vertical: row.vertical,
+          horizontal: row.horizontal,
+
+          verticalValue: row.verticalValue || "",
+          horizontalValue: row.horizontalValue || "",
+
+          verticalUnit: row.verticalUnit || "ft",
+          horizontalUnit: row.horizontalUnit || "ft",
+
+          verticalPcs: row.verticalPcs?.toString() || "",
+          horizontalPcs: row.horizontalPcs?.toString() || "",
+
+          value: row.qt?.toString() || "",
+
+          eventsName: "",
+          eventsId: row.event_id,
+
+          stockName: "",
+          stockId: JSON.parse(row.stock_id || "[0]")[0],
+
+        },
+      }));
+
+      setAppendsAll(mappedData);
+
+
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
 
   const getBookData = (categoryId: number, subCategoryId: number) => {
@@ -655,8 +741,27 @@ const Calendar: React.FC = () => {
   }
 
 
-  console.log(stockAddToEvents);
+  // console.log(stockAddToEvents);
 
+  const refresh = () => {
+    setEventTitle("");
+    setVanus("");
+    setDateOfEvent("");
+    setLocationOfVanus("");
+    setVenueAvailalityDate("");
+    setBookingDays("");
+    setPlaceOfBooking("");
+    setTransportCharges("");
+    setSpecialRequest("");
+    setAmountTaxes("");
+    setEventStartDate("");
+    setEventEndDate("");
+    setEventLevel("");
+    setDate(null);
+    setSelectedEvent(null);
+    setAppendsAll([]);
+    setHideAvailableButton([])
+  }
 
   return (
     <>
@@ -737,7 +842,7 @@ const Calendar: React.FC = () => {
               {selectedEvent ? "Update Event" : "Create Event"}
             </h2>
             <button
-              onClick={() => closeModal()}
+              onClick={() => { closeModal(); refresh() }}
               className="text-white hover:text-red-200 text-xl"
             >
               ✕
@@ -746,7 +851,7 @@ const Calendar: React.FC = () => {
           <div className="overflow-y-auto custom-scrollbar p-5">
             {/* SAME DESIGN AS PREVIOUS */}
             <AutoComplete setSelectedTech={setSelectedTech}
-
+              designId={designId}
             />
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -1075,7 +1180,14 @@ const Calendar: React.FC = () => {
                                         <input
                                           type="text"
                                           placeholder="Enter Price"
-                                          value=""
+                                          value={rows.inputs.vprice || ""}
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "vprice",
+                                              e.target.value
+                                            )
+                                          }
                                           className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
                                         />
                                       </div>
@@ -1178,7 +1290,14 @@ const Calendar: React.FC = () => {
                                         <input
                                           type="text"
                                           placeholder="Enter Price"
-                                          value=""
+                                          value={rows.inputs.hprice || ""}
+                                          onChange={(e) =>
+                                            handleInputChange(
+                                              i,
+                                              "hprice",
+                                              e.target.value
+                                            )
+                                          }
                                           className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
                                         />
                                       </div>
@@ -1228,8 +1347,16 @@ const Calendar: React.FC = () => {
                                   <input
                                     type="text"
                                     placeholder="Enter Price"
-                                    value=""
+
                                     className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
+                                    value={rows.inputs.price || ""}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        i,
+                                        "price",
+                                        e.target.value
+                                      )
+                                    }
                                   />
                                 </div>
                               </div>
@@ -1391,10 +1518,10 @@ const Calendar: React.FC = () => {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Status</label>
-                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" >
+                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" value={eventLevel} onChange={e=>{setEventLevel(e.target.value)}}>
                   <option value={0} >Select Status</option>
                   {Object.entries(status).map(([key, value]) => (
-                    <option key={key} value={key}>
+                    <option key={key} value={key} >
                       {value}
                     </option>
                   ))}
@@ -1425,12 +1552,62 @@ const Calendar: React.FC = () => {
   );
 };
 
+
+const eventsWithSerial = (events: any[]) => {
+  const map = new Map();
+
+  return events.map((event) => {
+    const date = event.doe; // "2026-06-12"
+
+    const currentCount = (map.get(date) || 0) + 1;
+    map.set(date, currentCount);
+
+    return {
+      ...event,
+      extendedProps: {
+        ...event.extendedProps,
+        serialNo: currentCount,
+      },
+    };
+  });
+};
+
+
 const renderEventContent = (eventInfo: any) => {
-  const colorClass = `fc-bg-${eventInfo.event.extendedProps.calendar?.toLowerCase()}`;
+  const calendar = eventInfo.event.extendedProps?.calendar;
+
+  const safeCalendarClass = calendar
+    ? `fc-bg-${String(calendar).toLowerCase().replace(/\s+/g, "-")}`
+    : "fc-bg-default";
+
+  const serialNo = eventInfo.event.extendedProps?.serialNo;
+
   return (
-    <div className={`event-fc-color flex fc-event-main ${colorClass} p-1 rounded-sm`}>
+    <div
+      className={`event-fc-color flex fc-event-main ${safeCalendarClass} p-1 rounded-sm`}
+    >
+      <div className="flex items-center gap-2 p-1 rounded-sm">
+        <span
+          style={{
+            width: "18px",
+            height: "18px",
+            borderRadius: "50%",
+            background: "#2563eb",
+            color: "#fff",
+            fontSize: "11px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {serialNo}
+        </span>
+      </div>
+
       <div className="fc-daygrid-event-dot"></div>
+
       <div className="fc-event-time">{eventInfo.timeText}</div>
+
       <div className="fc-event-title">{eventInfo.event.title}</div>
     </div>
   );
