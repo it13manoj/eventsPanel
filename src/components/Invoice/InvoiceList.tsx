@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
     Printer,
     XCircle,
@@ -6,6 +6,9 @@ import {
     FileText,
     X,
 } from "lucide-react";
+
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function InvoiceListPage() {
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -54,6 +57,85 @@ export default function InvoiceListPage() {
             );
         }
     };
+
+
+    //  ---------------------------PDF GENERATOR ------
+
+
+    const downloadPDF = () => {
+        if (!selectedInvoice) return;
+
+        const pdf = new jsPDF("p", "mm", "a4");
+
+        // Company Header
+        pdf.setFontSize(20);
+        pdf.setTextColor(0, 102, 204);
+        pdf.text("INVOICE", 14, 20);
+
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+
+        // Invoice Details
+        pdf.text(`Invoice No : ${selectedInvoice.id}`, 14, 35);
+        pdf.text(`Date : ${selectedInvoice.date}`, 14, 42);
+
+        pdf.text(`Customer : ${selectedInvoice.customer}`, 120, 35);
+        pdf.text(`Mobile : ${selectedInvoice.mobile}`, 120, 42);
+
+        // Address
+        pdf.text("Address:", 14, 55);
+        pdf.text(selectedInvoice.address, 14, 62);
+
+        // Product Table
+        autoTable(pdf, {
+            startY: 75,
+            theme: "grid",
+            head: [
+                [
+                    "Product",
+                    "Quantity",
+                    "Price",
+                    "Total",
+                    "Payment Status",
+                ],
+            ],
+            body: selectedInvoice.items.map((item: any) => [
+                item.name,
+                item.qty,
+                `₹ ${item.price}`,
+                `₹ ${item.qty * item.price}`,
+                item.paid ? "Paid" : "Unpaid",
+            ]),
+        });
+
+        const finalY =
+            (pdf as any).lastAutoTable?.finalY || 120;
+
+        // Total Amount
+        pdf.setFontSize(14);
+        pdf.setTextColor(0, 128, 0);
+
+        pdf.text(
+            `Total Amount : ₹ ${selectedInvoice.amount}`,
+            14,
+            finalY + 15
+        );
+
+        // Footer
+        pdf.setFontSize(10);
+        pdf.setTextColor(100);
+
+        pdf.text(
+            "Thank you for your business!",
+            14,
+            finalY + 30
+        );
+
+        pdf.save(`${selectedInvoice.id}.pdf`);
+
+    };
+
+
 
     return (
         <div className="p-6 bg-gray-100 min-h-screen">
@@ -126,7 +208,7 @@ export default function InvoiceListPage() {
 
             {/* Popup Modal */}
             {selectedInvoice && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" >
 
                     <div
                         id="invoice-print"
@@ -264,8 +346,8 @@ export default function InvoiceListPage() {
                                                     {/* Status */}
                                                     <span
                                                         className={`px-3 py-1 rounded-full text-sm font-medium ${item.paid
-                                                                ? "bg-green-100 text-green-700"
-                                                                : "bg-red-100 text-red-700"
+                                                            ? "bg-green-100 text-green-700"
+                                                            : "bg-red-100 text-red-700"
                                                             }`}
                                                     >
                                                         {item.paid ? "Paid" : "Unpaid"}
@@ -293,7 +375,7 @@ export default function InvoiceListPage() {
                         <div className="flex justify-center gap-2">
                             {/* Print Button */}
                             <button
-                                onClick={() => window.print()}
+                                onClick={downloadPDF}
                                 className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
                             >
                                 <Printer size={18} />

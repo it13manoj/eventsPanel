@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "../components/ui/modal";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../components/ui/table";
 import apiClient from "../hooks/api/apiClient";
+import { getDistance } from "../hooks/Distance";
 
 type SizeType = {
     id: number;
@@ -824,7 +825,19 @@ export default function AvaliableItems({
     }, []);
 
     console.log(results_booked);
+const fetchDistance = async () => {
+  const result = await getDistance(
+    "Patna, Bihar",
+    "Delhi, India"
+  );
 
+  if (result) {
+    console.log("Distance:", result.distance);
+    console.log("Duration:", result.duration);
+  }
+};
+
+fetchDistance();
 
     return (
         <Modal
