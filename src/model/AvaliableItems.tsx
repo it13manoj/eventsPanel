@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Modal } from "../components/ui/modal";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../components/ui/table";
 import apiClient from "../hooks/api/apiClient";
-import { getDistance } from "../hooks/Distance";
+
+
 
 type SizeType = {
     id: number;
@@ -28,6 +29,7 @@ type InventoryType = {
     wareHouse: {
         id: number;
         name: string;
+        address: string
     };
 
     width: string;
@@ -135,6 +137,8 @@ interface ItemsModelProps {
     >;
     stockAddToEvents: StockAddToEventsType
 
+    locationOfVanus: String
+
 }
 
 export default function AvaliableItems({
@@ -144,7 +148,8 @@ export default function AvaliableItems({
     setStockAddToEvents,
     itemsDate,
     stockAddToEvents,
-    setHideAvailableButton
+    setHideAvailableButton,
+    locationOfVanus
 }: ItemsModelProps) {
     if (!isOpens) return null;
     const [inventory, setInventory] = useState<
@@ -155,6 +160,21 @@ export default function AvaliableItems({
 
 
 
+    const [dist, setDist] = useState<
+        {
+            inventoryId: number;
+            address: string;
+            distance: any;
+        }[] | undefined
+    >(undefined);
+
+    const [edist, seteDist] = useState<
+        {
+            eventId: number;
+            address: string;
+            distance: any;
+        }[] | undefined
+    >(undefined);
 
     const [remaining, setRemaining] = useState<any>({});
     const [remainingS, setRemainingS] = useState<any>({});
@@ -225,7 +245,7 @@ export default function AvaliableItems({
                     : horizontalQty > 0 ? horizontalQty : quantity;
 
             // prevent duplicate add
-          
+
 
             // add stock
             setStockAddToEvents((prev: any) => ({
@@ -336,7 +356,7 @@ export default function AvaliableItems({
             );
 
             // console.log(item);
-            
+
             const horizontalQty = Number(
                 item.horizontalPcs || 0
             );
@@ -349,9 +369,9 @@ export default function AvaliableItems({
                     : horizontalQty > 0 ? horizontalQty : qt;
 
             // prevent duplicate sync
-           
+
             console.log(usedQty);
-            
+
 
             // if (alreadyAdded) return;
 
@@ -360,7 +380,7 @@ export default function AvaliableItems({
             // update records
             setBookEventsRecords((prev: any[]) =>
                 prev.map((row) => {
-                  
+
                     if (row.id !== item.id) return row;
 
                     return {
@@ -825,19 +845,65 @@ export default function AvaliableItems({
     }, []);
 
     console.log(results_booked);
-const fetchDistance = async () => {
-  const result = await getDistance(
-    "Patna, Bihar",
-    "Delhi, India"
-  );
 
-  if (result) {
-    console.log("Distance:", result.distance);
-    console.log("Duration:", result.duration);
-  }
-};
 
-fetchDistance();
+    const getDistance = async () => {
+        try {
+            const distances = await Promise.all(
+                inventory.map(async (row) => {
+                    const response = await apiClient.get(
+                        `/admin/Inverntory/getDistances/${encodeURIComponent(locationOfVanus.toString())}/${encodeURIComponent(row.wareHouse?.address.toString())}`);
+                    console.log(response);
+
+                    return {
+                        inventoryId: row.id,
+                        address: row.wareHouse?.address || "",
+                        distance: response.data.distance,
+                    };
+                })
+            );
+
+            setDist(distances);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const geteventDistance = async () => {
+        try {
+            const distances = await Promise.all(
+                bookEventRecords.map(async (row) => {
+                    const response = await apiClient.get(
+                        `/admin/Inverntory/getDistances/${encodeURIComponent(locationOfVanus.toString())}/${encodeURIComponent(row.vanus?.toString())}`);
+                    console.log(response);
+
+                    return {
+                        eventId: row.id,
+                        address: row.vanus?.toString() || "",
+                        distance: response.data.distance,
+                    };
+                })
+            );
+
+            seteDist(distances);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+
+    useEffect(() => {
+        geteventDistance()
+    }, [locationOfVanus, bookEventRecords])
+
+
+    useEffect(() => {
+        getDistance();
+
+    }, [locationOfVanus, inventory])
+
+
+
 
     return (
         <Modal
@@ -920,12 +986,7 @@ fetchDistance();
                                             Good
                                         </TableCell>
 
-                                        <TableCell
-                                            isHeader
-                                            className="hidden px-5 py-3 text-start"
-                                        >
-                                            Bad
-                                        </TableCell>
+
 
                                         <TableCell
                                             isHeader
@@ -952,6 +1013,12 @@ fetchDistance();
                                             className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                                         >
                                             Remainin Items
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 text-start"
+                                        >
+                                            Distance
                                         </TableCell>
                                         <TableCell
                                             isHeader
@@ -1164,6 +1231,10 @@ fetchDistance();
                                                         </span>
                                                     )}
                                                 </TableCell>
+
+                                                <TableCell className="px-5 py-4 text-start">
+                                                    {dist?.find((r) => r.inventoryId === rows.id)?.distance || "-"}
+                                                </TableCell>
                                                 <TableCell className="px-5 py-4 sm:px-6 text-start">
 
                                                     {(() => {
@@ -1290,6 +1361,12 @@ fetchDistance();
                                             className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                                         >
                                             Remainin Items
+                                        </TableCell>
+                                          <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                        >
+                                            Distance
                                         </TableCell>
                                         <TableCell
                                             isHeader
@@ -1506,7 +1583,9 @@ fetchDistance();
                                                             </span>
                                                         )}
                                                     </TableCell>
-
+                                                    <TableCell className="px-5 py-4 text-start">
+                                                        {edist?.find((r) => r.eventId === rows.id)?.distance || "-"}
+                                                    </TableCell>
                                                     {/* ================================================= */}
                                                     {/* STATUS */}
                                                     {/* ================================================= */}

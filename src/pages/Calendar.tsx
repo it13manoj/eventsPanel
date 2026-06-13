@@ -114,7 +114,8 @@ const Calendar: React.FC = () => {
     stockName: "",
     stockId: 0
   });
-
+  const [calendarKey, setCalendarKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [date, setDate] = useState<Date | null>(new Date());
   // Original Form States
@@ -193,8 +194,6 @@ const Calendar: React.FC = () => {
       }
     }
   ]);
-
-
 
 
 
@@ -337,9 +336,12 @@ const Calendar: React.FC = () => {
             },
           },
         ];
+
+
       });
 
       setEvents(eventsWithSerial(formattedEvents));
+
 
     } catch (error) {
       // console.log(error);
@@ -411,7 +413,7 @@ const Calendar: React.FC = () => {
     // ==================================================================================================
 
     const data = {
-      id: eventId ? eventId : null, 
+      id: eventId ? eventId : null,
       designName: selectedTech,
       c_name: eventTitle,
       vanus: vanus,
@@ -437,9 +439,18 @@ const Calendar: React.FC = () => {
 
 
     await apiClient.post("admin/Events/create", data);
+    setTimeout(() => {
+      getEvents();
+      closeModal();
+      resetModalFields();
+      setRefreshKey(prev => prev + 1);
+      setCalendarKey((prev) => prev + 1);
+    }, 500)
     getEvents();
     closeModal();
     resetModalFields();
+    setRefreshKey(prev => prev + 1);
+    setCalendarKey((prev) => prev + 1);
   };
 
   // --- Right Click Logic ---
@@ -773,6 +784,7 @@ const Calendar: React.FC = () => {
         <div
           className="absolute z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl dark:bg-gray-800 dark:border-gray-700 py-2"
           style={{ top: menuPosition.y, left: menuPosition.x }}
+          key={refreshKey}
         >
           <button
             onClick={() => {
@@ -805,6 +817,7 @@ const Calendar: React.FC = () => {
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="custom-calendar">
           <FullCalendar
+            key={calendarKey}
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, multiMonthPlugin]}
             initialView="dayGridMonth"
@@ -1518,7 +1531,7 @@ const Calendar: React.FC = () => {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Status</label>
-                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" value={eventLevel} onChange={e=>{setEventLevel(e.target.value)}}>
+                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" value={eventLevel} onChange={e => { setEventLevel(e.target.value) }}>
                   <option value={0} >Select Status</option>
                   {Object.entries(status).map(([key, value]) => (
                     <option key={key} value={key} >
@@ -1547,7 +1560,7 @@ const Calendar: React.FC = () => {
       </div>
 
 
-      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} itemsDate={itemsDate} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} setStockAddToEvents={setStockAddToEvents} stockAddToEvents={stockAddToEvents} setHideAvailableButton={setHideAvailableButton} hideAvailableButton={hideAvailableButton} />
+      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} itemsDate={itemsDate} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} setStockAddToEvents={setStockAddToEvents} stockAddToEvents={stockAddToEvents} setHideAvailableButton={setHideAvailableButton} hideAvailableButton={hideAvailableButton} locationOfVanus={locationOfVanus} />
     </>
   );
 };
