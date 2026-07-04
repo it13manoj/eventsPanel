@@ -158,6 +158,7 @@ export default function AvaliableItems({
 
 
 
+console.log( stockAddToEvents);
 
 
     const [dist, setDist] = useState<

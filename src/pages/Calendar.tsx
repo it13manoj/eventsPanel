@@ -155,7 +155,7 @@ const Calendar: React.FC = () => {
 
   })
 
-  // console.log(eventStartDate, eventEndDate, eventLevel);
+  console.log(eventStartDate, eventEndDate, eventLevel);
 
 
   const [categories, setCategories] = useState([{
@@ -746,8 +746,8 @@ const Calendar: React.FC = () => {
 
   const getBookData = (categoryId: number, subCategoryId: number) => {
     // console.log(dateOfEvent, appendsAll);
-    // console.log(categoryId);
-    // console.log(subCategoryId);
+    console.log(categoryId);
+    console.log(subCategoryId);
 
   }
 
@@ -1619,7 +1619,7 @@ const renderEventContent = (eventInfo: any) => {
 
       <div className="fc-daygrid-event-dot"></div>
 
-      <div className="fc-event-time">{eventInfo.timeText}</div>
+      {/* <div className="fc-event-time">{eventInfo.timeText}</div> */}
 
       <div className="fc-event-title">{eventInfo.event.title}</div>
     </div>

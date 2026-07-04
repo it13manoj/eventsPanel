@@ -6,6 +6,8 @@ import {
     TableRow,
 } from "../../components/ui/table";
 
+import { FaTruck } from "react-icons/fa";
+import { HiUserGroup } from "react-icons/hi";
 
 import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
@@ -14,7 +16,8 @@ import { useModal } from "../../hooks/useModal";
 import ItemsModel from "../../model/ItemModel";
 import EventDetailsModal from "../../model/EventDetailsModal";
 import AssignTeam from "../../model/AssignTeam";
-
+import { format } from "date-fns";
+import VehicleAssign from "../../model/VehicleAssign";
 
 interface BookedItem {
     id: number;
@@ -30,6 +33,13 @@ interface BookedItem {
     updated_at: string;
 }
 
+interface Installation {
+    installing: string,
+    uninstalling: string,
+    event_id: number
+}
+
+
 export default function EventsTable() {
     const [eid, setEId] = useState({
         id: ""
@@ -38,15 +48,19 @@ export default function EventsTable() {
     const [isOpens, setIsOpens] = useState(false);
     const [bookedItems, setBookedItems] = useState<Record<number, BookedItem[]>>({});
     const [selectedItems, setSelectedItems] = useState<BookedItem[] | null>(null);
-    
+
+    const [inst, setInst] = useState<{ [key: number]: Installation[] }>({});
+
     const [isOpenes, setIsOpenes] = useState(false);
     const [selectedRow, setSelectedRow] = useState<any>(null);
 
 
     const [isOpenTeam, setIsOpenTeam] = useState(false);
+     const [isOpenvehicle, setIsOpenvehicle] = useState(false);
     const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
 
-
+    console.log(setSelectedItems);
+    
     const [events, setEvents] = useState([{
         "id": 0,
         "c_name": "",
@@ -73,17 +87,7 @@ export default function EventsTable() {
         }
     }
 
-    const getStatusColor = (status: any) => {
-        const statusColors: Record<number, string> = {
-            0: "Enquriy",
-            1: "Confirm/Live",
-            2: "Installation Ongoing",
-            3: "Event Finished",
-            4: "Cancelled/Postpone",
-        };
-
-        return statusColors[Number(status)] || "#ffffff";
-    };
+    
 
     useEffect(() => {
         getEvents()
@@ -156,6 +160,38 @@ export default function EventsTable() {
 
 
 
+    const installationUninstallation = async (id: number) => {
+        try {
+            const res = await apiClient(`/admin/teamAssign/install/undinstall/${id}`);
+            console.log(res, "-----------");
+
+            const items: Installation[] = res?.data?.data || [];
+
+            setInst((prev) => ({
+                ...prev,
+                [id]: items,
+            }));
+        } catch (error) {
+            console.error(error);
+
+            setInst((prev) => ({
+                ...prev,
+                [id]: [],
+            }));
+        }
+    };
+
+    useEffect(() => {
+        setTimeout(() => {
+            events.forEach((row: any) => {
+                if (row.id && inst[row.id] === undefined) {
+                    installationUninstallation(row.id);
+                }
+            });
+        }, 2000)
+
+    }, [events]);
+
 
     // ============================================================Resize Able Table=================================
 
@@ -225,89 +261,26 @@ export default function EventsTable() {
                             >
                                 Start Date Of Event
                             </TableCell>
-
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                End Date Of Event
-                            </TableCell>
-                            <TableCell
-                                isHeader
-                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Location Of VANUS
-                            </TableCell>
-                            <TableCell
-                                isHeader
-                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Venue Availability Date & Time
-                            </TableCell>
-                            <TableCell
-                                isHeader
-                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Number Of Days of Booking
-                            </TableCell>
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Place Of Booking
-                            </TableCell>
-
-
-                            <TableCell
-                                isHeader
-                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Transport Charges
-                            </TableCell>
-
-                            <TableCell
-                                isHeader
-                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Special Request
-                            </TableCell>
-
-
-                            <TableCell
-                                isHeader
-                                className="hidden px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Amount
+                                Teams
                             </TableCell>
 
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Booking Date
-                            </TableCell>
-
-
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Status
+                                installation
                             </TableCell>
 
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                             >
-                                Team
+                                Uninstallation
                             </TableCell>
-                            <TableCell
-                                isHeader
-                                className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                            >
-                                Booked Items
-                            </TableCell>
-
                             <TableCell
                                 isHeader
                                 className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
@@ -351,60 +324,7 @@ export default function EventsTable() {
                                     </div>
                                 </TableCell>
 
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <div className="flex -space-x-2">
-                                        {(() => {
-                                            if (!rows?.doe) return "-";
 
-                                            const startDate = new Date(rows.doe);
-                                            if (isNaN(startDate.getTime())) return "-";
-
-                                            return rows?.nodb.split("T")[0];
-                                        })()}
-                                    </div>
-                                </TableCell>
-
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    {rows?.v_location}
-                                </TableCell>
-                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {/* {rows?.v_a_d} */}
-                                    {rows?.v_a_d && !isNaN(new Date(rows.v_a_d).getTime()) ? new Date(rows?.v_a_d)
-                                        .toISOString()
-                                        .slice(0, 19)
-                                        .replace("T", " ") : "_"}
-                                </TableCell>
-                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.nodb}
-                                </TableCell>
-                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.pob}
-
-                                </TableCell>
-                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.tc}
-                                </TableCell>
-                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.sr}
-                                </TableCell>
-                                <TableCell className="hidden px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {rows?.amount}
-                                </TableCell>
-
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {/* {rows?.v_a_d} */}
-                                    {rows?.created_at && !isNaN(new Date(rows.created_at).getTime()) ? new Date(rows?.created_at)
-                                        .toISOString()
-                                        .slice(0, 19)
-                                        .replace("T", " ") : "_"}
-                                </TableCell>
-
-                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {
-                                        getStatusColor(Number(rows.status))
-
-                                    }
-                                </TableCell>
 
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     <span
@@ -418,28 +338,57 @@ export default function EventsTable() {
                                     </span>
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                    {bookedItems[rows.id] ? (
-                                        <span
-                                            className="text-blue-600 cursor-pointer underline"
-                                            onClick={() => {
-                                                setSelectedItems(bookedItems[rows.id]);
-                                                setIsOpens(true);
-                                            }}
-                                        >
-                                            {bookedItems[rows.id].reduce((sum, item) => {
-                                                return sum + item.qt ;
-                                            }, 0)}
-                                        </span>
-                                    ) : (
-                                        "Loading..."
-                                    )}
+                                    {
+                                        inst[rows.id]?.[0]?.installing &&
+                                            !isNaN(new Date(inst[rows.id][0].installing).getTime())
+                                            ? format(
+                                                new Date(inst[rows.id][0].installing),
+                                                "dd-MM-yyyy hh:mm aa"
+                                            )
+                                            : "-"
+                                    }
                                 </TableCell>
+
+                                <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                    {
+                                        inst[rows.id]?.[0]?.uninstalling &&
+                                            !isNaN(new Date(inst[rows.id][0].uninstalling).getTime())
+                                            ? format(
+                                                new Date(inst[rows.id][0].uninstalling),
+                                                "dd-MM-yyyy hh:mm aa"
+                                            )
+                                            : "-"
+                                    }
+                                </TableCell>
+
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     {(teamSizes[rows.id] ?? 0) > 0 ? (
                                         <button type="button" className="btn btn-dander btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" >Team Assigned</button>
 
                                     ) : (
-                                        <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" onClick={() => { openModal(); getEventsByID(rows.id); }}>Assign Team</button>
+                                        <>
+                                            <div className="flex items-center gap-2">
+                                                {/* Assign Team */}
+                                                <button
+                                                    className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition"
+                                                    title="Assign Team"
+                                                    onClick={() => { openModal(); getEventsByID(rows.id); }}
+                                                >
+                                                    <HiUserGroup size={18} />
+                                                </button>
+
+                                                {/* Assign Vehicle */}
+                                                <button
+                                                    className="flex items-center justify-center bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition"
+                                                    title="Assign Vehicle"
+                                                    onClick={() => { getEventsByID(rows.id); setIsOpenvehicle(true)}}
+                                                >
+                                                    <FaTruck size={18} />
+                                                </button>
+                                            </div>
+
+                                        </>
+                                        // <button type="button" className="btn btn-success btn-update-event w-full sm:w-auto rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600" onClick={() => { openModal(); getEventsByID(rows.id); }}>Assign Team</button>
 
                                     )}
                                 </TableCell>
@@ -465,11 +414,15 @@ export default function EventsTable() {
                 isOpen={isOpenes}
                 onClose={() => setIsOpenes(false)}
                 data={selectedRow}
-                bookedItems = {bookedItems}
+                bookedItems={bookedItems}
             />
             <AssignTeam isOpen={isOpenTeam}
                 onClose={() => setIsOpenTeam(false)}
-                id={selectedTeamId } />
+                id={selectedTeamId} />
+
+            <VehicleAssign isOpen={isOpenvehicle}
+                onClose={() => setIsOpenvehicle(false)}
+                id={selectedTeamId} />
         </div>
     );
 }

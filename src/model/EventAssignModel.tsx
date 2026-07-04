@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
-import { Modal } from "../components/ui/modal";
 import apiClient from "../hooks/api/apiClient";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import ReactDatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
   if (!isOpen) return null;
+
+  const [installationDate, setInstallationDate] = useState<Date | null>(null);
+const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
+
+
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
   const [open, setOpen] = useState(false);
@@ -18,14 +22,8 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     name: ""
   }])
 
-  const [categories, setCategories] = useState([{
-    id: "",
-    name: ""
-  }]);
-  const [subCategories, setSubCategories] = useState([{
-    id: "",
-    name: ""
-  }]);
+  console.log(date,time);
+  
 
   const [events, setEvents] = useState({
     "id": 1,
@@ -44,17 +42,8 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     "updated_at": ""
   })
   // const [inventory, setInventory] = useState({})
-  const [wareHouse, setWarehouse] = useState([{
-    id: "",
-    WareHouse: { address: "" }
-  }])
-  const [getCateData, setCatDate] = useState({
-    inventoryCategory: "",
-    inventorySubcategories: ""
-  });
+ 
 
-
-  const [assignTeam, setAssignTeam] = useState({ employee: [] })
 
   const toggleSelect = (id: number) => {
     setSelected((prev) =>
@@ -76,32 +65,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     getUsers()
   }, [0])
 
-  const getCategories = async () => {
-    try {
-      const results = await apiClient.get("/admin/category/find");
-      setCategories(results?.data?.results)
 
-    } catch {
-
-    }
-  }
-  useEffect(() => {
-    getCategories();
-  }, [])
-
-
-  const eventHandler = async (e: any) => {
-    try {
-      const id = e.target.value;
-      const results = await apiClient.get(`/admin/subCategory/findByid/${id}`)
-      setSubCategories(results?.data?.results)
-    } catch {
-
-    }
-
-
-  }
-  console.log(eid?.id);
 
 
 
@@ -137,46 +101,13 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
   }, [events]);
 
 
-  const selectHendler = (e: any) => {
-    setCatDate(preState => ({ ...preState, [e.target.name]: e.target.value }))
-  }
-
-  const fetchStock = async (cid: any, sid: any) => {
-    console.log(getCateData);
-
-    if (cid && sid) {
-      console.log(cid && sid);
-
-      const results = await apiClient.get(`/admin/Inverntory/findBycategoriesAndSubCategories/${cid}/${sid}`)
-      setWarehouse(results.data.results)
-
-    }
-  }
-
-
-  useEffect(() => {
-    fetchStock(getCateData.inventoryCategory, getCateData.inventorySubcategories)
-  }, [getCateData])
-
-
-  const assignTeamHendler = (e: any) => {
-    setAssignTeam(preState => ({ ...preState, [e.target.name]: e.target.value }))
-  }
-
-
   const TeamSubmitHendler = async (e: any) => {
     e.preventDefault();
     try {
-      const d = new Date(date);
       const params = {
-        ...assignTeam,
-        date: d.toLocaleDateString("en-CA"),
-        time: d.toTimeString().split(" ")[0],
-        inventoryCategory: getCateData.inventoryCategory,
-        inventorySubcategories: getCateData.inventorySubcategories,
-        location: events?.v_location,
-        venue: events?.vanus,
-        employees: selected,
+        employees:selected,
+        installDate:installationDate,
+        uninstallation:uninstallationDate,
         event_id: eid?.id
       }
 
@@ -188,7 +119,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     }
   }
 
-
+ 
 
 
   const selectedNames = users
@@ -196,24 +127,15 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     .map((cat) => cat?.name)
     .join(", ");
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={closeModal}
-       className="max-w-8xl w-full mx-auto p-0 rounded-2xl overflow-hidden [&>button]:hidden" >
-
-      <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
-        <h2 className="text-lg font-semibold text-white">
-          Event Details
-        </h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" >
+      <div className="bg-white w-full max-w-6xl rounded-xl shadow-lg p-6 relative">
         <button
           onClick={() => closeModal(false)}
-          className="text-white hover:text-red-200 text-xl"
+          className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
         >
           ✕
         </button>
-      </div>
 
-      <div className="overflow-y-auto custom-scrollbar  p-5">
         <div>
           <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
             {"Team Assign"}
@@ -229,28 +151,28 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
         />
         {/* Form: 2-column grid */}
         <form onSubmit={TeamSubmitHendler}>
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+
+            {/* Employee */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Select Employee
               </label>
-              <div className="relative w-full">
 
-                {/* Selector */}
+              <div className="relative">
                 <div
                   onClick={() => setOpen(!open)}
-                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs cursor-pointer flex items-center justify-between"
+                  className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer dark:bg-gray-900 dark:text-white"
                 >
                   <span>
-                    {selected.length > 0 ? selectedNames : " Select Employee"}
+                    {selected.length > 0 ? selectedNames : "Select Employee"}
                   </span>
                   <span>▼</span>
                 </div>
 
-                {/* Dropdown */}
                 {open && (
-                  <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-60 overflow-y-auto">
-                    {users && users.map((rows) => (
+                  <div className="absolute z-50 mt-1 w-full rounded-lg border bg-white shadow-lg max-h-60 overflow-y-auto">
+                    {users?.map((rows) => (
                       <label
                         key={rows.id}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer"
@@ -267,139 +189,68 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
                 )}
               </div>
             </div>
+
+            {/* Installation Date */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Inventory Category
+                Installation Time
               </label>
-              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="inventoryCategory" onChange={(e: any) => {
-                eventHandler(e);
-                selectHendler(e);
 
-              }}>
-                <option value={0}> Select Inventory Category</option>
-
-                {categories && categories?.map(rows => (
-                  <option value={rows?.id}> {rows.name}</option>
-                ))}
-              </select>
+              <ReactDatePicker
+                selected={installationDate}
+                onChange={(date: Date | null) => setInstallationDate(date)}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                dateFormat="dd-MM-yyyy hh:mm aa"
+                placeholderText="Select Date & Time"
+                 minDate={new Date()}
+                className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:bg-gray-900 dark:text-white"
+              />
             </div>
-          </div>
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+
+            {/* Uninstallation Date */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Goods
+                Uninstallation Time
               </label>
-              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="inventorySubcategories" onChange={(e: any) => {
-                selectHendler(e)
 
-              }}>
-                <option value={0}> Select Goods </option>
-                {subCategories && subCategories.map(rows => (
-                  <option value={rows?.id}>{rows.name}</option>
-                ))}
-              </select>
+              <ReactDatePicker
+                selected={uninstallationDate}
+                onChange={(date: Date | null) => setUninstallationDate(date)}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                dateFormat="dd-MM-yyyy hh:mm aa"
+                placeholderText="Select Date & Time"
+                 minDate={new Date()}
+                className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:bg-gray-900 dark:text-white"
+              />
             </div>
 
+            {/* Buttons */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="h-11 px-5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
 
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Date
-                </label>
-                <DatePicker
-                  selected={date}
-                  onChange={(d: any) => { setDate(d); assignTeamHendler(d) }}
-                  dateFormat="yyyy-MM-dd"
-                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-
-                  name="date"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                  Time
-                </label>
-                <DatePicker
-                  selected={time}
-                  onChange={(t: any) => { setTime(t); assignTeamHendler(t) }}
-                  showTimeSelect
-                  showTimeSelectOnly
-                  timeIntervals={15}
-                  timeCaption="Time"
-                  dateFormat="h:mm aa"
-                  name="time"
-                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                />
-              </div>
+              <button
+                type="submit"
+                className="h-11 px-5 rounded-lg bg-brand-500 text-white hover:bg-brand-600"
+              >
+                Submit
+              </button>
             </div>
 
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Venue
-              </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="venue" value={`${events?.vanus}`} />
-
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Location
-              </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="location" value={`${events?.v_location}`} />
-
-            </div>
-          </div>
-
-          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Installation and Uninstalling Time Day/Night:
-              </label>
-              <input className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="installation" onChange={assignTeamHendler} />
-
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Stock Location
-              </label>
-              <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="stockLocation" onChange={assignTeamHendler}  >
-                <option >Select Store Location</option>
-                {wareHouse && wareHouse.map(rows => (
-                  <option key={rows.id} value={rows.id} >{rows?.WareHouse?.address?.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-
-
-          <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
-            <button
-              onClick={closeModal}
-              type="button"
-              className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
-            >
-              Close
-            </button>
-            <button
-
-              type="submit"
-              className="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
-            >
-              {"Submit"}
-            </button>
           </div>
         </form>
       </div>
 
 
-    </Modal>
+    </div>
   );
 }
