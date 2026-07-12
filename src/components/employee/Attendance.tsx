@@ -1,14 +1,6 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
 
-const statusColors: any = {
-  present: "bg-green-500",
-  absent: "bg-red-500",
-  leave: "bg-yellow-400",
-  holiday: "bg-blue-500",
-};
-
-
 
 
 
@@ -16,35 +8,18 @@ export default function Attendance() {
   const [attendance, setAttendance] = useState<Record<number, string>>({});
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
-
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
-  const today = currentDate.getDate();
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const today = new Date();
 
   const daysInMonth = new Date(
-    currentYear,
-    currentMonth + 1,
+    selectedYear,
+    selectedMonth + 1,
     0
   ).getDate();
-  const handleClick = (day: number) => {
-    const current = attendance[day];
 
-    // cycle status
-    const next =
-      current === "present"
-        ? "absent"
-        : current === "absent"
-          ? "leave"
-          : current === "leave"
-            ? "holiday"
-            : "present";
 
-    setAttendance((prev: any) => ({
-      ...prev,
-      [day]: next,
-    }));
-  };
+
 
 
   const fetchUsers = async () => {
@@ -69,27 +44,39 @@ export default function Attendance() {
         `/admin/teamAssign/findByUserId/${userId}`
       );
 
-      const records = result.data.results || [];
+      const records = result.data.data || [];
 
       const attendanceMap: Record<number, string> = {};
-
+      console.log(records, '-----------');
       records.forEach((item: any) => {
-        const [year, month, day] = item.assignedAt
-          .split("T")[0]
-          .split("-")
-          .map(Number);
+        const date = new Date(item.assignedAt);
 
-        if (
-          year === currentYear &&
-          month === currentMonth + 1
-        ) {
-          attendanceMap[day] = "present";
+        const year = date.getFullYear();
+
+        const month = date.getMonth();
+        const day = date.getDate();
+
+        if (year === selectedYear && month === selectedMonth) {
+
+
+          attendanceMap[day] =
+            item.status?.toLowerCase() || "present";
         }
       });
 
+      // Fill remaining dates
       for (let day = 1; day <= daysInMonth; day++) {
+        const isCurrentMonth =
+          selectedMonth === today.getMonth() &&
+          selectedYear === today.getFullYear();
+
         if (!attendanceMap[day]) {
-          attendanceMap[day] = "absent";
+          if (isCurrentMonth) {
+            attendanceMap[day] =
+              day <= today.getDate() ? "absent" : "future";
+          } else {
+            attendanceMap[day] = "absent";
+          }
         }
       }
 
@@ -98,6 +85,13 @@ export default function Attendance() {
       console.error(error);
     }
   };
+
+  useEffect(() => {
+    if (selectedUser) {
+      getDataFoUsers(selectedUser);
+    }
+  }, [selectedMonth, selectedYear]);
+
 
   return (
     <div className="p-6">
@@ -111,12 +105,12 @@ export default function Attendance() {
         <span className="flex items-center gap-2">
           <span className="w-4 h-4 bg-red-500 rounded"></span> Absent
         </span>
-        <span className="flex items-center gap-2">
+        {/* <span className="flex items-center gap-2">
           <span className="w-4 h-4 bg-yellow-400 rounded"></span> Leave
         </span>
         <span className="flex items-center gap-2">
           <span className="w-4 h-4 bg-blue-500 rounded"></span> Holiday
-        </span>
+        </span> */}
       </div>
 
       {
@@ -126,6 +120,7 @@ export default function Attendance() {
         * The list can be fetched from an API or a static array for demonstration purposes.
          */
       }
+
       <div className="grid grid-cols-12 gap-6">
         {/* User List (2 Columns) */}
         <div className="col-span-2 rounded-lg p-4 max-h-[80vh] overflow-y-auto">
@@ -148,19 +143,115 @@ export default function Attendance() {
 
         {/* Calendar (10 Columns) */}
         <div className="col-span-10">
+          <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
+            {/* Previous Button */}
+            <button
+              onClick={() => {
+                if (selectedMonth === 0) {
+                  setSelectedMonth(11);
+                  setSelectedYear((y) => y - 1);
+                } else {
+                  setSelectedMonth((m) => m - 1);
+                }
+              }}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+            >
+              ◀ Previous
+            </button>
+
+            {/* Month & Year Selection */}
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="border rounded-lg px-3 py-2"
+              >
+                {[
+                  "January",
+                  "February",
+                  "March",
+                  "April",
+                  "May",
+                  "June",
+                  "July",
+                  "August",
+                  "September",
+                  "October",
+                  "November",
+                  "December",
+                ].map((month, index) => (
+                  <option key={index} value={index}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="border rounded-lg px-3 py-2"
+              >
+                {[2024, 2025, 2026, 2027, 2028].map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+
+              <h3 className="font-semibold text-lg">
+                {new Date(selectedYear, selectedMonth).toLocaleString("default", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </h3>
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={() => {
+                if (selectedMonth === 11) {
+                  setSelectedMonth(0);
+                  setSelectedYear((y) => y + 1);
+                } else {
+                  setSelectedMonth((m) => m + 1);
+                }
+              }}
+              className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+            >
+              Next ▶
+            </button>
+          </div>
           <div className="grid grid-cols-7 gap-3">
             {Array.from({ length: daysInMonth }, (_, i) => {
               const day = i + 1;
 
+
               let bgClass = "bg-gray-200 text-black";
 
               if (selectedUser) {
-                if (day > today) {
-                  bgClass = "bg-amber-700 text-white";
-                } else if (attendance[day] === "present") {
-                  bgClass = "bg-green-500 text-white";
-                } else {
-                  bgClass = "bg-red-500 text-white";
+                switch (attendance[day]) {
+                  case "present":
+                    bgClass = "bg-green-500 text-white";
+                    break;
+
+                  case "absent":
+                    bgClass = "bg-red-500 text-white";
+                    break;
+
+                  case "leave":
+                    bgClass = "bg-yellow-400 text-black";
+                    break;
+
+                  case "holiday":
+                    bgClass = "bg-blue-500 text-white";
+                    break;
+
+                  case "future":
+                    bgClass = "bg-gray-300 text-gray-500";
+                    break;
+
+                  default:
+                    bgClass = "bg-gray-200";
                 }
               }
 

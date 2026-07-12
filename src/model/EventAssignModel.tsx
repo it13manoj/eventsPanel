@@ -6,24 +6,30 @@ import "react-toastify/dist/ReactToastify.css";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+
+interface User {
+  id: number;
+  name: string;
+  sifting_type: number;
+  base_pay?: number;
+}
+
+
 export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
   if (!isOpen) return null;
 
   const [installationDate, setInstallationDate] = useState<Date | null>(null);
-const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
+  const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
 
 
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
-  const [users, setUsers] = useState([{
-    id: 0,
-    name: ""
-  }])
+  const [users, setUsers] = useState<User[]>([]);
 
-  console.log(date,time);
-  
+  console.log(date, time);
+
 
   const [events, setEvents] = useState({
     "id": 1,
@@ -42,14 +48,29 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
     "updated_at": ""
   })
   // const [inventory, setInventory] = useState({})
- 
 
 
-  const toggleSelect = (id: number) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
+const toggleSelect = (id: number) => {
+  const employee = users.find((u) => u.id === id);
+
+  if (selected.includes(id)) {
+    setSelected(selected.filter((item) => item !== id));
+
+    const updated = { ...employeeDetails };
+    delete updated[id];
+    setEmployeeDetails(updated);
+  } else {
+    setSelected([...selected, id]);
+
+    setEmployeeDetails((prev) => ({
+      ...prev,
+      [id]: {
+        shiftType: employee?.sifting_type ?? "",
+        hours: "",
+      },
+    }));
+  }
+};
 
 
   const getUsers = async () => {
@@ -105,9 +126,9 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
     e.preventDefault();
     try {
       const params = {
-        employees:selected,
-        installDate:installationDate,
-        uninstallation:uninstallationDate,
+        employees: selected,
+        installDate: installationDate,
+        uninstallation: uninstallationDate,
         event_id: eid?.id
       }
 
@@ -119,13 +140,21 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
     }
   }
 
- 
+
 
 
   const selectedNames = users
     .filter((cat) => selected.includes(cat.id))
     .map((cat) => cat?.name)
     .join(", ");
+
+
+const [employeeDetails, setEmployeeDetails] = useState<{
+  [key: number]: {
+    shiftType: number | "";
+    hours: string;
+  };
+}>({});
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center" >
       <div className="bg-white w-full max-w-6xl rounded-xl shadow-lg p-6 relative">
@@ -151,7 +180,7 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
         />
         {/* Form: 2-column grid */}
         <form onSubmit={TeamSubmitHendler}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
 
             {/* Employee */}
             <div>
@@ -204,7 +233,7 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
                 timeIntervals={15}
                 dateFormat="dd-MM-yyyy hh:mm aa"
                 placeholderText="Select Date & Time"
-                 minDate={new Date()}
+                minDate={new Date()}
                 className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:bg-gray-900 dark:text-white"
               />
             </div>
@@ -223,12 +252,57 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
                 timeIntervals={15}
                 dateFormat="dd-MM-yyyy hh:mm aa"
                 placeholderText="Select Date & Time"
-                 minDate={new Date()}
+                minDate={new Date()}
                 className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:bg-gray-900 dark:text-white"
               />
             </div>
+          </div>
 
-            {/* Buttons */}
+          <div >
+            {selected.length > 0 && (
+              <div className="mt-6 overflow-x-auto">
+                <table className="w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="border p-2 text-left">Employee</th>
+                      <th className="border p-2 text-left">Number of Shift</th>
+                      <th className="border p-2 text-left hidden">Hours</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {selected.map((id) => {
+                      const employee = users.find((u) => u.id === id);
+
+                      return (
+                        <tr key={id}>
+                          <td className="border p-2 font-medium">
+                            {employee?.name}
+                          </td>
+
+                          <td className="border p-2">
+                            <input
+                              className="w-full border rounded px-2 py-1"
+                              value={employeeDetails[id]?.shiftType || ""}
+                              
+                              disabled
+                            />
+                            
+                          </td>
+
+                          <td className="hidden border p-2">
+                           
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          {/* Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-end mb-8 mt-8">
             <div className="flex gap-2">
               <button
                 type="button"
@@ -245,8 +319,8 @@ const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
                 Submit
               </button>
             </div>
-
           </div>
+
         </form>
       </div>
 
