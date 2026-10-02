@@ -10,10 +10,18 @@ import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
 import Items from "../../model/Items";
 import { useModal } from "../../hooks/useModal";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
 
 // ======================================================
 // TYPES
 // ======================================================
+
+interface BasicTableOneProps {
+  refreshKey?: number;
+  onEdit?: (item: any) => void;
+  onRefresh?: () => void;
+}
 
 type SizeType = {
   id: number;
@@ -62,7 +70,7 @@ type InventoryType = {
 // COMPONENT
 // ======================================================
 
-export default function BasicTableOne() {
+export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: BasicTableOneProps) {
   const [inventory, setInventory] = useState<
     InventoryType[]
   >([]);
@@ -85,7 +93,28 @@ export default function BasicTableOne() {
 
   useEffect(() => {
     getInventory();
-  }, []);
+  }, [refreshKey]);
+
+  // ======================================================
+  // DELETE INVENTORY
+  // ======================================================
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to delete this stock item?")) return;
+    try {
+      const res = await apiClient.delete(`/admin/Inverntory/delete/${id}`);
+      if (res.data?.status === false) {
+        toast.error(res.data?.message || "Failed to delete stock item");
+      } else {
+        toast.success("Stock item deleted successfully!");
+        getInventory();
+        if (onRefresh) onRefresh();
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.response?.data?.message || "Error deleting stock item");
+    }
+  };
 
   // ======================================================
   // RESIZABLE TABLE
@@ -266,6 +295,13 @@ export default function BasicTableOne() {
               >
                 Sizes
               </TableCell>
+
+              <TableCell
+                isHeader
+                className="px-5 py-3 text-start"
+              >
+                Actions
+              </TableCell>
             </TableRow>
           </TableHeader>
 
@@ -434,6 +470,25 @@ export default function BasicTableOne() {
                           No Sizes
                         </span>
                       )}
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="px-5 py-4 text-start">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => onEdit ? onEdit(rows) : null}
+                        className="text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400"
+                        title="Edit Stock"
+                      >
+                        <Pencil className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(rows.id)}
+                        className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                        title="Delete Stock"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
                   </TableCell>
                 </TableRow>

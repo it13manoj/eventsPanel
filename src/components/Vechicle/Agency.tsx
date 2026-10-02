@@ -106,14 +106,16 @@ export default function Agency() {
             if (agent.id === 0) {
                 // Create
                 await apiClient.post("/admin/AgentOwner/create", agent);
+                toast.success("Agent created successfully!");
             } else {
                 // Update
                 await apiClient.put(`/admin/AgentOwner/update/${agent.id}`, agent);
+                toast.success("Agent updated successfully!");
             }
 
             // Refresh the list
             const res = await apiClient.get("/admin/AgentOwner/find");
-            setAgents(res.data.data);
+            setAgents(res.data?.data || res.data?.results || []);
 
             // Reset form
             setAgent({
@@ -122,48 +124,45 @@ export default function Agency() {
                 owner_agency: "2",
             });
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            toast.error(error?.response?.data?.message || "Failed to save agent");
         }
     };
 
-    const editAgent = async (row: Agent) => {
+    const editAgent = (row: Agent) => {
         setAgent({
             id: row.id,
             name: row.name,
-            owner_agency: row.owner_agency.toString(),
+            owner_agency: row.owner_agency ? row.owner_agency.toString() : "2",
         });
-        await apiClient.post(`/admin/AgentOwner/update/${row.id}`, row);
-        const res = await apiClient.get(`/admin/AgentOwner/find`);
-        setAgents([
-            ...agents,
-            ...res.data.data,
-        ]);
     };
 
     const deleteAgent = async (id: number) => {
-        setAgents(agents.filter((x) => x.id !== id));
-        await apiClient.delete(`/admin/AgentOwner/deletes/${id}`);
-        //   loadAgents()
+        if (!window.confirm("Are you sure you want to delete this agent?")) return;
+        try {
+            await apiClient.delete(`/admin/AgentOwner/delete/${id}`);
+            toast.success("Agent deleted successfully!");
+            const res = await apiClient.get("/admin/AgentOwner/find");
+            setAgents(res.data?.data || res.data?.results || []);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error?.response?.data?.message || "Failed to delete agent");
+        }
     };
 
     const loadAgents = async () => {
-        const res = await apiClient.get(`/admin/AgentOwner/find`);
-
-        console.log(res);
-
-        // return false;
-        console.log(res?.data?.data);
-
-        setAgents([
-            ...agents,
-            ...res.data.data,
-        ]);
-    }
+        try {
+            const res = await apiClient.get(`/admin/AgentOwner/find`);
+            setAgents(res?.data?.data || res?.data?.results || []);
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     useEffect(() => {
-        loadAgents()
-    }, [])
+        loadAgents();
+    }, []);
 
     return (
 

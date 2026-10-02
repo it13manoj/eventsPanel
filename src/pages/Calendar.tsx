@@ -15,6 +15,7 @@ import { Link } from "react-router";
 import AvaliableItems from "../model/AvaliableItems";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { EVENT_STATUSES, normalizeStatusCode, getStatusColor } from "../utils/eventStatus";
 
 
 
@@ -313,13 +314,7 @@ const Calendar: React.FC = () => {
         const startDate = new Date(item.doe);
         const endDate = new Date(item.nodb);
 
-        const color =
-          item.status == 0 ? "#FFA500" :
-            item.status == 1 ? "#008000" :
-              item.status == 2 ? "#8B4513" :
-                item.status == 3 ? "#87CEEB" :
-                  item.status == 4 ? "#FF0000" :
-                    "#ffffff";
+        const color = getStatusColor(item.status);
 
         return [
           {
@@ -433,7 +428,7 @@ const Calendar: React.FC = () => {
       bookedItems: appendsAll.filter(r => r.categories.id != 0),
       stockDetails: groupedData,
       eventDetails: groupedEventData,
-      status: eventLevel
+      status: normalizeStatusCode(eventLevel)
     };
 
 
@@ -510,13 +505,7 @@ const Calendar: React.FC = () => {
 
   }
 
-  const [status] = useState({
-    0: "Enquriy",
-    1: "Confirm/Live",
-    2: "Installation Ongoing",
-    3: "Event Finished",
-    4: "Cancelled/Postpone",
-  })
+
 
   // const [stocksData, setStockData] = useState({
   //   "quntites": 0,
@@ -619,7 +608,7 @@ const Calendar: React.FC = () => {
     setEventTitle(data.c_name || "");
     setVanus(data.vanus || "");
     setDateOfEvent(formatDate(data.doe));
-    setEventLevel(data.status);
+    setEventLevel(normalizeStatusCode(data.status));
     setEventStartDate(formatDate(data.doe));
 
     if (data.doe && data.nodb) {
@@ -1531,11 +1520,14 @@ const Calendar: React.FC = () => {
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Status</label>
-                <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" value={eventLevel} onChange={e => { setEventLevel(e.target.value) }}>
-                  <option value={0} >Select Status</option>
-                  {Object.entries(status).map(([key, value]) => (
-                    <option key={key} value={key} >
-                      {value}
+                <select
+                  className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  value={normalizeStatusCode(eventLevel)}
+                  onChange={e => { setEventLevel(e.target.value) }}
+                >
+                  {EVENT_STATUSES.map((st) => (
+                    <option key={st.code} value={st.code}>
+                      {st.label}
                     </option>
                   ))}
                 </select>

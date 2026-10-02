@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import apiClient from "../hooks/api/apiClient";
 import "react-datepicker/dist/react-datepicker.css";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 import ReactDatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-
+import { Modal } from "../components/ui/modal";
 
 interface User {
   id: number;
@@ -14,113 +12,55 @@ interface User {
   base_pay?: number;
 }
 
-
 export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
   if (!isOpen) return null;
 
   const [installationDate, setInstallationDate] = useState<Date | null>(null);
   const [uninstallationDate, setUninstallationDate] = useState<Date | null>(null);
 
-
-  const [date, setDate] = useState(new Date());
-  const [time, setTime] = useState(new Date());
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
-  console.log(date, time);
+  const [employeeDetails, setEmployeeDetails] = useState<{
+    [key: number]: {
+      shiftType: number | "";
+      hours: string;
+    };
+  }>({});
 
+  const toggleSelect = (id: number) => {
+    const employee = users.find((u) => u.id === id);
 
-  const [events, setEvents] = useState({
-    "id": 1,
-    "c_name": "",
-    "vanus": "",
-    "doe": "",
-    "v_location": "",
-    "v_a_d": "",
-    "nodb": 6,
-    "pob": "",
-    "tc": "0",
-    "sr": "",
-    "amount": 0,
-    "status": "1",
-    "created_at": "",
-    "updated_at": ""
-  })
-  // const [inventory, setInventory] = useState({})
-
-
-const toggleSelect = (id: number) => {
-  const employee = users.find((u) => u.id === id);
-
-  if (selected.includes(id)) {
-    setSelected(selected.filter((item) => item !== id));
-
-    const updated = { ...employeeDetails };
-    delete updated[id];
-    setEmployeeDetails(updated);
-  } else {
-    setSelected([...selected, id]);
-
-    setEmployeeDetails((prev) => ({
-      ...prev,
-      [id]: {
-        shiftType: employee?.sifting_type ?? "",
-        hours: "",
-      },
-    }));
-  }
-};
-
+    if (selected.includes(id)) {
+      setSelected(selected.filter((item) => item !== id));
+      const updated = { ...employeeDetails };
+      delete updated[id];
+      setEmployeeDetails(updated);
+    } else {
+      setSelected([...selected, id]);
+      setEmployeeDetails((prev) => ({
+        ...prev,
+        [id]: {
+          shiftType: employee?.sifting_type ?? "",
+          hours: "",
+        },
+      }));
+    }
+  };
 
   const getUsers = async () => {
     try {
-      const results = await apiClient.get("/users/all")
-      setUsers(results?.data?.results)
-    } catch {
-
+      const results = await apiClient.get("/users/all");
+      setUsers(results?.data?.results || []);
+    } catch (err) {
+      console.error(err);
     }
-  }
+  };
 
   useEffect(() => {
-    getUsers()
-  }, [0])
-
-
-
-
-
-  const getEvents = async (eid: any) => {
-
-
-    if (eid) {
-      const results = await apiClient.get(`/admin/Events/findByPk/${eid?.id}`)
-      setEvents(results?.data?.results)
-
-      console.log(results?.data?.results.doe);
-      // setDate(new Date(results?.data?.results.doe))
-
-    }
-  }
-
-  useEffect(() => {
-    getEvents(eid)
-  }, [isOpen])
-
-
-
-  useEffect(() => {
-    if (events?.doe) {
-      setDate(new Date(events.doe)); // convert string → Date object
-    }
-  }, [events]);
-
-  useEffect(() => {
-    if (events?.v_a_d) {
-      setTime(new Date(events.doe)); // convert string → Date object
-    }
-  }, [events]);
-
+    getUsers();
+  }, []);
 
   const TeamSubmitHendler = async (e: any) => {
     e.preventDefault();
@@ -129,59 +69,36 @@ const toggleSelect = (id: number) => {
         employees: selected,
         installDate: installationDate,
         uninstallation: uninstallationDate,
-        event_id: eid?.id
-      }
+        event_id: eid?.id,
+      };
 
-      const results = await apiClient.post("/admin/teamAssign/create", params)
-      toast.success("Successfully Created!", results);
+      await apiClient.post("/admin/teamAssign/create", params);
+      toast.success("Team assigned successfully!");
       closeModal();
-    } catch (error) {
-
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "Failed to assign team");
     }
-  }
-
-
-
+  };
 
   const selectedNames = users
     .filter((cat) => selected.includes(cat.id))
     .map((cat) => cat?.name)
     .join(", ");
 
-
-const [employeeDetails, setEmployeeDetails] = useState<{
-  [key: number]: {
-    shiftType: number | "";
-    hours: string;
-  };
-}>({});
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center" >
-      <div className="bg-white w-full max-w-6xl rounded-xl shadow-lg p-6 relative">
-        <button
-          onClick={() => closeModal(false)}
-          className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
-        >
-          ✕
-        </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={() => closeModal(false)}
+      className="max-w-4xl p-6 lg:p-8"
+    >
+      <div className="overflow-y-auto max-h-[80vh] custom-scrollbar">
+        <h5 className="mb-4 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
+          Team Assign
+        </h5>
 
-        <div>
-          <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
-            {"Team Assign"}
-          </h5>
-        </div>
-        <ToastContainer
-          position="bottom-left"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={true}
-          closeOnClick
-          pauseOnHover
-        />
-        {/* Form: 2-column grid */}
-        <form onSubmit={TeamSubmitHendler}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
-
+        <form onSubmit={TeamSubmitHendler} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Employee */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -191,25 +108,26 @@ const [employeeDetails, setEmployeeDetails] = useState<{
               <div className="relative">
                 <div
                   onClick={() => setOpen(!open)}
-                  className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer dark:bg-gray-900 dark:text-white"
+                  className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                 >
-                  <span>
+                  <span className="truncate">
                     {selected.length > 0 ? selectedNames : "Select Employee"}
                   </span>
                   <span>▼</span>
                 </div>
 
                 {open && (
-                  <div className="absolute z-50 mt-1 w-full rounded-lg border bg-white shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-60 overflow-y-auto dark:border-gray-700 dark:bg-gray-800">
                     {users?.map((rows) => (
                       <label
                         key={rows.id}
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm text-gray-800 dark:text-gray-200"
                       >
                         <input
                           type="checkbox"
                           checked={selected.includes(rows.id)}
                           onChange={() => toggleSelect(rows.id)}
+                          className="accent-brand-500"
                         />
                         {rows?.name?.toUpperCase()}
                       </label>
@@ -224,7 +142,6 @@ const [employeeDetails, setEmployeeDetails] = useState<{
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Installation Time
               </label>
-
               <ReactDatePicker
                 selected={installationDate}
                 onChange={(date: Date | null) => setInstallationDate(date)}
@@ -234,7 +151,7 @@ const [employeeDetails, setEmployeeDetails] = useState<{
                 dateFormat="dd-MM-yyyy hh:mm aa"
                 placeholderText="Select Date & Time"
                 minDate={new Date()}
-                className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:bg-gray-900 dark:text-white"
+                className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
             </div>
 
@@ -243,7 +160,6 @@ const [employeeDetails, setEmployeeDetails] = useState<{
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                 Uninstallation Time
               </label>
-
               <ReactDatePicker
                 selected={uninstallationDate}
                 onChange={(date: Date | null) => setUninstallationDate(date)}
@@ -253,78 +169,62 @@ const [employeeDetails, setEmployeeDetails] = useState<{
                 dateFormat="dd-MM-yyyy hh:mm aa"
                 placeholderText="Select Date & Time"
                 minDate={new Date()}
-                className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:bg-gray-900 dark:text-white"
+                className="h-11 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
             </div>
           </div>
 
-          <div >
-            {selected.length > 0 && (
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full border border-gray-200 rounded-lg">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="border p-2 text-left">Employee</th>
-                      <th className="border p-2 text-left">Number of Shift</th>
-                      <th className="border p-2 text-left hidden">Hours</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {selected.map((id) => {
-                      const employee = users.find((u) => u.id === id);
-
-                      return (
-                        <tr key={id}>
-                          <td className="border p-2 font-medium">
-                            {employee?.name}
-                          </td>
-
-                          <td className="border p-2">
-                            <input
-                              className="w-full border rounded px-2 py-1"
-                              value={employeeDetails[id]?.shiftType || ""}
-                              
-                              disabled
-                            />
-                            
-                          </td>
-
-                          <td className="hidden border p-2">
-                           
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-          {/* Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-end mb-8 mt-8">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="h-11 px-5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              >
-                Close
-              </button>
-
-              <button
-                type="submit"
-                className="h-11 px-5 rounded-lg bg-brand-500 text-white hover:bg-brand-600"
-              >
-                Submit
-              </button>
+          {selected.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full border border-gray-200 dark:border-gray-700 rounded-lg text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="border-b border-gray-200 dark:border-gray-700 p-2 text-left text-gray-600 dark:text-gray-300">Employee</th>
+                    <th className="border-b border-gray-200 dark:border-gray-700 p-2 text-left text-gray-600 dark:text-gray-300">Number of Shift</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {selected.map((id) => {
+                    const employee = users.find((u) => u.id === id);
+                    return (
+                      <tr key={id}>
+                        <td className="p-2 font-medium text-gray-800 dark:text-white">
+                          {employee?.name}
+                        </td>
+                        <td className="p-2">
+                          <input
+                            className="w-full border rounded px-2 py-1 text-sm bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300"
+                            value={employeeDetails[id]?.shiftType || ""}
+                            disabled
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
+          )}
 
+          {/* Buttons */}
+          <div className="flex items-center gap-3 justify-end pt-4 border-t border-gray-100 dark:border-gray-800">
+            <button
+              type="button"
+              onClick={() => closeModal(false)}
+              className="px-5 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 text-sm font-medium"
+            >
+              Close
+            </button>
+
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-lg bg-brand-500 text-white hover:bg-brand-600 text-sm font-medium transition"
+            >
+              Submit
+            </button>
+          </div>
         </form>
       </div>
-
-
-    </div>
+    </Modal>
   );
 }

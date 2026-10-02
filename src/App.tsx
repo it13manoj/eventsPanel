@@ -36,6 +36,7 @@ import Salary from "./components/employee/EmployeeList/Salary";
 import InvoiceList from "./components/Invoice/InvoiceList";
 import { useEffect, useState } from "react";
 import AvailableStock from "./pages/Dashboard/AvailableStock";
+import SettingPage from "./pages/Settings/SettingPage";
 
 export default function App() {
   const [is_enabled, setEnabled] = useState(false);
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="/warehouselist" element={<WareHouseList />} />
               {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
+              <Route path="/setting" element={<SettingPage />} />
               <Route path="/employeelist" element={<EmployeeList />} />
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/salary" element={<Salary />} />

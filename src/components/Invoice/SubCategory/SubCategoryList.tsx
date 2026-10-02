@@ -9,16 +9,15 @@ import {
 
 import { useEffect, useState } from "react";
 import apiClient from "../../../hooks/api/apiClient";
+import { toast } from "react-toastify";
 
-export default function SubCategoryList() {
-    const [categories, setCategories] = useState([{
-        id: 0,
-        categories:{name:""},
-        name: "",
-        code: "",
-        status: 0,
-        description: ""
-    }]);
+interface SubCategoryListProps {
+    onEdit?: (item: any) => void;
+    refreshKey?: number;
+}
+
+export default function SubCategoryList({ onEdit, refreshKey }: SubCategoryListProps) {
+    const [categories, setCategories] = useState<any[]>([]);
 
     const getCategories = async () => {
         try {
@@ -31,19 +30,23 @@ export default function SubCategoryList() {
 
     useEffect(() => {
         getCategories();
-    }, []);
+    }, [refreshKey]);
 
+    const handleEdit = (item: any) => {
+        if (onEdit) onEdit(item);
+    };
 
-
-    const handleEdit = (e: any) => {
-            console.log(e);
-            
-    }
-
-    const handleDelete = (e: any) => {
-        console.log(e);
-        
-    }
+    const handleDelete = async (id: any) => {
+        if (!window.confirm("Are you sure you want to delete this subcategory?")) return;
+        try {
+            await apiClient.delete(`/admin/subCategory/delete/${id}`);
+            toast.success("SubCategory deleted successfully!");
+            getCategories();
+        } catch (error: any) {
+            console.error("Delete failed:", error);
+            toast.error(error?.response?.data?.message || "Failed to delete subcategory");
+        }
+    };
 
 
 
@@ -188,7 +191,7 @@ export default function SubCategoryList() {
                                     <div className="flex gap-2">
 
                                         {/* Edit Button */}
-                                        <button onClick={() => handleEdit(item.id)} className="text-blue-500 hover:text-blue-700">
+                                        <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-700">
                                             ✏️Edit
                                         </button>
 

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: "https://api.event.parakshtach.com/api/v1",
+  baseURL: "http://localhost:8001/api/v1",
   headers: {
     "Content-Type": "application/json"
   }
@@ -15,6 +15,10 @@ apiClient.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
     }
 
     return config;

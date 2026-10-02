@@ -58,6 +58,7 @@ export default function Owner() {
             formData.append("contact", form.contact);
             formData.append("load_capacity", form.load_capacity);
             formData.append("insurance", form.insurance);
+            formData.append("ownershiptype", "Owner");
             formData.append("image", file);
 
 

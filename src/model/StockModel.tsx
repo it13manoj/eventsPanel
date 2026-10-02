@@ -16,8 +16,12 @@ type HorizontalRowType = {
     unit: string;
 };
 
-export default function StockModel({ isOpen, closeModal }: any) {
+import { toast } from "react-toastify";
+
+export default function StockModel({ isOpen, closeModal, stockData, onSuccess }: any) {
     if (!isOpen) return null;
+
+    const isEdit = Boolean(stockData && stockData.id);
 
     // ================= STATES =================
 
@@ -54,6 +58,72 @@ export default function StockModel({ isOpen, closeModal }: any) {
             unit: "ft",
         },
     ]);
+
+    // ================= POPULATE FOR EDIT =================
+
+    useEffect(() => {
+        if (stockData && stockData.id) {
+            setInventory({
+                ware_house_id: stockData.ware_house_id || stockData.wareHouse?.id || "",
+                categories_id: stockData.categories_id || stockData.categories?.id || "",
+                sub_categories_id: stockData.sub_categories_id || stockData.subCategories?.id || "",
+                color: stockData.color || "",
+                quantity: stockData.quantity || 0,
+                quality: stockData.quality || "",
+                price: stockData.price || 0,
+                good: stockData.good || 0,
+                bad: stockData.bad || 0,
+                missing: stockData.missing || 0,
+                status: stockData.status !== undefined ? stockData.status : 1,
+            });
+            setEnabled(Boolean(stockData.have_size));
+            if (stockData.price) setEnabledprice(true);
+            setVerticalEnabled(Boolean(stockData.vertical_enabled));
+            setHorizontalEnabled(Boolean(stockData.horizontal_enabled));
+
+            if (stockData.verticalSizes && stockData.verticalSizes.length > 0) {
+                setVerticalRows(
+                    stockData.verticalSizes.map((v: any) => ({
+                        size: String(v.size || ""),
+                        quantity: String(v.quantity || ""),
+                        unit: v.unit || "ft",
+                    }))
+                );
+            } else {
+                setVerticalRows([{ size: "", quantity: "", unit: "ft" }]);
+            }
+
+            if (stockData.horizontalSizes && stockData.horizontalSizes.length > 0) {
+                setHorizontalRows(
+                    stockData.horizontalSizes.map((h: any) => ({
+                        size: String(h.size || ""),
+                        quantity: String(h.quantity || ""),
+                        unit: h.unit || "ft",
+                    }))
+                );
+            } else {
+                setHorizontalRows([{ size: "", quantity: "", unit: "ft" }]);
+            }
+
+            const catId = stockData.categories_id || stockData.categories?.id;
+            if (catId) {
+                apiClient
+                    .get(`/admin/subCategory/findByid/${catId}`)
+                    .then((res) => {
+                        setSubCategories(res?.data?.results || []);
+                    })
+                    .catch(() => {});
+            }
+        } else {
+            setInventory({});
+            setEnabled(false);
+            setEnabledprice(false);
+            setVerticalEnabled(false);
+            setHorizontalEnabled(false);
+            setVerticalRows([{ size: "", quantity: "", unit: "ft" }]);
+            setHorizontalRows([{ size: "", quantity: "", unit: "ft" }]);
+        }
+    }, [stockData, isOpen]);
 
     // ================= HANDLERS =================
 
@@ -182,19 +252,26 @@ export default function StockModel({ isOpen, closeModal }: any) {
             horizontal_data: horizontalData,
         };
 
-        console.log(payload);
-
         try {
-            const results = await apiClient.post(
-                "/admin/Inverntory/create",
-                payload
-            );
+            if (isEdit) {
+                await apiClient.put(
+                    `/admin/Inverntory/update/${stockData.id}`,
+                    payload
+                );
+                toast.success("Stock updated successfully!");
+            } else {
+                await apiClient.post(
+                    "/admin/Inverntory/create",
+                    payload
+                );
+                toast.success("Stock created successfully!");
+            }
 
-            console.log(results);
-
+            if (onSuccess) onSuccess();
             closeModal();
-        } catch (err) {
-            console.log(err);
+        } catch (err: any) {
+            console.error("Error saving inventory:", err);
+            toast.error(err?.response?.data?.message || "Failed to save stock");
         }
     };
 
@@ -207,7 +284,7 @@ export default function StockModel({ isOpen, closeModal }: any) {
             {/* HEADER */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
                 <h2 className="text-xl font-semibold text-white">
-                    Inventory Stock
+                    {isEdit ? "Edit Inventory Stock" : "Inventory Stock"}
                 </h2>
             </div>
 
@@ -220,6 +297,7 @@ export default function StockModel({ isOpen, closeModal }: any) {
 
                         <select
                             name="ware_house_id"
+                            value={inventory.ware_house_id || 0}
                             onChange={datahandler}
                             className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                         >
@@ -240,6 +318,7 @@ export default function StockModel({ isOpen, closeModal }: any) {
 
                             <select
                                 name="categories_id"
+                                value={inventory.categories_id || 0}
                                 onChange={(e) => {
                                     eventHandler(e);
                                     datahandler(e);
@@ -261,6 +340,7 @@ export default function StockModel({ isOpen, closeModal }: any) {
 
                             <select
                                 name="sub_categories_id"
+                                value={inventory.sub_categories_id || 0}
                                 onChange={datahandler}
                                 className="h-11 w-full rounded-xl border border-gray-300 px-3 dark:bg-gray-900 dark:border-gray-700"
                             >

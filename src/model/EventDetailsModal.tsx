@@ -1,5 +1,6 @@
 import { Modal } from "../components/ui/modal";
 import Detail from "../hooks/Detail";
+import { getStatusLabel, getStatusBadgeClass } from "../utils/eventStatus";
 
 
 interface EventDetails {
@@ -125,12 +126,9 @@ export default function EventDetailsModal({
                 <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow">
                     <span className="text-sm text-gray-600">Status</span>
                     <span
-                        className={`px-3 py-1 text-xs rounded-full font-medium ${data.status === "1"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-red-100 text-red-600"
-                            }`}
+                        className={`px-3 py-1 text-xs rounded-full font-medium border ${getStatusBadgeClass(data.status)}`}
                     >
-                        {data.status === "1" ? "Active" : "Inactive"}
+                        {getStatusLabel(data.status)}
                     </span>
                 </div>
             </div>
