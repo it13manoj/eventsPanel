@@ -38,9 +38,10 @@ import { useEffect, useState } from "react";
 import AvailableStock from "./pages/Dashboard/AvailableStock";
 import SettingPage from "./pages/Settings/SettingPage";
 
+import AdminRoute from "./components/AdminRoute";
+
 export default function App() {
   const [is_enabled, setEnabled] = useState(false);
-
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -66,46 +67,50 @@ export default function App() {
           <Route element={<PrivateRoute />}>
             {/* Dashboard Layout */}
             <Route element={<AppLayout />}>
-              <Route index path="/dashboard" element={<Home />} />
-              <Route path="/companyprofile" element={<CompanyProfile/>}/>
-              <Route path="/availablestock" element={<AvailableStock/>}/>
-              <Route path="/stock" element={<StockPages />} />
+              {/* Common Routes: Staff & Admin */}
               <Route path="/events" element={<EventsList />} />
-              <Route path="/wherehouse" element={<WhereHouse />} />
-              <Route path="/category" element={<Category />} />
-              <Route path="/sub-category" element={<SubCategory />} />
-              <Route path="/owner-vahicle" element={<Owner />} />
-              <Route path="/agency-vehicle" element={<Agency />} />
-              <Route path="/vehicle" element={<Vechicle />} />
-              <Route path="/addvehicle" element={<AddVehicle />} />
-              <Route path="/warehouselist" element={<WareHouseList />} />
-              {/* Others Page */}
               <Route path="/profile" element={<UserProfiles />} />
               <Route path="/setting" element={<SettingPage />} />
-              <Route path="/employeelist" element={<EmployeeList />} />
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/salary" element={<Salary />} />
               <Route path="/calendar" element={<Calendar />} />
-              <Route path="/blank" element={<Blank />} />
-              <Route path="/invoicelist" element={<InvoiceList/>}/>
 
-              {/* Forms */}
-              <Route path="/form-elements" element={<FormElements />} />
+              {/* Admin Only Protected Routes */}
+              <Route element={<AdminRoute />}>
+                <Route index path="/dashboard" element={<Home />} />
+                <Route path="/companyprofile" element={<CompanyProfile />} />
+                <Route path="/availablestock" element={<AvailableStock />} />
+                <Route path="/stock" element={<StockPages />} />
+                <Route path="/wherehouse" element={<WhereHouse />} />
+                <Route path="/category" element={<Category />} />
+                <Route path="/sub-category" element={<SubCategory />} />
+                <Route path="/owner-vahicle" element={<Owner />} />
+                <Route path="/agency-vehicle" element={<Agency />} />
+                <Route path="/vehicle" element={<Vechicle />} />
+                <Route path="/addvehicle" element={<AddVehicle />} />
+                <Route path="/warehouselist" element={<WareHouseList />} />
+                <Route path="/employeelist" element={<EmployeeList />} />
+                <Route path="/invoicelist" element={<InvoiceList />} />
+                <Route path="/blank" element={<Blank />} />
 
-              {/* Tables */}
-              <Route path="/basic-tables" element={<BasicTables />} />
+                {/* Forms */}
+                <Route path="/form-elements" element={<FormElements />} />
 
-              {/* Ui Elements */}
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/avatars" element={<Avatars />} />
-              <Route path="/badge" element={<Badges />} />
-              <Route path="/buttons" element={<Buttons />} />
-              <Route path="/images" element={<Images />} />
-              <Route path="/videos" element={<Videos />} />
+                {/* Tables */}
+                <Route path="/basic-tables" element={<BasicTables />} />
 
-              {/* Charts */}
-              <Route path="/line-chart" element={<LineChart />} />
-              <Route path="/bar-chart" element={<BarChart />} />
+                {/* Ui Elements */}
+                <Route path="/alerts" element={<Alerts />} />
+                <Route path="/avatars" element={<Avatars />} />
+                <Route path="/badge" element={<Badges />} />
+                <Route path="/buttons" element={<Buttons />} />
+                <Route path="/images" element={<Images />} />
+                <Route path="/videos" element={<Videos />} />
+
+                {/* Charts */}
+                <Route path="/line-chart" element={<LineChart />} />
+                <Route path="/bar-chart" element={<BarChart />} />
+              </Route>
             </Route>
           </Route>
           {/* Auth Layout */}

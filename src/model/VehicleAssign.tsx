@@ -22,6 +22,7 @@ import {
   Check
 } from "lucide-react";
 import { EVENT_STATUSES, normalizeStatusCode, getStatusBadgeClass, getStatusLabel } from "../utils/eventStatus";
+import { useAuth } from "../hooks/auth";
 
 interface Agent {
   id: number;
@@ -92,6 +93,7 @@ const STATUS_STAGES = [
 ];
 
 export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdated }: Props) {
+  const { isStaff } = useAuth();
   // Tabs: "assigned" | "new"
   const [activeTab, setActiveTab] = useState<"assigned" | "new">("assigned");
 
@@ -567,7 +569,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
 
   const getImageUrl = (filename: string | null) => {
     if (!filename) return null;
-    if (filename.startsWith("http://") || filename.startsWith("https://")) return filename;
+    if (filename.startsWith("https://") || filename.startsWith("https://")) return filename;
     return `${images.baseUrl}/${filename}`;
   };
 
@@ -676,17 +678,20 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
             </span>
           </button>
 
-          <button
-            onClick={() => setActiveTab("new")}
-            className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
-              activeTab === "new"
-                ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
-                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            <Plus size={17} />
-            Assign New Vehicle
-          </button>
+          {/* Tab buttons */}
+          {!isStaff && (
+            <button
+              onClick={() => setActiveTab("new")}
+              className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
+                activeTab === "new"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <Plus size={17} />
+              Assign New Vehicle
+            </button>
+          )}
 
           <div className="ml-auto pb-3">
             <button
@@ -716,15 +721,19 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                     No Vehicles Assigned Yet
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
-                    Assign an owner or agency vehicle to track loading, venue install time, uninstalling time, and take live photos.
+                    {isStaff
+                      ? "No vehicles assigned to this event yet. An Administrator must assign a vehicle first."
+                      : "Assign an owner or agency vehicle to track loading, venue install time, uninstalling time, and take live photos."}
                   </p>
-                  <button
-                    onClick={() => setActiveTab("new")}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-all"
-                  >
-                    <Plus size={18} />
-                    Assign Vehicle Now
-                  </button>
+                  {!isStaff && (
+                    <button
+                      onClick={() => setActiveTab("new")}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm transition-all"
+                    >
+                      <Plus size={18} />
+                      Assign Vehicle Now
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -796,14 +805,16 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                               </select>
                             </div>
 
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveAssignment(currentMovement.id)}
-                              className="mt-4 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
-                              title="Delete this vehicle assignment"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            {!isStaff && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveAssignment(currentMovement.id)}
+                                className="mt-4 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                title="Delete this vehicle assignment"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            )}
                           </div>
                         </div>
 

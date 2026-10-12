@@ -22,6 +22,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import EventEditModal from "../../model/EventEditModal";
 import { EVENT_STATUSES, normalizeStatusCode, getStatusBadgeClass, getStatusLabel } from "../../utils/eventStatus";
+import { useAuth } from "../../hooks/auth";
 
 interface BookedItem {
     id: number;
@@ -45,6 +46,7 @@ interface Installation {
 
 
 export default function EventsTable() {
+    const { isStaff } = useAuth();
     const [eid, setEId] = useState({
         id: ""
     })
@@ -409,39 +411,47 @@ export default function EventsTable() {
                                 </TableCell>
 
                                 <TableCell className="px-4 py-3 text-start text-theme-sm">
-                                    <select
-                                        value={normalizeStatusCode(rows.status)}
-                                        onChange={(e) => handleUpdateStatus(rows.id, e.target.value)}
-                                        className={`text-xs font-semibold rounded-lg px-2.5 py-1.5 border transition cursor-pointer focus:outline-none ${getStatusBadgeClass(rows.status)}`}
-                                    >
-                                        {EVENT_STATUSES.map((st) => (
-                                            <option key={st.code} value={st.code}>
-                                                {st.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    {isStaff ? (
+                                        <span className={`text-xs font-semibold rounded-lg px-2.5 py-1.5 border inline-block ${getStatusBadgeClass(rows.status)}`}>
+                                            {getStatusLabel(rows.status)}
+                                        </span>
+                                    ) : (
+                                        <select
+                                            value={normalizeStatusCode(rows.status)}
+                                            onChange={(e) => handleUpdateStatus(rows.id, e.target.value)}
+                                            className={`text-xs font-semibold rounded-lg px-2.5 py-1.5 border transition cursor-pointer focus:outline-none ${getStatusBadgeClass(rows.status)}`}
+                                        >
+                                            {EVENT_STATUSES.map((st) => (
+                                                <option key={st.code} value={st.code}>
+                                                    {st.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </TableCell>
 
                                 <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                     <div className="flex items-center gap-2">
-                                        {(teamSizes[rows.id] ?? 0) > 0 ? (
-                                            <span className="rounded-lg bg-green-100 text-green-700 px-2 py-1 text-xs font-medium dark:bg-green-900/30 dark:text-green-300">
-                                                Team Assigned
-                                            </span>
-                                        ) : (
-                                            <button
-                                                className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition"
-                                                title="Assign Team"
-                                                onClick={() => { openModal(); getEventsByID(rows.id); }}
-                                            >
-                                                <HiUserGroup size={16} />
-                                            </button>
+                                        {!isStaff && (
+                                            (teamSizes[rows.id] ?? 0) > 0 ? (
+                                                <span className="rounded-lg bg-green-100 text-green-700 px-2 py-1 text-xs font-medium dark:bg-green-900/30 dark:text-green-300">
+                                                    Team Assigned
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition"
+                                                    title="Assign Team"
+                                                    onClick={() => { openModal(); getEventsByID(rows.id); }}
+                                                >
+                                                    <HiUserGroup size={16} />
+                                                </button>
+                                            )
                                         )}
 
-                                        {/* Assign Vehicle */}
+                                        {/* Assign Vehicle & Stage Updates - Always available for Staff & Admin */}
                                         <button
-                                            className="flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg transition"
-                                            title="Assign Vehicle"
+                                            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition"
+                                            title="Assign Vehicle & Live Stages (Install/Uninstall)"
                                             onClick={() => {
                                                 setSelectedVehicleEventId(rows.id);
                                                 setSelectedTeamId(rows.id);
@@ -449,26 +459,31 @@ export default function EventsTable() {
                                                 setIsOpenvehicle(true);
                                             }}
                                         >
-                                            <FaTruck size={16} />
+                                            <FaTruck size={14} />
+                                            {isStaff ? "Update Vehicle" : ""}
                                         </button>
 
-                                        {/* Edit Event */}
-                                        <button
-                                            className="p-1.5 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition"
-                                            title="Edit Event"
-                                            onClick={() => handleEditEvent(rows)}
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                        </button>
+                                        {!isStaff && (
+                                            <>
+                                                {/* Edit Event */}
+                                                <button
+                                                    className="p-1.5 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition"
+                                                    title="Edit Event"
+                                                    onClick={() => handleEditEvent(rows)}
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
 
-                                        {/* Delete Event */}
-                                        <button
-                                            className="p-1.5 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition"
-                                            title="Delete Event"
-                                            onClick={() => handleDeleteEvent(rows.id)}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                                {/* Delete Event */}
+                                                <button
+                                                    className="p-1.5 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition"
+                                                    title="Delete Event"
+                                                    onClick={() => handleDeleteEvent(rows.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>

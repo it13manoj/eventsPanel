@@ -27,11 +27,25 @@ export default function SignInForm() {
     e.preventDefault();
     try {
       const res = await loginUser(login);
-      console.log();
 
-      localStorage.setItem("token", res.results.token);
+      if (res?.results?.token) {
+        localStorage.setItem("token", res.results.token);
+        if (res.results.user) {
+          localStorage.setItem("user", JSON.stringify(res.results.user));
+          const role = res.results.user.role || (res.results.user.role_id === 2 ? "ADMIN" : "STAFF");
+          localStorage.setItem("role", role);
 
-      navigation("/dashboard");
+          if (role === "STAFF" || role === "USERS") {
+            navigation("/events");
+          } else {
+            navigation("/dashboard");
+          }
+          return;
+        }
+        navigation("/dashboard");
+      } else {
+        alert("Invalid Credentials");
+      }
 
     } catch (err) {
       alert("Invalid Credentials");

@@ -3,8 +3,10 @@ import apiClient from "../../../hooks/api/apiClient";
 import { FaMoneyBillWave } from "react-icons/fa";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useAuth } from "../../../hooks/auth";
 
 export default function Salary() {
+  const { user, isStaff } = useAuth();
   const [openPayModal, setOpenPayModal] = useState(false);
   const [openEditModal, setOpenEditModal] = useState(false);
   const [editingSalary, setEditingSalary] = useState<any>(null);
@@ -26,8 +28,22 @@ export default function Salary() {
   };
 
   useEffect(() => {
-    getEmployeeList();
-  }, []);
+    if (isStaff && user?.id) {
+      // Auto-load logged-in staff member's salary
+      apiClient.get(`/users/findByPk`)
+        .then((res) => {
+          const fullUser = res.data?.user || res.data?.data || user;
+          setSelectedEmployee({ emp: fullUser, shift: fullUser.sifting_type });
+          refreshSalaryForEmployee(fullUser);
+        })
+        .catch(() => {
+          setSelectedEmployee({ emp: user, shift: user.sifting_type });
+          refreshSalaryForEmployee(user);
+        });
+    } else {
+      getEmployeeList();
+    }
+  }, [isStaff, user?.id]);
 
   const refreshSalaryForEmployee = async (emp: any) => {
     try {
@@ -131,37 +147,39 @@ export default function Salary() {
 
   return (
     <div className="grid grid-cols-12 gap-4">
-      {/* Left Side */}
-      <div className="col-span-3 border rounded-xl bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="px-4 py-3 border-b dark:border-gray-800">
-          <h2 className="text-sm font-semibold">Employees</h2>
-        </div>
+      {/* Left Side: Only show for Admin */}
+      {!isStaff && (
+        <div className="col-span-3 border rounded-xl bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="px-4 py-3 border-b dark:border-gray-800">
+            <h2 className="text-sm font-semibold">Employees</h2>
+          </div>
 
-        <div className="divide-y dark:divide-gray-800 max-h-[70vh] overflow-y-auto">
-          {employeeList.map((item: any) => (
-            <div
-              key={item.id}
-              onClick={() => handleClick(item)}
-              className={`px-4 py-3 cursor-pointer transition ${
-                selectedEmployee?.emp?.id === item.id
-                  ? "bg-brand-50 text-brand-600 font-medium dark:bg-brand-900/20"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
-              }`}
-            >
-              <div className="font-medium text-sm">{item.name}</div>
-              <div className="text-xs text-gray-500">{item.email}</div>
-            </div>
-          ))}
+          <div className="divide-y dark:divide-gray-800 max-h-[70vh] overflow-y-auto">
+            {employeeList.map((item: any) => (
+              <div
+                key={item.id}
+                onClick={() => handleClick(item)}
+                className={`px-4 py-3 cursor-pointer transition ${
+                  selectedEmployee?.emp?.id === item.id
+                    ? "bg-brand-50 text-brand-600 font-medium dark:bg-brand-900/20"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                }`}
+              >
+                <div className="font-medium text-sm">{item.name}</div>
+                <div className="text-xs text-gray-500">{item.email}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Right Side */}
-      <div className="col-span-9 border rounded-xl bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+      <div className={`${isStaff ? "col-span-12" : "col-span-9"} border rounded-xl bg-white dark:border-gray-800 dark:bg-white/[0.03]`}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-800">
           <div>
             <h2 className="text-lg font-semibold">
-              {selectedEmployee?.emp?.name || "Select an Employee"}
+              {isStaff ? "My Salary & Payment History" : (selectedEmployee?.emp?.name || "Select an Employee")}
             </h2>
 
             {selectedEmployee?.emp && (
@@ -184,19 +202,21 @@ export default function Salary() {
             )}
           </div>
 
-          {/* Add Pay Button */}
-          <button
-            onClick={() => setOpenPayModal(true)}
-            disabled={!selectedEmployee?.emp}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow transition ${
-              selectedEmployee?.emp
-                ? "bg-brand-500 hover:bg-brand-600 cursor-pointer"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
-          >
-            <FaMoneyBillWave />
-            Add Pay
-          </button>
+          {/* Add Pay Button: Admin Only */}
+          {!isStaff && (
+            <button
+              onClick={() => setOpenPayModal(true)}
+              disabled={!selectedEmployee?.emp}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-white shadow transition ${
+                selectedEmployee?.emp
+                  ? "bg-brand-500 hover:bg-brand-600 cursor-pointer"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <FaMoneyBillWave />
+              Add Pay
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -208,7 +228,7 @@ export default function Salary() {
                 <th className="px-6 py-3 text-left">Paid</th>
                 <th className="px-6 py-3 text-left">Extra Pay</th>
                 <th className="px-6 py-3 text-left">Remaining</th>
-                <th className="px-6 py-3 text-left">Actions</th>
+                {!isStaff && <th className="px-6 py-3 text-left">Actions</th>}
               </tr>
             </thead>
 
@@ -230,30 +250,32 @@ export default function Salary() {
                     <td className="px-6 py-3 text-gray-700 dark:text-gray-300">
                       ₹{row.remaing > 0 ? row.remaing : 0}
                     </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleOpenEdit(row)}
-                          className="text-gray-500 hover:text-brand-500 transition"
-                          title="Edit Payment"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeletePayment(row.id)}
-                          className="text-gray-500 hover:text-red-500 transition"
-                          title="Delete Payment"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {!isStaff && (
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleOpenEdit(row)}
+                            className="text-gray-500 hover:text-brand-500 transition"
+                            title="Edit Payment"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(row.id)}
+                            className="text-gray-500 hover:text-red-500 transition"
+                            title="Delete Payment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-gray-400">
-                    {selectedEmployee?.emp ? "No salary records found for this employee" : "Select an employee to view salary history"}
+                  <td colSpan={isStaff ? 4 : 5} className="text-center py-6 text-gray-400">
+                    {selectedEmployee?.emp ? "No salary records found" : "Select an employee to view salary history"}
                   </td>
                 </tr>
               )}

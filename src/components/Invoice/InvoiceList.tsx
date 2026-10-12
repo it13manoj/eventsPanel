@@ -5,12 +5,26 @@ import {
     Eye,
     FileText,
     X,
+    Truck,
+    Layers,
+    Calendar,
+    MapPin,
+    DollarSign,
+    CheckCircle2,
+    Clock,
+    AlertCircle,
+    Search,
+    RefreshCw,
+    Download,
+    Building2
 } from "lucide-react";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import apiClient from "../../hooks/api/apiClient";
+import images from "../../hooks/api/apiImages";
 import { FaFileInvoiceDollar } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 interface Item {
     bookedEventId: number;
@@ -28,18 +42,42 @@ interface Item {
     horizontalPcs: number;
     verticalUnit: string | null;
     horizontalUnit: string | null;
+    rate?: number;
+    lineTotal?: number;
+}
+
+interface VehicleItem {
+    movementId: number;
+    vehicleId: number;
+    vehicleName: string;
+    vehicleNumber: string;
+    ownerAgency: string;
+    type: string;
+    fuelType: string;
+    fuelQuantity: number;
+    fuelAmount: number;
+    commission: number;
+    totalCost: number;
+    status: string;
 }
 
 interface Data {
     id: string;
+    eventId: number | string;
     customer: string;
     date: string;
     eventDate: string;
+    venue?: string;
     mobile: string;
     address: string;
-    amount: number;
+    itemsSubtotal: number;
+    vehiclesSubtotal: number;
+    amount: number; // Grand Total = itemsSubtotal + vehiclesSubtotal
+    paidAmount: number;
+    unpaidAmount: number;
     status: string;
     items: Item[];
+    vehicles: VehicleItem[];
 }
 
 interface PaymentHistory {
@@ -51,33 +89,74 @@ interface PaymentHistory {
     created_at: string;
     updated_at: string;
 }
+
+interface CompanyInfo {
+    id?: number;
+    companyName: string;
+    email: string;
+    phone: string;
+    website: string;
+    address: string;
+    gstNumber: string;
+    logo: string | null;
+}
+
 export default function InvoiceListPage() {
-    const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+    const [company, setCompany] = useState<CompanyInfo | null>(null);
+    const [selectedInvoice, setSelectedInvoice] = useState<Data | null>(null);
     const [bill, setBill] = useState<number | string>("");
-    const [remaining, setRemaing] = useState<number | "">("");
-    const [billAmount, setBillAmount] = useState<number | "">("");
+    const [payingInvoice, setPayingInvoice] = useState<Data | null>(null);
+    const [remaining, setRemaining] = useState<number | "">("");
     const [invoices, setInvoices] = useState<Data[]>([]);
     const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
-    const getInvoice = async () => {
+    const [loading, setLoading] = useState(false);
+    const [paying, setPaying] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
 
+    const fetchCompany = async () => {
         try {
-
-            const results = await apiClient.get(`/admin/Events/bookedEvents/invoices`)
-
-            setInvoices(results.data.results);
-
-        } catch {
-
+            const results = await apiClient.get(`/admin/Companies/1`);
+            const data = results.data?.data;
+            if (data) {
+                setCompany({
+                    id: data.id || 1,
+                    companyName: data.companyName || "Management Pro",
+                    email: data.email || "",
+                    phone: data.phone || "",
+                    website: data.website || "",
+                    address: data.address || "",
+                    gstNumber: data.gstNumber || "",
+                    logo: data.logo || null,
+                });
+            }
+        } catch (err) {
+            console.error("Failed to load company profile for invoice:", err);
         }
-    }
+    };
+
+    const getInvoice = async () => {
+        setLoading(true);
+        try {
+            const results = await apiClient.get(`/admin/Events/bookedEvents/invoices`);
+            const list: Data[] = results.data?.results || results.data?.data || [];
+            setInvoices(list);
+        } catch (err) {
+            console.error("Failed to fetch invoices", err);
+            toast.error("Failed to load invoices");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        getInvoice()
-    }, [0])
+        getInvoice();
+        fetchCompany();
+    }, []);
 
     const handleCancel = (invoiceId: string) => {
         const confirmCancel = window.confirm(
-            "Are you sure want to cancel invoice?"
+            "Are you sure you want to cancel this invoice?"
         );
 
         if (confirmCancel) {
@@ -88,124 +167,231 @@ export default function InvoiceListPage() {
                         : invoice
                 )
             );
+            toast.info("Invoice marked as cancelled");
         }
     };
 
+    const getPaidBill = async (eventId: string | number) => {
+        try {
+            const cleanId = eventId.toString().replace("INV-", "");
+            const results = await apiClient.get(`/admin/epay/event/${cleanId}`);
+            setPaymentHistory(results.data?.results || []);
+        } catch (err) {
+            console.error("Failed to fetch payment history", err);
+        }
+    };
 
-    //  ---------------------------PDF GENERATOR ------
+    const handleOpenBillPay = (inv: Data) => {
+        setBill(inv.id);
+        setPayingInvoice(inv);
+        setRemaining("");
+        getPaidBill(inv.eventId || inv.id);
+    };
 
-    const downloadPDF = () => {
-        if (!selectedInvoice) return;
+    const PayBill = async () => {
+        if (!payingInvoice) return;
+        const totalPaid =
+            paymentHistory?.reduce(
+                (sum, item) => sum + Number(item.price),
+                0
+            ) || 0;
 
-        // Initialize A4 PDF
+        const totalBill = Number(payingInvoice.amount || 0);
+        const unpaidAmount = Math.max(0, totalBill - totalPaid);
+
+        const payVal = Number(remaining);
+        if (!payVal || payVal <= 0) {
+            toast.warning("Please enter a valid payment amount");
+            return;
+        }
+
+        if (payVal > unpaidAmount) {
+            toast.warning(`Payment cannot exceed unpaid balance of ₹${unpaidAmount.toFixed(2)}`);
+            return;
+        }
+
+        setPaying(true);
+        try {
+            const cleanEventId = payingInvoice.eventId
+                ? String(payingInvoice.eventId)
+                : payingInvoice.id.toString().replace("INV-", "");
+
+            const params = {
+                event_id: cleanEventId,
+                price: payVal,
+                remaining: unpaidAmount - payVal,
+                paid_date: new Date()
+            };
+
+            await apiClient.post(`/admin/epay`, params);
+            toast.success("Payment recorded successfully!");
+            setRemaining("");
+            await getPaidBill(cleanEventId);
+            await getInvoice(); // Refresh all invoices with new paid amounts
+        } catch (err: any) {
+            console.error("Error paying bill:", err);
+            toast.error(err?.response?.data?.message || "Failed to process payment");
+        } finally {
+            setPaying(false);
+        }
+    };
+
+    const getBase64ImageFromUrl = async (imageUrl: string): Promise<string | null> => {
+        try {
+            const res = await fetch(imageUrl);
+            if (!res.ok) return null;
+            const blob = await res.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        } catch {
+            return null;
+        }
+    };
+
+    //  --------------------------- PDF GENERATOR ---------------------------
+    const downloadPDF = async (invoiceToPrint?: Data) => {
+        const inv = invoiceToPrint || selectedInvoice;
+        if (!inv) return;
+
         const pdf = new jsPDF("p", "mm", "a4");
         pdf.setFont("helvetica", "normal");
 
-        // =====================
-        // BRANDING & HEADER
-        // =====================
         // Top primary color accent bar
         pdf.setFillColor(30, 41, 59); // Slate 800
-        pdf.rect(0, 0, 210, 8, "F");
+        pdf.rect(0, 0, 210, 6, "F");
 
-        pdf.setFontSize(22);
+        let logoLoaded = false;
+        if (company?.logo) {
+            try {
+                const logoUrl = `${images.baseUrl}/${company.logo}`;
+                const base64 = await getBase64ImageFromUrl(logoUrl);
+                if (base64) {
+                    const format = company.logo.toLowerCase().endsWith(".png") ? "PNG" : "JPEG";
+                    pdf.addImage(base64, format, 14, 9, 22, 22);
+                    logoLoaded = true;
+                }
+            } catch (e) {
+                console.error("Error drawing logo in PDF:", e);
+            }
+        }
+
+        const companyStartX = logoLoaded ? 39 : 14;
+
+        // Company Name
+        pdf.setFontSize(15);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(30, 41, 59);
-        pdf.text("INVOICE", 14, 25);
+        pdf.text(company?.companyName || "Management Pro", companyStartX, 15);
 
-        // Metadata Right-Aligned
-        pdf.setFontSize(10);
+        // Company Address & Contacts
+        pdf.setFontSize(8);
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(100, 116, 139);
-        pdf.text(`Invoice No: # ${selectedInvoice.id}`, 196, 25, { align: "right" });
+        if (company?.address) {
+            pdf.text(company.address, companyStartX, 20);
+        }
+        const contactLine = [
+            company?.phone ? `Ph: ${company.phone}` : "",
+            company?.email ? `Email: ${company.email}` : ""
+        ].filter(Boolean).join("  |  ");
+        if (contactLine) {
+            pdf.text(contactLine, companyStartX, 25);
+        }
+        if (company?.gstNumber) {
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(51, 65, 85);
+            pdf.text(`GSTIN: ${company.gstNumber}`, companyStartX, 30);
+        }
+
+        // Right Header - Invoice Metadata
+        pdf.setFontSize(18);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(30, 41, 59);
+        pdf.text("TAX INVOICE", 196, 15, { align: "right" });
+
+        pdf.setFontSize(9);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(`Invoice No: ${inv.id}`, 196, 21, { align: "right" });
         pdf.text(
-            `Date: ${new Date(selectedInvoice.date).toLocaleDateString("en-IN")}`,
+            `Date: ${inv.date ? new Date(inv.date).toLocaleDateString("en-IN") : new Date().toLocaleDateString("en-IN")}`,
+            196, 26, { align: "right" }
+        );
+        pdf.text(
+            `Event Date: ${inv.eventDate ? new Date(inv.eventDate).toLocaleDateString("en-IN") : "NA"}`,
             196, 31, { align: "right" }
         );
 
-        // Thin decorative line
+        // Decorative separator line
         pdf.setDrawColor(226, 232, 240);
         pdf.setLineWidth(0.5);
-        pdf.line(14, 37, 196, 37);
+        pdf.line(14, 35, 196, 35);
 
-        // =====================
-        // BILLING DETAILS
-        // =====================
+        // Billing Details
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(71, 85, 105);
-        pdf.text("BILLED TO:", 14, 46);
+        pdf.text("BILLED TO:", 14, 43);
 
         pdf.setFontSize(11);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(15, 23, 42);
-        pdf.text(selectedInvoice.customer, 14, 53);
+        pdf.text(inv.customer || "Valued Customer", 14, 49);
 
-        pdf.setFontSize(10);
+        pdf.setFontSize(9);
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(71, 85, 105);
-        pdf.text(`Address: ${selectedInvoice.address}`, 14, 60);
-        pdf.text(`Mobile:  +91 ${selectedInvoice.mobile}`, 14, 66);
+        pdf.text(`Venue: ${inv.venue || inv.address || "Standard Venue"}`, 14, 55);
+        pdf.text(`Location: ${inv.address || "NA"}`, 14, 60);
 
-        // =====================
-        // DATA COMPUTATION
-        // =====================
-        let grandTotal = 0;
+        // TABLE 1: CALENDAR BOOKED ITEMS (Event Materials)
+        let runningY = 66;
 
-        const tableRows = selectedInvoice.items.map((item: any, index: number) => {
-            // Base base price selection logic
-            let baseAmount = item.vprice && Number(item.vprice) > 0
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(30, 41, 59);
+        pdf.text("1. EVENT MATERIALS & INVENTORY (Calendar)", 14, runningY);
+        runningY += 3;
+
+        let itemsSubtotal = 0;
+        const itemRows = (inv.items || []).map((item: any, index: number) => {
+            const baseAmount = item.rate || (item.vprice && Number(item.vprice) > 0
                 ? Number(item.vprice)
                 : item.hprice && Number(item.hprice) > 0
                     ? Number(item.hprice)
-                    : Number(item.sprice || 0);
+                    : Number(item.sprice || 0));
 
-            // Fixed Math: Using the actual dynamic value cleanly
-            const amount = baseAmount;
-
-            // Dynamic quantity selection logic
-            const quantity = item?.verticalUnit
+            const quantity = item.qty || (item?.verticalUnit
                 ? Number(item?.verticalPcs || 0)
                 : item?.horizontalUnit
                     ? Number(item.horizontalPcs || 0)
-                    : Number(item.qty || 0);
+                    : 1);
 
-            // Multiply by quantity to get correct total per line item
-            const lineTotal = amount;
-            grandTotal += lineTotal;
+            const lineTotal = item.lineTotal !== undefined ? Number(item.lineTotal) : baseAmount;
+            itemsSubtotal += lineTotal;
 
-            const formattedAmount = amount.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            });
-
-            const formattedLineTotal = lineTotal.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-            });
-
-            // Replaced "₹" with "INR" to fix the rendering glitch ('¹' appearing)
             return [
                 index + 1,
                 item.categoryName || "-",
                 item.subCategoryName || "-",
                 quantity,
-                `INR ${formattedAmount}`,
-                `INR ${formattedLineTotal}`,
+                `INR ${baseAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+                `INR ${lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
             ];
         });
 
-        // =====================
-        // DATA TABLE (Adjusted Widths)
-        // =====================
         autoTable(pdf, {
-            startY: 75,
+            startY: runningY,
             theme: "striped",
-            margin: { left: 14, right: 14 }, // Strict bounds checking
+            margin: { left: 14, right: 14 },
             styles: {
                 font: "helvetica",
-                fontSize: 9,
-                cellPadding: 4,
+                fontSize: 8.5,
+                cellPadding: 3,
                 textColor: [51, 65, 85],
             },
             headStyles: {
@@ -213,480 +399,974 @@ export default function InvoiceListPage() {
                 textColor: [15, 23, 42],
                 fontStyle: "bold",
             },
-            alternateRowStyles: {
-                fillColor: [248, 250, 252],
-            },
             head: [[
-                "Sl. No.",
+                "Sl.",
                 "Category",
                 "Sub-Category",
                 "Qty",
-                "Unpaid Rate",
-                "Total",
+                "Rate",
+                "Total Amount",
             ]],
-            body: tableRows,
+            body: itemRows.length > 0 ? itemRows : [[ "-", "No inventory items booked", "-", "-", "-", "INR 0.00" ]],
             columnStyles: {
-                0: { halign: "center", cellWidth: 15 },
-                1: { cellWidth: 35 },
-                2: { cellWidth: 40 },
-                3: { halign: "center", cellWidth: 15 },
-                4: { halign: "right", cellWidth: 38 },
-                5: { halign: "right", cellWidth: 39 },
+                0: { halign: "center", cellWidth: 12 },
+                1: { cellWidth: 45 },
+                2: { cellWidth: 45 },
+                3: { halign: "center", cellWidth: 18 },
+                4: { halign: "right", cellWidth: 30 },
+                5: { halign: "right", cellWidth: 32 },
             },
         });
 
-        // =====================
-        // SUMMARY CARD
-        // =====================
-        const finalY = (pdf as any).lastAutoTable.finalY + 15;
+        runningY = (pdf as any).lastAutoTable.finalY + 8;
 
-        const formattedTotal = grandTotal.toLocaleString("en-IN", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+        // TABLE 2: ASSIGNED VEHICLES & LOGISTICS (Vehicle Assign)
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(30, 41, 59);
+        pdf.text("2. VEHICLE ASSIGNMENT & LOGISTICS", 14, runningY);
+        runningY += 3;
+
+        let vehiclesSubtotal = 0;
+        const vehicleRows = (inv.vehicles || []).map((v: VehicleItem, index: number) => {
+            const fuelCost = Number(v.fuelAmount || 0);
+            const charges = Number(v.commission || 0);
+            const total = v.totalCost !== undefined ? Number(v.totalCost) : (fuelCost + charges);
+            vehiclesSubtotal += total;
+
+            const fuelDesc = v.fuelQuantity > 0 ? `${v.fuelQuantity}L ${v.fuelType}` : (v.fuelType || "-");
+
+            return [
+                index + 1,
+                v.vehicleName || "Vehicle",
+                v.vehicleNumber || "-",
+                v.ownerAgency || v.type || "Owner",
+                fuelDesc,
+                `INR ${fuelCost.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+                `INR ${charges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+                `INR ${total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+            ];
         });
 
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(15, 23, 42);
-        pdf.text(`Grand Total: INR ${formattedTotal}`, 196, finalY, { align: "right" });
+        autoTable(pdf, {
+            startY: runningY,
+            theme: "striped",
+            margin: { left: 14, right: 14 },
+            styles: {
+                font: "helvetica",
+                fontSize: 8.5,
+                cellPadding: 3,
+                textColor: [51, 65, 85],
+            },
+            headStyles: {
+                fillColor: [241, 245, 249],
+                textColor: [15, 23, 42],
+                fontStyle: "bold",
+            },
+            head: [[
+                "Sl.",
+                "Vehicle",
+                "Vehicle No",
+                "Agency / Owner",
+                "Fuel Info",
+                "Fuel Cost",
+                "Charges",
+                "Total Cost"
+            ]],
+            body: vehicleRows.length > 0 ? vehicleRows : [[ "-", "No vehicles assigned", "-", "-", "-", "-", "-", "INR 0.00" ]],
+            columnStyles: {
+                0: { halign: "center", cellWidth: 10 },
+                1: { cellWidth: 32 },
+                2: { cellWidth: 28 },
+                3: { cellWidth: 30 },
+                4: { cellWidth: 26 },
+                5: { halign: "right", cellWidth: 26 },
+                6: { halign: "right", cellWidth: 20 },
+                7: { halign: "right", cellWidth: 20 },
+            },
+        });
 
-        // Status Indicator Badge
-        pdf.setFontSize(10);
+        // SUMMARY CARD
+        const finalY = (pdf as any).lastAutoTable.finalY + 8;
+        const grandTotal = itemsSubtotal + vehiclesSubtotal;
+        const paidAmount = Number(inv.paidAmount || 0);
+        const unpaidAmount = Math.max(0, grandTotal - paidAmount);
+
+        pdf.setFillColor(248, 250, 252);
+        pdf.roundedRect(120, finalY, 76, 32, 2, 2, "F");
+        pdf.setDrawColor(226, 232, 240);
+        pdf.roundedRect(120, finalY, 76, 32, 2, 2, "D");
+
+        pdf.setFontSize(8.5);
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(71, 85, 105);
-        // pdf.text(`Payment Status: ${selectedInvoice.status.toUpperCase()}`, 196, finalY + 7, { align: "right" });
 
-        // =====================
-        // FOOTER (Sticky-Bottom Style)
-        // =====================
-        const pageHeight = pdf.internal.pageSize.height;
+        pdf.text("Event Materials Subtotal:", 124, finalY + 6);
+        pdf.text(`INR ${itemsSubtotal.toFixed(2)}`, 192, finalY + 6, { align: "right" });
 
-        // Bottom separating accent line
-        pdf.setDrawColor(241, 245, 249);
-        pdf.line(14, pageHeight - 25, 196, pageHeight - 25);
+        pdf.text("Vehicle Logistics Subtotal:", 124, finalY + 12);
+        pdf.text(`INR ${vehiclesSubtotal.toFixed(2)}`, 192, finalY + 12, { align: "right" });
 
-        pdf.setFontSize(9);
-        pdf.setTextColor(148, 163, 184);
-        pdf.setFont("helvetica", "italic");
-        pdf.text("Thank you for choosing us for your business!", 14, pageHeight - 18);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(15, 23, 42);
+        pdf.text("Grand Total Bill:", 124, finalY + 18);
+        pdf.text(`INR ${grandTotal.toFixed(2)}`, 192, finalY + 18, { align: "right" });
 
         pdf.setFont("helvetica", "normal");
-        pdf.text("Generated by ABC Event Management", 196, pageHeight - 18, { align: "right" });
+        pdf.setTextColor(22, 163, 74); // green
+        pdf.text("Paid to Date:", 124, finalY + 24);
+        pdf.text(`INR ${paidAmount.toFixed(2)}`, 192, finalY + 24, { align: "right" });
 
-        // Save output PDF file
-        pdf.save(`Invoice_${selectedInvoice.id}.pdf`);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(220, 38, 38); // red
+        pdf.text("Balance Due / Unpaid:", 124, finalY + 29);
+        pdf.text(`INR ${unpaidAmount.toFixed(2)}`, 192, finalY + 29, { align: "right" });
+
+        // Footer
+        const pageHeight = pdf.internal.pageSize.height;
+        pdf.setDrawColor(241, 245, 249);
+        pdf.line(14, pageHeight - 16, 196, pageHeight - 16);
+
+        pdf.setFontSize(8);
+        pdf.setTextColor(148, 163, 184);
+        pdf.setFont("helvetica", "italic");
+        pdf.text("Thank you for choosing us for your event management!", 14, pageHeight - 10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Generated by ${company?.companyName || "Management Pro"}`, 196, pageHeight - 10, { align: "right" });
+
+        pdf.save(`Bill_${inv.id}.pdf`);
+        toast.success(`Invoice ${inv.id} PDF downloaded!`);
     };
 
+    // Filtered Invoices
+    const filteredInvoices = invoices.filter((inv) => {
+        const matchesSearch =
+            inv.customer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.venue?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            inv.address?.toLowerCase().includes(searchTerm.toLowerCase());
 
+        const matchesStatus =
+            statusFilter === "ALL" ||
+            inv.status?.toUpperCase() === statusFilter.toUpperCase();
 
-    const PayBill = async () => {
-        const totalPaid =
-            paymentHistory?.reduce(
-                (sum, item) => sum + Number(item.price),
-                0
-            ) || 0;
-
-        // Remaining amount
-        const unpaidAmount = Number(billAmount) - totalPaid;
-        try {
-            const params = {
-                event_id: bill.toString().replace("INV-", ""),
-                price: Number(remaining),
-                remaining: unpaidAmount-Number(remaining),
-                paid_date: new Date()
-            }
-
-            await apiClient.post(`/admin/epay`, params)
-            getPaidBill();
-            setRemaing("");
-        } catch {
-
-        }
-
-    }
-
-    const getPaidBill = async () => {
-        try {
-            const event_id = bill.toString().replace("INV-", "")
-
-            const results = await apiClient.get(`/admin/epay/event/${event_id}`,)
-            console.log(results);
-            setPaymentHistory(results.data.results || []);
-        } catch {
-
-        }
-    }
-
-    useEffect(() => {
-        getPaidBill();
-    }, [bill])
-
-
+        return matchesSearch && matchesStatus;
+    });
 
     return (
-        <div className="p-6 bg-gray-100 min-h-screen">
+        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen">
             {/* Header */}
-            <div className="flex items-center gap-2 mb-5">
-                <FileText className="text-blue-600" />
-                <h1 className="text-2xl font-bold">
-                    Invoice List
-                </h1>
-            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3.5">
+                    {company?.logo ? (
+                        <img
+                            src={`${images.baseUrl}/${company.logo}`}
+                            alt={company.companyName}
+                            className="h-14 w-14 object-contain rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-1.5 shadow-sm"
+                        />
+                    ) : (
+                        <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-md">
+                            <Building2 size={26} />
+                        </div>
+                    )}
+                    <div>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
+                                {company?.companyName || "Invoice & Billing Panel"}
+                            </h1>
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-semibold">
+                                Invoice & Billing
+                            </span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            {company?.address ? `${company.address} • ` : ""}
+                            {company?.phone ? `Tel: ${company.phone} • ` : ""}
+                            {company?.gstNumber ? `GST: ${company.gstNumber}` : "Consolidated Event Billing"}
+                        </p>
+                    </div>
+                </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-blue-600 text-white">
-                        <tr>
-                            <th className="p-3 text-left">Invoice No</th>
-                            <th className="p-3 text-left">Customer</th>
-                            <th className="p-3 text-left">Booking Date</th>
-                            <th className="p-3 text-left">Total</th>
-                            <th className="p-3 text-left">Unpaid</th>
-                            <th className="p-3 text-left">Pay</th>
-                            <th className="p-3 text-center">Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {invoices && invoices?.map((invoice, index) => (
-                            <tr
-                                key={invoice.id}
-                                className={`border-b ${index % 2 === 0
-                                    ? "bg-gray-50"
-                                    : "bg-white"
-                                    }`}
-                            >
-                                <td className="p-3">{invoice.id}</td>
-                                <td className="p-3">{invoice.customer}</td>
-                                <td className="p-3">{invoice.date}</td>
-                                <td className="p-3">
-                                    ₹ {invoice.amount}
-                                </td>
-                                <td className="p-3">
-                                    ₹ {invoice.amount}
-                                </td>
-                                <td>
-
-                                    <button className="flex items-center gap-1 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm" onClick={() => setBill(invoice.id)}>
-                                        <FaFileInvoiceDollar />
-                                        Bill Pay
-                                    </button>
-                                </td>
-                                <td className="p-3">
-                                    <div className="flex justify-center gap-2">
-
-
-                                        {/* View Button */}
-                                        <button
-                                            onClick={() => setSelectedInvoice(invoice)}
-                                            className="flex items-center gap-1 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm"
-                                        >
-                                            <Eye size={16} />
-                                            View
-                                        </button>
-
-                                        {/* Cancel Button */}
-                                        {invoice.status !== "Cancelled" && (
-                                            <button
-                                                onClick={() => handleCancel(invoice.id)}
-                                                className="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm"
-                                            >
-                                                <XCircle size={16} />
-                                                Cancel
-                                            </button>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Popup Modal */}
-            {selectedInvoice && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center" >
-
-                    <div
-                        id="invoice-print"
-                        className="bg-white w-full max-w-6xl rounded-xl shadow-lg p-6 relative"
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={getInvoice}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold shadow-sm transition-all"
                     >
+                        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                        Refresh
+                    </button>
+                </div>
+            </div>
 
-                        {/* Close Button */}
+            {/* Top Stat Highlights */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total Invoices</p>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{invoices.length}</h3>
+                    </div>
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl">
+                        <FileText size={22} />
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total Billed</p>
+                        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+                            ₹ {invoices.reduce((sum, i) => sum + Number(i.amount || 0), 0).toLocaleString("en-IN")}
+                        </h3>
+                    </div>
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-xl">
+                        <DollarSign size={22} />
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Total Collected</p>
+                        <h3 className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                            ₹ {invoices.reduce((sum, i) => sum + Number(i.paidAmount || 0), 0).toLocaleString("en-IN")}
+                        </h3>
+                    </div>
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                        <CheckCircle2 size={22} />
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Balance Due</p>
+                        <h3 className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
+                            ₹ {invoices.reduce((sum, i) => sum + Number(i.unpaidAmount || 0), 0).toLocaleString("en-IN")}
+                        </h3>
+                    </div>
+                    <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-xl">
+                        <Clock size={22} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="relative w-full sm:w-80">
+                    <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Search invoice, customer, venue..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {["ALL", "UNPAID", "PARTIAL", "PAID"].map((status) => (
                         <button
-                            onClick={() => setSelectedInvoice(null)}
-                            className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                statusFilter === status
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                            }`}
                         >
-                            <X size={22} />
+                            {status}
                         </button>
+                    ))}
+                </div>
+            </div>
 
-                        {/* Invoice Header */}
-                        <div className="flex justify-between items-center mb-5">
-                            <h2 className="text-2xl font-bold text-blue-600">
-                                Invoice Details
-                            </h2>
-                        </div>
+            {/* Invoices Table */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="bg-gray-100/75 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                                <th className="p-3.5">Invoice No</th>
+                                <th className="p-3.5">Customer & Venue</th>
+                                <th className="p-3.5">Event Date</th>
+                                <th className="p-3.5 text-right">Items Subtotal</th>
+                                <th className="p-3.5 text-right">Vehicle Logistics</th>
+                                <th className="p-3.5 text-right">Total Bill</th>
+                                <th className="p-3.5 text-right">Balance Due</th>
+                                <th className="p-3.5 text-center">Status</th>
+                                <th className="p-3.5 text-center">Actions</th>
+                            </tr>
+                        </thead>
 
-                        {/* Invoice Info */}
-                        <div className="grid grid-cols-2 gap-4 mb-5">
-                            <div>
-                                <p>
-                                    <strong>Invoice No:</strong>{" "}
-                                    {selectedInvoice.id}
-                                </p>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                            {filteredInvoices.length > 0 ? (
+                                filteredInvoices.map((inv) => {
+                                    const total = Number(inv.amount || 0);
+                                    const unpaid = Number(inv.unpaidAmount || 0);
+                                    const itemsTotal = Number(inv.itemsSubtotal || 0);
+                                    const vehicleTotal = Number(inv.vehiclesSubtotal || 0);
+                                    const isPaid = unpaid <= 0 && total > 0;
+                                    const isPartial = inv.paidAmount > 0 && unpaid > 0;
 
-                                <p>
-                                    <strong>Customer:</strong>{" "}
-                                    {selectedInvoice.customer}
-                                </p>
-
-                                <p>
-                                    <strong>Address:</strong>{" "}
-                                    {selectedInvoice.address}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p>
-                                    <strong>Date:</strong>{" "}
-                                    {selectedInvoice.date}
-                                </p>
-
-                                <p>
-                                    <strong>Mobile:</strong>{" "}
-                                    {selectedInvoice.mobile}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Product Table */}
-                        <table className="w-full border">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="border p-2 text-left">
-                                        Sl.No
-                                    </th>
-                                    <th className="border p-2 text-left">
-                                        Categories
-                                    </th>
-                                    <th className="border p-2 text-left">
-                                        Sub-Categories
-                                    </th>
-                                    <th className="border p-2 text-center">
-                                        Qty
-                                    </th>
-
-                                    <th className=" hidden border p-2 text-center">
-                                        Unpaid
-                                    </th>
-
-                                    <th className="border p-2 text-center">
-                                        Total
-                                    </th>
-
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {selectedInvoice.items.map(
-                                    (item: any, i: number) => (
-                                        <tr key={i}>
-                                            <td className="border p-2">
-                                                {i + 1}
-                                            </td>
-                                            <td className="border p-2">
-                                                {item.categoryName}
+                                    return (
+                                        <tr
+                                            key={inv.id}
+                                            className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors"
+                                        >
+                                            <td className="p-3.5 font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                                                {inv.id}
                                             </td>
 
-                                            <td className="border p-2 text-center">
-                                                {item.subCategoryName}
-                                            </td>
-                                            <td className="border p-2 text-center">
-                                                {item?.verticalUnit ? item?.verticalPcs : item?.horizontalUnit ? item.horizontalPcs : item.qty}
+                                            <td className="p-3.5">
+                                                <div className="font-semibold text-gray-900 dark:text-white">
+                                                    {inv.customer || "Customer"}
+                                                </div>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                                                    <MapPin size={12} />
+                                                    {inv.venue || inv.address || "Venue"}
+                                                </div>
                                             </td>
 
-                                            <td className=" hidden border p-2 text-center">
-                                                ₹ {Number(item.vprice) > 0 ? item.vprice : Number(item.hprice) > 0 ? item.hprice : item.sprice}
+                                            <td className="p-3.5 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar size={13} />
+                                                    {inv.eventDate ? new Date(inv.eventDate).toLocaleDateString("en-IN", {
+                                                        day: "numeric",
+                                                        month: "short",
+                                                        year: "numeric"
+                                                    }) : "NA"}
+                                                </div>
                                             </td>
 
-                                            <td className="border p-2 text-center">
-                                                ₹ {Number(item.vprice) > 0 ? item.vprice : Number(item.hprice) > 0 ? item.hprice : item.sprice}
+                                            <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
+                                                <div className="flex items-center justify-end gap-1 text-xs">
+                                                    <Layers size={13} className="text-blue-500" />
+                                                    ₹ {itemsTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </div>
+                                                <span className="text-[10px] text-gray-400">
+                                                    ({inv.items?.length || 0} items)
+                                                </span>
                                             </td>
-                                            {/* Payment Status Column */}
 
+                                            <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
+                                                <div className="flex items-center justify-end gap-1 text-xs">
+                                                    <Truck size={13} className="text-amber-500" />
+                                                    ₹ {vehicleTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </div>
+                                                <span className="text-[10px] text-gray-400">
+                                                    ({inv.vehicles?.length || 0} vehicles)
+                                                </span>
+                                            </td>
+
+                                            <td className="p-3.5 text-right font-bold text-gray-900 dark:text-white text-base">
+                                                ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </td>
+
+                                            <td className="p-3.5 text-right font-bold whitespace-nowrap">
+                                                <span
+                                                    className={`px-2 py-0.5 rounded-lg text-xs ${
+                                                        unpaid > 0
+                                                            ? "text-red-700 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
+                                                            : "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                                    }`}
+                                                >
+                                                    ₹ {unpaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </td>
+
+                                            <td className="p-3.5 text-center">
+                                                <span
+                                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                                                        isPaid
+                                                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                                            : isPartial
+                                                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                                                : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                                                    }`}
+                                                >
+                                                    {isPaid ? "Paid" : isPartial ? "Partial" : "Unpaid"}
+                                                </span>
+                                            </td>
+
+                                            <td className="p-3.5 text-center whitespace-nowrap">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    {/* Quick Bill Pay */}
+                                                    <button
+                                                        onClick={() => handleOpenBillPay(inv)}
+                                                        title="Pay Bill"
+                                                        className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
+                                                    >
+                                                        <FaFileInvoiceDollar size={13} />
+                                                        Pay
+                                                    </button>
+
+                                                    {/* View Modal */}
+                                                    <button
+                                                        onClick={() => setSelectedInvoice(inv)}
+                                                        title="View Bill Details"
+                                                        className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg transition-all"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+
+                                                    {/* Direct PDF Download */}
+                                                    <button
+                                                        onClick={() => downloadPDF(inv)}
+                                                        title="Print / Download PDF"
+                                                        className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                                                    >
+                                                        <Download size={16} />
+                                                    </button>
+
+                                                    {/* Cancel Invoice */}
+                                                    {inv.status !== "Cancelled" && (
+                                                        <button
+                                                            onClick={() => handleCancel(inv.id)}
+                                                            title="Cancel Invoice"
+                                                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg transition-all"
+                                                        >
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
                                         </tr>
-                                    )
-                                )}
-                            </tbody>
-                        </table>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan={9} className="text-center py-12 text-gray-400">
+                                        <AlertCircle size={32} className="mx-auto mb-2 text-gray-300" />
+                                        No invoices found matching your criteria.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                        {/* Total */}
-                        <div className="mt-5 flex justify-between items-center">
-                            <h3 className="text-xl font-bold">
-                                Total Amount:
-                            </h3>
+            {/* ========================================================================= */}
+            {/* VIEW BILL & INVOICE DETAILS MODAL                                         */}
+            {/* ========================================================================= */}
+            {selectedInvoice && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-xs z-999999 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+                    style={{ zIndex: 999999 }}
+                >
+                    <div className="bg-white dark:bg-gray-900 w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-5 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-white/10 backdrop-blur-md">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold flex items-center gap-2">
+                                        Invoice Details & Bill Breakdown
+                                    </h2>
+                                    <p className="text-xs text-blue-100">
+                                        {selectedInvoice.id} • Customer: {selectedInvoice.customer}
+                                    </p>
+                                </div>
+                            </div>
 
-                            <h3 className="text-2xl font-bold text-green-600">
-                                ₹ {selectedInvoice.amount}
-                            </h3>
-                        </div>
-                        <div className="flex justify-center gap-2">
-                            {/* Print Button */}
                             <button
-                                onClick={downloadPDF}
-                                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
+                                onClick={() => setSelectedInvoice(null)}
+                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors text-white"
                             >
-                                <Printer size={18} />
-                                Print
+                                <X size={22} />
                             </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                            {/* Official Company Letterhead / Header */}
+                            <div className="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/40 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    {company?.logo ? (
+                                        <img
+                                            src={`${images.baseUrl}/${company.logo}`}
+                                            alt={company.companyName}
+                                            className="h-16 w-16 object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-1 shadow-xs"
+                                        />
+                                    ) : (
+                                        <div className="h-16 w-16 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                                            <Building2 size={32} />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">
+                                            {company?.companyName || "Management Pro"}
+                                        </h3>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                            {company?.address || "Address not provided"}
+                                        </p>
+                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300 mt-1">
+                                            {company?.phone && (
+                                                <span>
+                                                    Tel: <span className="font-semibold">{company.phone}</span>
+                                                </span>
+                                            )}
+                                            {company?.email && (
+                                                <span>
+                                                    Email: <span className="font-semibold">{company.email}</span>
+                                                </span>
+                                            )}
+                                            {company?.gstNumber && (
+                                                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                                                    GSTIN: {company.gstNumber}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="text-left md:text-right border-t md:border-t-0 pt-3 md:pt-0 border-gray-100 dark:border-gray-800 flex flex-col md:items-end">
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 w-fit">
+                                        TAX INVOICE
+                                    </span>
+                                    <h4 className="text-base font-bold text-gray-900 dark:text-white mt-1.5 font-mono">
+                                        {selectedInvoice.id}
+                                    </h4>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Issued: {selectedInvoice.date ? new Date(selectedInvoice.date).toLocaleDateString("en-IN") : "NA"}
+                                    </p>
+                                    <button
+                                        onClick={() => downloadPDF(selectedInvoice)}
+                                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                                    >
+                                        <Download size={13} />
+                                        Download PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Customer & Event Details Card */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-xs">
+                                <div>
+                                    <span className="text-gray-400 uppercase font-semibold">Customer:</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                        {selectedInvoice.customer}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 uppercase font-semibold">Event Date:</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                        {selectedInvoice.eventDate ? new Date(selectedInvoice.eventDate).toLocaleDateString("en-IN") : "NA"}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 uppercase font-semibold">Venue:</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                        {selectedInvoice.venue || "Venue"}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-400 uppercase font-semibold">Location / Address:</span>
+                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                        {selectedInvoice.address || "NA"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Section 1: Calendar Booked Event Items */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <Layers size={16} className="text-blue-600" />
+                                        1. Event Inventory & Materials (From Calendar)
+                                    </h3>
+                                    <span className="text-xs font-semibold text-gray-500">
+                                        Subtotal: ₹ {Number(selectedInvoice.itemsSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
+                                            <tr>
+                                                <th className="p-2.5 text-center">Sl</th>
+                                                <th className="p-2.5">Category</th>
+                                                <th className="p-2.5">Sub-Category</th>
+                                                <th className="p-2.5 text-center">Qty</th>
+                                                <th className="p-2.5 text-right">Unit Rate</th>
+                                                <th className="p-2.5 text-right">Line Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                            {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                                                selectedInvoice.items.map((item: any, i: number) => {
+                                                    const rate = item.rate || (item.vprice && Number(item.vprice) > 0
+                                                        ? Number(item.vprice)
+                                                        : item.hprice && Number(item.hprice) > 0
+                                                            ? Number(item.hprice)
+                                                            : Number(item.sprice || 0));
+                                                    const lineTotal = item.lineTotal !== undefined ? Number(item.lineTotal) : rate;
+                                                    const qty = item.qty || (item?.verticalUnit ? item?.verticalPcs : item?.horizontalUnit ? item.horizontalPcs : 1);
+
+                                                    return (
+                                                        <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                                                            <td className="p-2.5 text-center text-gray-400">{i + 1}</td>
+                                                            <td className="p-2.5 font-medium text-gray-900 dark:text-white">
+                                                                {item.categoryName || "-"}
+                                                            </td>
+                                                            <td className="p-2.5 text-gray-600 dark:text-gray-300">
+                                                                {item.subCategoryName || "-"}
+                                                            </td>
+                                                            <td className="p-2.5 text-center font-bold">
+                                                                {qty} {item.verticalUnit || item.horizontalUnit || "pcs"}
+                                                            </td>
+                                                            <td className="p-2.5 text-right font-mono">
+                                                                ₹ {rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="p-2.5 text-right font-bold font-mono text-gray-900 dark:text-white">
+                                                                ₹ {lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={6} className="text-center py-4 text-gray-400">
+                                                        No materials booked in calendar.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Section 2: Assigned Vehicles Logistics */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <Truck size={16} className="text-amber-500" />
+                                        2. Assigned Fleet & Logistics (From Vehicle Assign)
+                                    </h3>
+                                    <span className="text-xs font-semibold text-gray-500">
+                                        Subtotal: ₹ {Number(selectedInvoice.vehiclesSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
+                                            <tr>
+                                                <th className="p-2.5 text-center">Sl</th>
+                                                <th className="p-2.5">Vehicle</th>
+                                                <th className="p-2.5">Vehicle No</th>
+                                                <th className="p-2.5">Agency / Driver</th>
+                                                <th className="p-2.5 text-center">Fuel Details</th>
+                                                <th className="p-2.5 text-right">Fuel Cost</th>
+                                                <th className="p-2.5 text-right">Vehicle Charges</th>
+                                                <th className="p-2.5 text-right">Total Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                            {selectedInvoice.vehicles && selectedInvoice.vehicles.length > 0 ? (
+                                                selectedInvoice.vehicles.map((v: VehicleItem, i: number) => {
+                                                    const fuel = Number(v.fuelAmount || 0);
+                                                    const charges = Number(v.commission || 0);
+                                                    const total = v.totalCost !== undefined ? Number(v.totalCost) : (fuel + charges);
+
+                                                    return (
+                                                        <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                                                            <td className="p-2.5 text-center text-gray-400">{i + 1}</td>
+                                                            <td className="p-2.5 font-medium text-gray-900 dark:text-white">
+                                                                {v.vehicleName || "Vehicle"}
+                                                            </td>
+                                                            <td className="p-2.5 font-mono text-gray-600 dark:text-gray-300">
+                                                                {v.vehicleNumber || "-"}
+                                                            </td>
+                                                            <td className="p-2.5 text-gray-600 dark:text-gray-300">
+                                                                {v.ownerAgency || v.type || "Owner"}
+                                                            </td>
+                                                            <td className="p-2.5 text-center text-gray-600 dark:text-gray-400">
+                                                                {v.fuelQuantity > 0 ? `${v.fuelQuantity} L (${v.fuelType})` : (v.fuelType || "-")}
+                                                            </td>
+                                                            <td className="p-2.5 text-right font-mono">
+                                                                ₹ {fuel.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="p-2.5 text-right font-mono">
+                                                                ₹ {charges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="p-2.5 text-right font-bold font-mono text-gray-900 dark:text-white">
+                                                                ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={8} className="text-center py-4 text-gray-400">
+                                                        No vehicles assigned to this event.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Section 3: Consolidated Summary Card */}
+                            <div className="bg-gradient-to-br from-gray-50 to-blue-50/40 dark:from-gray-800/40 dark:to-blue-950/20 p-5 rounded-2xl border border-blue-100 dark:border-gray-700 space-y-2">
+                                <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300">
+                                    <span>Event Materials Subtotal (Calendar):</span>
+                                    <span className="font-semibold font-mono">
+                                        ₹ {Number(selectedInvoice.itemsSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300">
+                                    <span>Vehicle Logistics Subtotal (Assigned Fleet):</span>
+                                    <span className="font-semibold font-mono">
+                                        ₹ {Number(selectedInvoice.vehiclesSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                    <span className="text-base font-bold text-gray-900 dark:text-white">
+                                        Grand Total Bill:
+                                    </span>
+                                    <span className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 font-mono">
+                                        ₹ {Number(selectedInvoice.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+                                    <span>Total Paid to Date:</span>
+                                    <span className="font-mono">
+                                        ₹ {Number(selectedInvoice.paidAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center text-sm text-red-600 dark:text-red-400 font-bold">
+                                    <span>Balance Due / Unpaid:</span>
+                                    <span className="font-mono">
+                                        ₹ {Number(selectedInvoice.unpaidAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="bg-gray-50 dark:bg-gray-800/80 p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <button
+                                onClick={() => setSelectedInvoice(null)}
+                                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Close
+                            </button>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => handleOpenBillPay(selectedInvoice)}
+                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-all"
+                                >
+                                    <FaFileInvoiceDollar size={15} />
+                                    Pay Bill
+                                </button>
+
+                                <button
+                                    onClick={() => downloadPDF(selectedInvoice)}
+                                    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md transition-all"
+                                >
+                                    <Printer size={16} />
+                                    Download / Print PDF Bill
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {bill && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center" >
+            {/* ========================================================================= */}
+            {/* BILL PAY MODAL                                                            */}
+            {/* ========================================================================= */}
+            {bill && payingInvoice && (
+                <div
+                    className="fixed inset-0 bg-black/70 backdrop-blur-xs z-999999 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+                    style={{ zIndex: 999999 }}
+                >
+                    <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-indigo-700 to-purple-800 p-5 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-xl bg-white/10">
+                                    <FaFileInvoiceDollar size={22} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold">Record Bill Payment</h2>
+                                    <p className="text-xs text-indigo-100">
+                                        {payingInvoice.id} • Customer: {payingInvoice.customer}
+                                    </p>
+                                </div>
+                            </div>
 
-                    <div
-                        id="invoice-print"
-                        className="bg-white w-full max-w-6xl rounded-xl shadow-lg p-6 relative"
-                    >
-
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setBill("")}
-                            className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
-                        >
-                            <X size={22} />
-                        </button>
-
-                        {/* Invoice Header */}
-                        <div className="flex justify-between items-center mb-5">
-                            <h2 className="text-2xl font-bold text-blue-600">
-                                Pay Bill
-                            </h2>
+                            <button
+                                onClick={() => {
+                                    setBill("");
+                                    setPayingInvoice(null);
+                                }}
+                                className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-colors"
+                            >
+                                <X size={22} />
+                            </button>
                         </div>
 
-                        {/* Invoice Info */}
+                        <div className="p-6 space-y-6">
+                            {/* Summary Card */}
+                            {(() => {
+                                const totalPaid = paymentHistory?.reduce((sum, item) => sum + Number(item.price), 0) || 0;
+                                const totalBill = Number(payingInvoice.amount || 0);
+                                const unpaid = Math.max(0, totalBill - totalPaid);
 
-                        {/* Product Table */}
-                        <table className="w-full border">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="border p-2 text-left">
-                                        Invoice No
-                                    </th>
-                                    <th className="border p-2 text-left">
-                                        Customer
-                                    </th>
-                                    <th className="border p-2 text-left">
-                                        VENUE
-                                    </th>
-                                    <th className="border p-2 text-center">
-                                        Location Of VENUE
-                                    </th>
-                                    <th className="border p-2 text-center">
-                                        Total
-                                    </th>
-                                    <th className="border p-2 text-center">
-                                        Unpaid
-                                    </th>
-                                    <th className="border p-2 text-center">
-                                        Pay
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {invoices
-                                    ?.filter((row) => row.id === bill)
-                                    .map((row) => {
-                                        // Total paid for this invoice
-                                        const totalPaid =
-                                            paymentHistory?.reduce(
-                                                (sum, item) => sum + Number(item.price),
-                                                0
-                                            ) || 0;
+                                return (
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-center">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase font-semibold">Total Bill Amount</p>
+                                            <h4 className="text-xl font-bold text-gray-900 dark:text-white mt-1">
+                                                ₹ {totalBill.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </h4>
+                                            <span className="text-[10px] text-gray-400">
+                                                (Calendar Items + Vehicle Assign)
+                                            </span>
+                                        </div>
 
-                                        // Remaining amount
-                                        const unpaidAmount = Number(row.amount) - totalPaid;
+                                        <div>
+                                            <p className="text-xs text-emerald-600 uppercase font-semibold">Total Paid to Date</p>
+                                            <h4 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                                                ₹ {totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </h4>
+                                        </div>
 
-                                        return (
-                                            <tr key={row.id}>
-                                                <td className="p-3">{row.id}</td>
-                                                <td className="p-3">{row.customer}</td>
-                                                <td className="p-3"></td>
-                                                <td className="p-3"></td>
+                                        <div>
+                                            <p className="text-xs text-red-600 uppercase font-semibold">Current Unpaid Balance</p>
+                                            <h4 className="text-xl font-bold text-red-600 dark:text-red-400 mt-1">
+                                                ₹ {unpaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </h4>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
-                                                {/* Total Bill */}
-                                                <td className="p-3">
-                                                    ₹ {Number(row.amount).toFixed(2)}
-                                                </td>
+                            {/* Payment Input Form */}
+                            {(() => {
+                                const totalPaid = paymentHistory?.reduce((sum, item) => sum + Number(item.price), 0) || 0;
+                                const totalBill = Number(payingInvoice.amount || 0);
+                                const unpaid = Math.max(0, totalBill - totalPaid);
 
-                                                {/* Remaining Bill */}
-                                                <td className="p-3">
-                                                    ₹ {unpaidAmount.toFixed(2)}
-                                                </td>
+                                return (
+                                    <div className="p-5 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-2">
+                                            Enter Payment Amount (₹)
+                                        </label>
 
-                                                {/* Payment */}
-                                                <td className="p-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <input
-                                                            type="number"
-                                                            className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm"
-                                                            value={remaining}
-                                                            name="remaining"
-                                                            onChange={(e) => {
-                                                                setRemaing(Number(e.target.value));
-                                                                setBillAmount(Number(row.amount));
-                                                            }}
-                                                            max={unpaidAmount}
-                                                            disabled={unpaidAmount <= 0}
-                                                        />
+                                        <div className="flex flex-col sm:flex-row items-center gap-3">
+                                            <div className="relative flex-1 w-full">
+                                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
+                                                <input
+                                                    type="number"
+                                                    value={remaining}
+                                                    onChange={(e) => setRemaining(e.target.value === "" ? "" : Number(e.target.value))}
+                                                    placeholder={`Max unpaid: ₹${unpaid.toFixed(2)}`}
+                                                    max={unpaid}
+                                                    disabled={unpaid <= 0 || paying}
+                                                    className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono font-semibold outline-none focus:ring-2 focus:ring-indigo-500 text-base"
+                                                />
+                                            </div>
 
-                                                        <button
-                                                            className="flex items-center gap-1 bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap"
-                                                            onClick={PayBill}
-                                                            disabled={unpaidAmount <= 0}
-                                                        >
-                                                            <FaFileInvoiceDollar />
-                                                            Pay
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                            <button
+                                                type="button"
+                                                onClick={() => setRemaining(unpaid)}
+                                                disabled={unpaid <= 0 || paying}
+                                                className="px-3 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-indigo-600 hover:bg-gray-50 transition-colors whitespace-nowrap"
+                                            >
+                                                Pay Full Balance
+                                            </button>
+
+                                            <button
+                                                onClick={PayBill}
+                                                disabled={unpaid <= 0 || paying || !remaining}
+                                                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+                                            >
+                                                {paying ? (
+                                                    <>
+                                                        <RefreshCw size={16} className="animate-spin" />
+                                                        Recording...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <FaFileInvoiceDollar size={15} />
+                                                        Record Payment
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Payment History Log */}
+                            <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-2">
+                                    Payment Transaction History
+                                </h4>
+
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
+                                            <tr>
+                                                <th className="p-2.5">Date Paid</th>
+                                                <th className="p-2.5 text-right">Amount Paid</th>
+                                                <th className="p-2.5 text-right">Remaining Balance</th>
                                             </tr>
-                                        );
-                                    })}
-                            </tbody>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                            {paymentHistory && paymentHistory.length > 0 ? (
+                                                paymentHistory.map((item) => (
+                                                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                                                        <td className="p-2.5 text-gray-600 dark:text-gray-400">
+                                                            {new Date(item.paid_date).toLocaleDateString("en-IN", {
+                                                                day: "numeric",
+                                                                month: "short",
+                                                                year: "numeric",
+                                                                hour: "2-digit",
+                                                                minute: "2-digit"
+                                                            })}
+                                                        </td>
+                                                        <td className="p-2.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                                                            + ₹ {Number(item.price).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="p-2.5 text-right font-mono text-gray-700 dark:text-gray-300">
+                                                            ₹ {Number(item.remaining).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={3} className="text-center py-4 text-gray-400">
+                                                        No payments recorded yet for this invoice.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
 
-                        </table>
-                        <table className="w-full border">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="border p-2 text-left">
-                                        Date
-                                    </th>
-                                    <th className="border p-2 text-left">
-                                        Paid
-                                    </th>
-                                    <th className="border p-2 text-left">
-                                        Remaining
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paymentHistory?.map((item) => (
-                                    <tr key={item.id}>
-                                        <td>{new Date(item.paid_date).toLocaleDateString()}</td>
-                                        <td>₹ {Number(item.price).toLocaleString("en-IN")}</td>
-                                        <td>₹ {Number(item.remaining).toLocaleString("en-IN")}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        {/* Total */}
-
+                        {/* Modal Footer */}
+                        <div className="bg-gray-50 dark:bg-gray-800/80 p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setBill("");
+                                    setPayingInvoice(null);
+                                }}
+                                className="px-5 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

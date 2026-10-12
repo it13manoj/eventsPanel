@@ -6,10 +6,11 @@ import {
   ChevronDownIcon,
   HorizontaLDots,
 } from "../icons";
-import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Settings } from "lucide-react";
+import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Settings, User } from "lucide-react";
 import { Truck, FileText } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
+import { useAuth } from "../hooks/auth";
 
 type NavItem = {
   name: string;
@@ -17,6 +18,34 @@ type NavItem = {
   path?: string;
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
+
+const staffNavItems: NavItem[] = [
+  {
+    icon: <ClipboardList />,
+    name: "Events List",
+    path: "/events",
+  },
+  {
+    icon: <CalendarDays />,
+    name: "Attendance",
+    path: "/attendance",
+  },
+  {
+    icon: <Users />,
+    name: "My Salary",
+    path: "/salary",
+  },
+  {
+    icon: <User />,
+    name: "My Profile",
+    path: "/profile",
+  },
+  {
+    icon: <Settings />,
+    name: "Setting",
+    path: "/setting",
+  },
+];
 
 const navItems: NavItem[] = [
   {
@@ -138,7 +167,11 @@ const othersItems: NavItem[] = [
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isStaff } = useAuth();
   const location = useLocation();
+
+  const currentNavItems = isStaff ? staffNavItems : navItems;
+  const currentOthersItems = isStaff ? [] : othersItems;
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
@@ -158,7 +191,7 @@ const AppSidebar: React.FC = () => {
   useEffect(() => {
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+      const items = menuType === "main" ? currentNavItems : currentOthersItems;
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
@@ -380,23 +413,25 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(currentNavItems, "main")}
             </div>
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${!isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "justify-start"
-                  }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  ""
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div>
+            {!isStaff && currentOthersItems.length > 0 && (
+              <div className="">
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${!isExpanded && !isHovered
+                    ? "lg:justify-center"
+                    : "justify-start"
+                    }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    ""
+                  ) : (
+                    <HorizontaLDots />
+                  )}
+                </h2>
+                {renderMenuItems(currentOthersItems, "others")}
+              </div>
+            )}
           </div>
         </nav>
         {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null}

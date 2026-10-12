@@ -220,7 +220,7 @@ export default function CompanyProfile() {
   const getDisplayedLogoUrl = () => {
     if (previewLogoUrl) return previewLogoUrl;
     if (!company.logo) return null;
-    if (company.logo.startsWith("http://") || company.logo.startsWith("https://")) {
+    if (company.logo.startsWith("https://") || company.logo.startsWith("https://")) {
       return company.logo;
     }
     return `${images.baseUrl}/${company.logo}`;
