@@ -6,7 +6,7 @@ import {
   ChevronDownIcon,
   HorizontaLDots,
 } from "../icons";
-import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Settings, User } from "lucide-react";
+import { Users, LayoutDashboard, CalendarDays, Warehouse, ClipboardList, Settings, User, LayoutTemplate } from "lucide-react";
 import { Truck, FileText } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
@@ -63,6 +63,12 @@ const navItems: NavItem[] = [
     icon: <ClipboardList />,
     name: "Events List",
     path: "/events",
+  },
+
+  {
+    icon: <LayoutTemplate />,
+    name: "Event Templates",
+    path: "/templates",
   },
 
   {
@@ -369,7 +375,7 @@ const AppSidebar: React.FC = () => {
         className={`py-4 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
           }`}
       >
-        <Link to="/">
+        <Link to={isStaff ? "/events" : "/dashboard"}>
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <img

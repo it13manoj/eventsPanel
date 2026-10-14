@@ -1,11 +1,28 @@
 import { useEffect, useState } from "react";
 import apiClient from "../../hooks/api/apiClient";
 import { useAuth } from "../../hooks/auth";
-import { Calendar as CalendarIcon, Users, MapPin, CheckCircle2 } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Users,
+  MapPin,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
+  UserX,
+  UserCheck,
+  AlertTriangle,
+  Info,
+  Clock,
+  Zap,
+  Check,
+  Award,
+} from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function Attendance() {
   const { user, isStaff } = useAuth();
   const [attendance, setAttendance] = useState<Record<number, string>>({});
+  const [attendanceOverrides, setAttendanceOverrides] = useState<Record<number, any>>({});
   const [duties, setDuties] = useState<Record<number, any[]>>({});
   const [allAssignments, setAllAssignments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -13,7 +30,21 @@ export default function Attendance() {
   const [selectedUserName, setSelectedUserName] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedDayDuties, setSelectedDayDuties] = useState<{ day: number; records: any[] } | null>(null);
+  const [selectedDayInfo, setSelectedDayInfo] = useState<{
+    day: number;
+    records: any[];
+    status: string;
+    override?: any;
+  } | null>(null);
+  const [overrideReason, setOverrideReason] = useState<string>("");
+  const [submittingOverride, setSubmittingOverride] = useState<boolean>(false);
+  const [shiftConfirmModal, setShiftConfirmModal] = useState<{
+    day: number;
+    targetShift: 2 | 3;
+    hoursWorked: number;
+    shiftName: string;
+    reason: string;
+  } | null>(null);
   const today = new Date();
 
   const daysInMonth = new Date(
@@ -52,12 +83,33 @@ export default function Attendance() {
       setSelectedUser(userId);
       if (name) setSelectedUserName(name);
 
-      const result = await apiClient.get(
-        `/admin/teamAssign/findByUserId/${userId}`
-      );
+      const [teamResult, attendanceResult] = await Promise.all([
+        apiClient.get(`/admin/teamAssign/findByUserId/${userId}`),
+        apiClient
+          .get(
+            `/admin/attendance/findByUserId/${userId}?year=${selectedYear}&month=${selectedMonth + 1}`
+          )
+          .catch(() => ({ data: { data: [] } })),
+      ]);
 
-      const records = result.data.data || [];
+      const records = teamResult.data.data || [];
       setAllAssignments(records);
+
+      const overrides = attendanceResult.data.data || attendanceResult.data.results || [];
+      const overridesMap: Record<number, any> = {};
+      overrides.forEach((ov: any) => {
+        if (!ov.date) return;
+        const parts = String(ov.date).split("T")[0].split("-");
+        if (parts.length === 3) {
+          const yr = parseInt(parts[0], 10);
+          const mo = parseInt(parts[1], 10) - 1;
+          const dy = parseInt(parts[2], 10);
+          if (yr === selectedYear && mo === selectedMonth) {
+            overridesMap[dy] = ov;
+          }
+        }
+      });
+      setAttendanceOverrides(overridesMap);
 
       const attendanceMap: Record<number, string> = {};
       const dutiesMap: Record<number, any[]> = {};
@@ -76,21 +128,20 @@ export default function Attendance() {
         }
       };
 
+      // 1. Mark event duties as Present by default (assigned to event)
       records.forEach((item: any) => {
-        // Mark event date as present
         addDutyForDate(item.eventDate, item);
-
-        // Mark assigned date as present
         addDutyForDate(item.assignedAt, item);
 
-        // Mark date range from presentFromDate to presentToDate
         if (item.presentFromDate && item.presentToDate) {
           const start = new Date(item.presentFromDate);
           const end = new Date(item.presentToDate);
           if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
             const minDate = start <= end ? new Date(start) : new Date(end);
             const maxDate = start <= end ? new Date(end) : new Date(start);
-            const diffDays = Math.round((maxDate.getTime() - minDate.getTime()) / (1000 * 3600 * 24));
+            const diffDays = Math.round(
+              (maxDate.getTime() - minDate.getTime()) / (1000 * 3600 * 24)
+            );
             if (diffDays <= 31) {
               const cur = new Date(minDate);
               while (cur <= maxDate) {
@@ -109,7 +160,7 @@ export default function Attendance() {
         }
       });
 
-      // Fill remaining dates
+      // 2. Fill unassigned dates
       for (let day = 1; day <= daysInMonth; day++) {
         const isCurrentMonth =
           selectedMonth === today.getMonth() &&
@@ -117,8 +168,7 @@ export default function Attendance() {
 
         if (!attendanceMap[day]) {
           if (isCurrentMonth) {
-            attendanceMap[day] =
-              day <= today.getDate() ? "absent" : "future";
+            attendanceMap[day] = day <= today.getDate() ? "absent" : "future";
           } else if (
             selectedYear < today.getFullYear() ||
             (selectedYear === today.getFullYear() && selectedMonth < today.getMonth())
@@ -129,6 +179,15 @@ export default function Attendance() {
           }
         }
       }
+
+      // 3. Apply admin overrides (e.g. absent on specific event days)
+      Object.keys(overridesMap).forEach((dayStr) => {
+        const day = Number(dayStr);
+        const ov = overridesMap[day];
+        if (ov && ov.status) {
+          attendanceMap[day] = ov.status;
+        }
+      });
 
       setAttendance(attendanceMap);
       setDuties(dutiesMap);
@@ -143,10 +202,166 @@ export default function Attendance() {
     }
   }, [selectedMonth, selectedYear]);
 
-  // Total summary counts
+  // Handle Admin marking attendance (absent or present)
+  const handleMarkAttendance = async (day: number, status: "absent" | "present") => {
+    if (!selectedUser) return;
+    try {
+      setSubmittingOverride(true);
+      const m = String(selectedMonth + 1).padStart(2, "0");
+      const d = String(day).padStart(2, "0");
+      const dateStr = `${selectedYear}-${m}-${d}`;
+
+      await apiClient.post("/admin/attendance/mark", {
+        user_id: selectedUser,
+        date: dateStr,
+        status: status,
+        reason:
+          overrideReason ||
+          (status === "absent"
+            ? "Marked absent by admin"
+            : "Marked present by admin"),
+        event_id: selectedDayInfo?.records?.[0]?.event_id || null,
+      });
+
+      toast.success(
+        `Day ${day} marked as ${status.toUpperCase()} successfully!`
+      );
+      setSelectedDayInfo(null);
+      await getDataFoUsers(selectedUser);
+    } catch (error: any) {
+      console.error("Failed to mark attendance:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to update attendance"
+      );
+    } finally {
+      setSubmittingOverride(false);
+    }
+  };
+
+  // Handle Admin resetting attendance override
+  const handleResetAttendance = async (day: number) => {
+    if (!selectedUser) return;
+    try {
+      setSubmittingOverride(true);
+      const m = String(selectedMonth + 1).padStart(2, "0");
+      const d = String(day).padStart(2, "0");
+      const dateStr = `${selectedYear}-${m}-${d}`;
+
+      await apiClient.delete(`/admin/attendance/remove/${selectedUser}/${dateStr}`);
+
+      toast.success(`Day ${day} attendance reset to default assignment!`);
+      setSelectedDayInfo(null);
+      await getDataFoUsers(selectedUser);
+    } catch (error: any) {
+      console.error("Failed to reset attendance:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to reset attendance"
+      );
+    } finally {
+      setSubmittingOverride(false);
+    }
+  };
+
+  // Handle confirming 2nd or 3rd shift when hours completed
+  const handleConfirmShift = async () => {
+    if (!shiftConfirmModal || !selectedUser) return;
+    try {
+      setSubmittingOverride(true);
+      const { day, targetShift, hoursWorked, shiftName, reason } = shiftConfirmModal;
+      const m = String(selectedMonth + 1).padStart(2, "0");
+      const d = String(day).padStart(2, "0");
+      const dateStr = `${selectedYear}-${m}-${d}`;
+
+      await apiClient.post("/admin/attendance/mark", {
+        user_id: selectedUser,
+        date: dateStr,
+        status: "present",
+        shifts_count: targetShift,
+        hours_worked: hoursWorked,
+        shift_name: shiftName,
+        reason:
+          reason ||
+          `Daily shift hours (${empShiftHour}h) completed. Authorized ${shiftName}`,
+        event_id: selectedDayInfo?.records?.[0]?.event_id || null,
+      });
+
+      toast.success(
+        `Day ${day}: ${shiftName} (${hoursWorked}h) confirmed & authorized successfully!`
+      );
+      setShiftConfirmModal(null);
+      setSelectedDayInfo(null);
+      await getDataFoUsers(selectedUser);
+    } catch (error: any) {
+      console.error("Failed to authorize shift:", error);
+      toast.error(error.response?.data?.message || "Failed to authorize shift");
+    } finally {
+      setSubmittingOverride(false);
+    }
+  };
+
+  // Handle resetting back to standard 1st shift
+  const handleResetToStandardShift = async (day: number) => {
+    if (!selectedUser) return;
+    try {
+      setSubmittingOverride(true);
+      const m = String(selectedMonth + 1).padStart(2, "0");
+      const d = String(day).padStart(2, "0");
+      const dateStr = `${selectedYear}-${m}-${d}`;
+
+      await apiClient.post("/admin/attendance/mark", {
+        user_id: selectedUser,
+        date: dateStr,
+        status: "present",
+        shifts_count: 1,
+        hours_worked: empShiftHour,
+        shift_name: "1st Shift",
+        reason: "Reset to standard 1st shift",
+        event_id: selectedDayInfo?.records?.[0]?.event_id || null,
+      });
+
+      toast.success(`Day ${day} reset to standard 1st shift (${empShiftHour}h)!`);
+      setSelectedDayInfo(null);
+      await getDataFoUsers(selectedUser);
+    } catch (error: any) {
+      console.error("Failed to reset shift:", error);
+      toast.error(error.response?.data?.message || "Failed to reset shift");
+    } finally {
+      setSubmittingOverride(false);
+    }
+  };
+
+  // Current employee & shift hours target
+  const currentEmp = isStaff
+    ? user
+    : users.find((u) => u.id === selectedUser);
+  const empShiftHour = Number(currentEmp?.shift_hour) || 8;
+
+  // Total summary counts & shift stats calculation
+  let totalHoursWorked = 0;
+  let totalShiftsCount = 0;
+  let multiShiftCount = 0;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const status = attendance[day];
+    if (status === "present") {
+      const ov = attendanceOverrides[day];
+      const shifts = ov && ov.shifts_count ? Number(ov.shifts_count) : 1;
+      const hours =
+        ov && ov.hours_worked !== undefined && ov.hours_worked !== null
+          ? Number(ov.hours_worked)
+          : shifts * empShiftHour;
+      totalShiftsCount += shifts;
+      totalHoursWorked += hours;
+      if (shifts > 1) {
+        multiShiftCount += 1;
+      }
+    }
+  }
+
   const presentDays = Object.values(attendance).filter((s) => s === "present").length;
   const absentDays = Object.values(attendance).filter((s) => s === "absent").length;
   const dutyDays = Object.keys(duties).length;
+  const overrideCount = Object.keys(attendanceOverrides).length;
 
   return (
     <div className="p-6 space-y-6">
@@ -158,8 +373,8 @@ export default function Attendance() {
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {isStaff
-              ? "View your monthly attendance status and assigned event duty schedule."
-              : `Viewing attendance records for: ${selectedUserName || "Selected Employee"}`}
+              ? `View your monthly attendance status and assigned event duties. Daily Target: ${empShiftHour}h/shift.`
+              : `Viewing attendance for: ${selectedUserName || "Selected Employee"} (Daily Target: ${empShiftHour}h/shift)`}
           </p>
         </div>
 
@@ -169,16 +384,59 @@ export default function Attendance() {
             <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span>
             Present: {presentDays} Days
           </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold">
+            <Clock className="w-3.5 h-3.5" />
+            Total Shifts: {totalShiftsCount} {multiShiftCount > 0 && `(${multiShiftCount} Double/Triple)`}
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-semibold">
+            <Zap className="w-3.5 h-3.5 text-purple-600" />
+            Hours Worked: {totalHoursWorked} hrs
+          </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-semibold">
             <Users className="w-3.5 h-3.5" />
-            Team Assigned Duties: {dutyDays} Days
+            Duties: {dutyDays} Days
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold">
             <span className="w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
             Absent: {absentDays} Days
           </div>
+          {overrideCount > 0 && !isStaff && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+              <span className="w-2.5 h-2.5 bg-amber-500 rounded-full"></span>
+              Admin Overrides: {overrideCount}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Legend & Instructions for Admin */}
+      {!isStaff && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs text-blue-800 dark:text-blue-300">
+          <div className="flex items-center gap-2">
+            <Info size={16} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <span>
+              <strong>Shift & Attendance Guide:</strong> When daily target ({empShiftHour}h) is completed on a present day, click that date to authorize <strong>2nd Shift (Double Shift)</strong> or <strong>3rd Shift (Triple Shift)</strong> with confirmation popup.
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] font-medium flex-wrap">
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> 1st Shift
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 bg-indigo-600 rounded-full"></span> 2nd Shift
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 bg-amber-500 rounded-full"></span> 3rd Shift
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> Absent
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2.5 h-2.5 border-2 border-blue-400 rounded-full"></span> Team Duty
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-12 gap-6">
         {/* User List (Admin Only) */}
@@ -302,49 +560,114 @@ export default function Attendance() {
                 const day = i + 1;
                 const status = attendance[day];
                 const dayDuties = duties[day] || [];
+                const override = attendanceOverrides[day];
+                const shiftsCount = override?.shifts_count
+                  ? Number(override.shifts_count)
+                  : status === "present"
+                  ? 1
+                  : 0;
+                const hoursWorked =
+                  override?.hours_worked !== undefined && override?.hours_worked !== null
+                    ? Number(override.hours_worked)
+                    : status === "present"
+                    ? shiftsCount * empShiftHour
+                    : 0;
 
-                let cellBg = "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700";
+                let cellBg =
+                  "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700";
 
                 if (status === "present") {
-                  cellBg = "bg-emerald-500 text-white border-emerald-600 shadow-sm";
+                  if (shiftsCount >= 3) {
+                    cellBg =
+                      "bg-gradient-to-br from-amber-600 to-amber-700 text-white border-amber-800 shadow-sm";
+                  } else if (shiftsCount === 2) {
+                    cellBg =
+                      "bg-gradient-to-br from-indigo-600 to-purple-600 text-white border-indigo-700 shadow-sm";
+                  } else {
+                    cellBg = "bg-emerald-500 text-white border-emerald-600 shadow-sm";
+                  }
                 } else if (status === "absent") {
-                  cellBg = "bg-rose-500 text-white border-rose-600";
+                  cellBg = "bg-rose-500 text-white border-rose-600 shadow-sm";
                 } else if (status === "future") {
-                  cellBg = "bg-gray-50 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-800";
+                  cellBg =
+                    "bg-gray-50 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-800";
                 }
 
                 return (
                   <div
                     key={day}
                     onClick={() => {
-                      if (dayDuties.length > 0) {
-                        setSelectedDayDuties({ day, records: dayDuties });
-                      }
+                      setSelectedDayInfo({
+                        day,
+                        records: dayDuties,
+                        status: status || "future",
+                        override,
+                      });
+                      setOverrideReason(override?.reason || "");
                     }}
-                    className={`min-h-[75px] sm:min-h-[85px] rounded-xl p-2 flex flex-col justify-between border transition-all ${cellBg} ${
-                      dayDuties.length > 0 ? "ring-2 ring-blue-400 cursor-pointer hover:scale-[1.02]" : ""
+                    className={`min-h-[75px] sm:min-h-[90px] rounded-xl p-2 flex flex-col justify-between border transition-all cursor-pointer hover:scale-[1.02] ${cellBg} ${
+                      override
+                        ? "ring-2 ring-amber-400 dark:ring-amber-300"
+                        : dayDuties.length > 0
+                        ? "ring-1 ring-blue-400"
+                        : ""
                     }`}
                   >
                     <div className="flex justify-between items-center text-xs font-bold">
-                      <span>{day}</span>
-                      {dayDuties.length > 0 && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/25 text-white flex items-center gap-1 font-semibold">
-                          <Users size={11} /> Team
-                        </span>
-                      )}
+                      <span className="text-sm">{day}</span>
+                      <div className="flex items-center gap-1">
+                        {override && (
+                          <span
+                            className="text-[9px] px-1.5 py-0.2 rounded bg-amber-400 text-amber-950 font-bold uppercase tracking-tight"
+                            title="Admin manual override"
+                          >
+                            Admin
+                          </span>
+                        )}
+                        {dayDuties.length > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/25 text-white flex items-center gap-1 font-semibold">
+                            <Users size={11} /> Team
+                          </span>
+                        )}
+                      </div>
                     </div>
 
+                    {/* Shift & Hours Badge */}
+                    {status === "present" && (
+                      <div className="my-1">
+                        {shiftsCount >= 3 ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-black/30 text-amber-200 border border-amber-300/40">
+                            <Zap size={9} className="fill-amber-300 text-amber-300" />
+                            3rd Shift ({hoursWorked}h)
+                          </span>
+                        ) : shiftsCount === 2 ? (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-black/30 text-indigo-100 border border-indigo-300/40">
+                            <Zap size={9} className="fill-indigo-300 text-indigo-300" />
+                            2nd Shift ({hoursWorked}h)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.2 rounded-md bg-black/20 text-emerald-100">
+                            <Clock size={9} />
+                            {hoursWorked}h
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {dayDuties.length > 0 ? (
-                      <div className="mt-1">
+                      <div className="mt-0.5">
                         <p className="text-[10px] font-semibold truncate leading-tight">
                           {dayDuties[0].eventName}
                         </p>
-                        <p className="text-[9px] opacity-80 truncate">
-                          {dayDuties[0].venue || "Event Duty"}
+                        <p className="text-[9px] opacity-90 truncate flex items-center justify-between">
+                          <span>{dayDuties[0].venue || "Event Duty"}</span>
+                          <span className="font-bold uppercase text-[9px] px-1 py-0.2 rounded bg-black/20">
+                            {status}
+                          </span>
                         </p>
                       </div>
                     ) : (
-                      <div className="text-[10px] uppercase font-medium opacity-80">
+                      <div className="text-[10px] uppercase font-semibold opacity-90">
                         {status || ""}
                       </div>
                     )}
@@ -380,7 +703,10 @@ export default function Attendance() {
                     {assign.venue && (
                       <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
                         <MapPin size={13} className="text-gray-400" />
-                        <span>{assign.venue} {assign.venueLocation ? `(${assign.venueLocation})` : ""}</span>
+                        <span>
+                          {assign.venue}{" "}
+                          {assign.venueLocation ? `(${assign.venueLocation})` : ""}
+                        </span>
                       </div>
                     )}
 
@@ -408,49 +734,475 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* Modal for Day Duties details */}
-      {selectedDayDuties && (
+      {/* Modal for Day Attendance & Duty Management */}
+      {selectedDayInfo && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h3 className="font-bold text-lg text-gray-800 dark:text-white">
-                Day {selectedDayDuties.day} - Assigned Event Duty
-              </h3>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg p-6 border border-gray-200 dark:border-gray-800 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
+              <div>
+                <h3 className="font-bold text-lg text-gray-800 dark:text-white">
+                  Day {selectedDayInfo.day} - {new Date(selectedYear, selectedMonth, selectedDayInfo.day).toLocaleDateString("default", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Employee: <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedUserName || "Employee"}</span>
+                </p>
+              </div>
               <button
-                onClick={() => setSelectedDayDuties(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                onClick={() => setSelectedDayInfo(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold p-1"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3">
-              {selectedDayDuties.records.map((rec: any, idx: number) => (
-                <div
-                  key={rec.id || idx}
-                  className="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60"
-                >
-                  <h4 className="font-bold text-blue-600 dark:text-blue-400 text-sm">
-                    {rec.eventName}
-                  </h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex items-center gap-1">
-                    <MapPin size={13} /> {rec.venue || "Venue not specified"}
-                  </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 flex items-center gap-1">
-                      <CheckCircle2 size={12} /> Attendance Status: Present
-                    </span>
-                  </div>
-                </div>
-              ))}
+            {/* Current Attendance Status Badge */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Current Attendance Status:
+              </span>
+              <span
+                className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1.5 ${
+                  selectedDayInfo.status === "present"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
+                    : selectedDayInfo.status === "absent"
+                    ? "bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300"
+                    : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                }`}
+              >
+                {selectedDayInfo.status === "present" && <CheckCircle2 size={13} />}
+                {selectedDayInfo.status === "absent" && <XCircle size={13} />}
+                {selectedDayInfo.status}
+              </span>
             </div>
 
-            <div className="mt-5 text-right">
+            {/* Shift Hours Tracking & Multi-Shift Authorization Card */}
+            {(() => {
+              const dayShifts = selectedDayInfo.override?.shifts_count
+                ? Number(selectedDayInfo.override.shifts_count)
+                : selectedDayInfo.status === "present"
+                ? 1
+                : 0;
+              const dayHours =
+                selectedDayInfo.override?.hours_worked !== undefined &&
+                selectedDayInfo.override?.hours_worked !== null
+                  ? Number(selectedDayInfo.override.hours_worked)
+                  : selectedDayInfo.status === "present"
+                  ? dayShifts * empShiftHour
+                  : 0;
+              const hasCompletedStandard =
+                selectedDayInfo.status === "present" && dayHours >= empShiftHour;
+
+              return (
+                <div className="p-3.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/50 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-blue-600 dark:text-blue-400" />
+                      <span className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        Shift Hours Tracking
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                      Standard Target: <strong>{empShiftHour} hrs/day</strong>
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+                      <span className="text-[10px] text-gray-400 block mb-0.5">Logged Hours</span>
+                      <span className="text-sm font-bold text-gray-800 dark:text-white flex items-center gap-1.5 flex-wrap">
+                        {dayHours} hrs
+                        {dayShifts > 1 && (
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold ${
+                              dayShifts >= 3
+                                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200"
+                                : "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200"
+                            }`}
+                          >
+                            {dayShifts === 2 ? "2nd Shift" : "3rd Shift"}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+                      <span className="text-[10px] text-gray-400 block mb-0.5">Shift Target Status</span>
+                      <span
+                        className={`text-xs font-bold flex items-center gap-1 ${
+                          hasCompletedStandard
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : selectedDayInfo.status === "present"
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {hasCompletedStandard ? (
+                          <>
+                            <CheckCircle2 size={13} /> Target Completed ({dayHours}/{empShiftHour}h)
+                          </>
+                        ) : selectedDayInfo.status === "present" ? (
+                          <>Incomplete ({dayHours}/{empShiftHour}h)</>
+                        ) : (
+                          <>Not Present</>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  {selectedDayInfo.status === "present" && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] text-gray-500 font-medium">
+                        <span>Completion: {Math.round((dayHours / empShiftHour) * 100)}%</span>
+                        <span>
+                          {dayShifts} Shift{dayShifts > 1 ? "s" : ""} Logged
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            dayShifts >= 3
+                              ? "bg-amber-500"
+                              : dayShifts === 2
+                              ? "bg-indigo-600"
+                              : "bg-emerald-500"
+                          }`}
+                          style={{
+                            width: `${Math.min(100, (dayHours / (empShiftHour * 3)) * 100)}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notice when shift hours are completed */}
+                  {hasCompletedStandard && (
+                    <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300 flex items-start gap-2">
+                      <CheckCircle2 size={15} className="text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold">
+                          Daily shift target ({empShiftHour}h) has been completed!
+                        </p>
+                        <p className="text-[11px] opacity-90">
+                          Employee has completed required shift hours. You can authorize a <strong>2nd Shift (Double Shift)</strong> or <strong>3rd Shift (Triple Shift)</strong>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Multi-Shift Action Buttons for Admin */}
+                  {!isStaff && selectedDayInfo.status === "present" && (
+                    <div className="pt-2 border-t dark:border-gray-700/60 flex flex-wrap gap-2">
+                      {dayShifts < 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShiftConfirmModal({
+                              day: selectedDayInfo.day,
+                              targetShift: 2,
+                              hoursWorked: empShiftHour * 2,
+                              shiftName: "2nd Shift (Double Shift)",
+                              reason: `Daily shift hours (${empShiftHour}h) completed. Authorized 2nd Shift.`,
+                            });
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+                        >
+                          <Zap size={14} />
+                          Authorize 2nd Shift ({empShiftHour * 2}h)
+                        </button>
+                      )}
+
+                      {dayShifts === 2 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShiftConfirmModal({
+                              day: selectedDayInfo.day,
+                              targetShift: 3,
+                              hoursWorked: empShiftHour * 3,
+                              shiftName: "3rd Shift (Triple Shift)",
+                              reason: `2nd shift completed. Authorized 3rd Shift for overnight duty.`,
+                            });
+                          }}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+                        >
+                          <Zap size={14} />
+                          Authorize 3rd Shift ({empShiftHour * 3}h)
+                        </button>
+                      )}
+
+                      {dayShifts > 1 && (
+                        <button
+                          type="button"
+                          disabled={submittingOverride}
+                          onClick={() => handleResetToStandardShift(selectedDayInfo.day)}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                        >
+                          <RotateCcw size={13} />
+                          Reset to 1st Shift
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Manual Admin Override Notice */}
+            {selectedDayInfo.override && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertTriangle size={14} className="text-amber-600" />
+                  Admin Override Applied
+                </div>
+                <p>
+                  This date was manually marked as <strong>{selectedDayInfo.override.status.toUpperCase()}</strong> by Admin.
+                </p>
+                {selectedDayInfo.override.reason && (
+                  <p className="opacity-90">
+                    Reason: <em>{selectedDayInfo.override.reason}</em>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Assigned Event Duty Details */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Event Duty Assignment
+              </h4>
+              {selectedDayInfo.records.length > 0 ? (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedDayInfo.records.map((rec: any, idx: number) => (
+                    <div
+                      key={rec.id || idx}
+                      className="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 text-xs space-y-1"
+                    >
+                      <h5 className="font-bold text-blue-600 dark:text-blue-400 text-sm">
+                        {rec.eventName}
+                      </h5>
+                      <p className="text-gray-600 dark:text-gray-300 flex items-center gap-1">
+                        <MapPin size={13} /> {rec.venue || "Venue not specified"}
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        Default Status from Event Assignment: <span className="font-semibold text-emerald-600">Present</span>
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 italic p-2 rounded-lg bg-gray-50 dark:bg-gray-800/30">
+                  No event duty assigned on this date.
+                </p>
+              )}
+            </div>
+
+            {/* Admin Attendance Controls */}
+            {!isStaff && (
+              <div className="pt-2 border-t dark:border-gray-800 space-y-3">
+                <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  Admin Action: Update Attendance
+                </h4>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    Reason / Remarks (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Leave, Absent from site, Medical reason"
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    className="w-full text-xs px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {/* Mark Absent Button */}
+                  {selectedDayInfo.status !== "absent" && (
+                    <button
+                      type="button"
+                      disabled={submittingOverride}
+                      onClick={() => handleMarkAttendance(selectedDayInfo.day, "absent")}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+                    >
+                      <UserX size={14} />
+                      Mark Absent for Day {selectedDayInfo.day}
+                    </button>
+                  )}
+
+                  {/* Mark Present Button */}
+                  {selectedDayInfo.status !== "present" && (
+                    <button
+                      type="button"
+                      disabled={submittingOverride}
+                      onClick={() => handleMarkAttendance(selectedDayInfo.day, "present")}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+                    >
+                      <UserCheck size={14} />
+                      Mark Present for Day {selectedDayInfo.day}
+                    </button>
+                  )}
+
+                  {/* Reset to Default Button (if overridden) */}
+                  {selectedDayInfo.override && (
+                    <button
+                      type="button"
+                      disabled={submittingOverride}
+                      onClick={() => handleResetAttendance(selectedDayInfo.day)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2.5 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                      title="Remove manual override and restore event assignment status"
+                    >
+                      <RotateCcw size={14} />
+                      Reset to Default
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 text-right">
               <button
-                onClick={() => setSelectedDayDuties(null)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl text-sm font-semibold text-gray-700 dark:text-gray-200"
+                type="button"
+                onClick={() => setSelectedDayInfo(null)}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 transition"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Shift Confirmation Popup Modal */}
+      {shiftConfirmModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-800 space-y-4">
+            <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                  <Award size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-gray-800 dark:text-white">
+                    Authorize {shiftConfirmModal.targetShift === 2 ? "2nd Shift (Double)" : "3rd Shift (Triple)"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Shift Hours Completion Confirmation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShiftConfirmModal(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Confirmation message banner */}
+            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Zap size={14} className="text-amber-600" />
+                Shift Hours Completed Confirmation
+              </div>
+              <p>
+                Employee <strong>{selectedUserName}</strong> has completed standard shift hours ({empShiftHour}h) on{" "}
+                <strong>
+                  {new Date(selectedYear, selectedMonth, shiftConfirmModal.day).toLocaleDateString("default", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </strong>.
+              </p>
+              <p className="text-[11px] opacity-90">
+                Confirm authorizing <strong>{shiftConfirmModal.targetShift === 2 ? "2nd Shift (Double Shift)" : "3rd Shift (Triple Shift)"}</strong> for this employee?
+              </p>
+            </div>
+
+            {/* Shift details fields */}
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Shift Title:
+                </label>
+                <input
+                  type="text"
+                  value={shiftConfirmModal.shiftName}
+                  onChange={(e) =>
+                    setShiftConfirmModal({ ...shiftConfirmModal, shiftName: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Total Working Hours to Record (Cumulative):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.5"
+                    min={empShiftHour}
+                    max="24"
+                    value={shiftConfirmModal.hoursWorked}
+                    onChange={(e) =>
+                      setShiftConfirmModal({
+                        ...shiftConfirmModal,
+                        hoursWorked: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <span className="absolute right-3 top-2 text-xs text-gray-400 font-medium">
+                    hours
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 block">
+                  Standard: {empShiftHour}h | 2nd Shift: {empShiftHour * 2}h | 3rd Shift: {empShiftHour * 3}h
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  Authorization Remarks / Reason:
+                </label>
+                <textarea
+                  rows={2}
+                  value={shiftConfirmModal.reason}
+                  onChange={(e) =>
+                    setShiftConfirmModal({ ...shiftConfirmModal, reason: e.target.value })
+                  }
+                  placeholder="e.g. Overtime requested, emergency support completed, extended shift"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => setShiftConfirmModal(null)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={submittingOverride}
+                onClick={handleConfirmShift}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Check size={14} />
+                {submittingOverride ? "Saving..." : `Confirm & Authorize ${shiftConfirmModal.targetShift === 2 ? "2nd" : "3rd"} Shift`}
               </button>
             </div>
           </div>

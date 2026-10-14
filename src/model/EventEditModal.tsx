@@ -12,6 +12,7 @@ interface EventEditModalProps {
 }
 
 export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }: EventEditModalProps) {
+    const [templates, setTemplates] = useState<any[]>([]);
     const [form, setForm] = useState<any>({
         c_name: "",
         vanus: "",
@@ -20,8 +21,32 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
         v_a_d: "",
         nodb: "1",
         amount: "",
-        status: "0"
+        status: "0",
+        template_id: 0,
+        template_name: ""
     });
+
+    const [stockList, setStockList] = useState<any[]>([]);
+
+    useEffect(() => {
+        const fetchTemplatesAndStock = async () => {
+            try {
+                const res = await apiClient.get("/admin/template/all");
+                setTemplates(res.data.results || res.data.data || []);
+            } catch (err) {
+                console.error("Error fetching templates:", err);
+            }
+            try {
+                const stockRes = await apiClient.get("/admin/Inverntory/availableStockSummary");
+                setStockList(stockRes.data?.results || []);
+            } catch (err) {
+                console.warn("Error fetching stock summary:", err);
+            }
+        };
+        if (isOpen) {
+            fetchTemplatesAndStock();
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (eventData && eventData.id) {
@@ -33,7 +58,9 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
                 v_a_d: eventData.v_a_d || "",
                 nodb: eventData.nodb || "1",
                 amount: eventData.amount || "",
-                status: normalizeStatusCode(eventData.status)
+                status: normalizeStatusCode(eventData.status),
+                template_id: eventData.template_id || 0,
+                template_name: eventData.template_name || ""
             });
         }
     }, [eventData, isOpen]);
@@ -44,6 +71,11 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
+        if (!form.template_id) {
+            toast.error("Please select an Event Template (Required as per requirements).");
+            return;
+        }
+
         try {
             const normalizedStatus = normalizeStatusCode(form.status);
             await apiClient.put(`/admin/Events/update/${eventData.id}`, {
@@ -76,6 +108,98 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
                 </h5>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Event Template Dropdown - Not Optional / Required per requirements */}
+                    <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-1.5">
+                        <label className="block text-xs font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
+                            Event Template <span className="text-rose-500 font-extrabold">* (Required per requirements)</span>
+                        </label>
+                        <select
+                            name="template_id"
+                            value={form.template_id || 0}
+                            onChange={(e) => {
+                                const tId = Number(e.target.value);
+                                const found = templates.find((t: any) => t.id === tId);
+                                setForm((prev: any) => ({
+                                    ...prev,
+                                    template_id: tId,
+                                    template_name: found ? found.name : "",
+                                    ...(found && found.total_price ? { amount: String(found.total_price) } : {})
+                                }));
+                                if (found) {
+                                    toast.info(`Applied template "${found.name}" (Amount: ₹${found.total_price})`);
+                                }
+                            }}
+                            required
+                            className="h-11 w-full rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-white"
+                        >
+                            <option value={0}>-- Select Event Template (Required) --</option>
+                            {templates.map((tpl: any) => (
+                                <option key={tpl.id} value={tpl.id}>
+                                    {tpl.name} — (₹{Number(tpl.total_price || 0).toLocaleString()} | {tpl.items?.length || 0} items)
+                                </option>
+                            ))}
+                        </select>
+                        {form.template_name && (
+                            <span className="text-[11px] text-indigo-700 dark:text-indigo-300 block">
+                                Current Active Template: <strong>{form.template_name}</strong>
+                            </span>
+                        )}
+
+                        {/* Live Stock Availability Breakdown */}
+                        {form.template_id > 0 && (() => {
+                            const curTpl = templates.find((t: any) => t.id === Number(form.template_id));
+                            if (!curTpl || !Array.isArray(curTpl.items) || curTpl.items.length === 0) return null;
+                            return (
+                                <div className="mt-2 p-2.5 rounded-lg bg-white/90 dark:bg-gray-900 border border-indigo-200 dark:border-indigo-800 space-y-1.5 text-xs">
+                                    <div className="flex items-center justify-between font-semibold text-indigo-900 dark:text-indigo-300 border-b border-gray-100 dark:border-gray-800 pb-1 text-[11px]">
+                                        <span>📦 Stock Availability for Template Items:</span>
+                                        <span className="text-gray-400 font-normal">Active event deduction applied</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                        {curTpl.items.map((it: any, idx: number) => {
+                                            const matchedStock = stockList.find(
+                                                (s: any) =>
+                                                    Number(s.categories_id) === Number(it.category_id) &&
+                                                    Number(s.sub_categories_id) === Number(it.subcategory_id)
+                                            );
+                                            const total = matchedStock
+                                                ? (matchedStock.total_quantity !== undefined ? matchedStock.total_quantity : matchedStock.quantity)
+                                                : 0;
+                                            const inUse = matchedStock ? (matchedStock.allocated_quantity || 0) : 0;
+                                            const avail = matchedStock
+                                                ? (matchedStock.available_quantity !== undefined ? matchedStock.available_quantity : total)
+                                                : 0;
+                                            const reqQty = Number(it.quantity || 1);
+                                            const hasEnough = avail >= reqQty;
+
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`p-1.5 rounded-md border text-[11px] flex items-center justify-between gap-1.5 ${
+                                                        hasEnough
+                                                            ? "bg-gray-50/60 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700"
+                                                            : "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800"
+                                                    }`}
+                                                >
+                                                    <div className="truncate">
+                                                        <strong className="text-gray-900 dark:text-white">{it.subcategory_name}</strong>
+                                                        <span className="text-[10px] text-gray-500 block">Needs: {reqQty} pcs</span>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <span className={`font-bold ${hasEnough ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                                            {avail} / {total} avail
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 block">({inUse} in use)</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+                    </div>
+
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         {/* Client Name */}
                         <div>

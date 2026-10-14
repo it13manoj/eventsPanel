@@ -44,6 +44,7 @@ interface Item {
     horizontalUnit: string | null;
     rate?: number;
     lineTotal?: number;
+    includedInTemplate?: boolean;
 }
 
 interface VehicleItem {
@@ -70,6 +71,10 @@ interface Data {
     venue?: string;
     mobile: string;
     address: string;
+    templateId?: number | null;
+    templateName?: string;
+    templatePrice?: number;
+    hasTemplate?: boolean;
     itemsSubtotal: number;
     vehiclesSubtotal: number;
     amount: number; // Grand Total = itemsSubtotal + vehiclesSubtotal
@@ -348,41 +353,83 @@ export default function InvoiceListPage() {
         pdf.text(`Venue: ${inv.venue || inv.address || "Standard Venue"}`, 14, 55);
         pdf.text(`Location: ${inv.address || "NA"}`, 14, 60);
 
-        // TABLE 1: CALENDAR BOOKED ITEMS (Event Materials)
+        // TABLE 1: CALENDAR BOOKED ITEMS / TEMPLATE PACKAGE
         let runningY = 66;
+
+        const isTemplate = !!(inv.hasTemplate || inv.templateName || (inv.templatePrice && Number(inv.templatePrice) > 0));
 
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(30, 41, 59);
-        pdf.text("1. EVENT MATERIALS & INVENTORY (Calendar)", 14, runningY);
+        pdf.text(
+            isTemplate ? `1. EVENT PACKAGE & MATERIALS (${inv.templateName || "Template"})` : "1. EVENT MATERIALS & INVENTORY (Calendar)",
+            14,
+            runningY
+        );
         runningY += 3;
 
         let itemsSubtotal = 0;
-        const itemRows = (inv.items || []).map((item: any, index: number) => {
-            const baseAmount = item.rate || (item.vprice && Number(item.vprice) > 0
-                ? Number(item.vprice)
-                : item.hprice && Number(item.hprice) > 0
-                    ? Number(item.hprice)
-                    : Number(item.sprice || 0));
+        let itemRows: any[] = [];
 
-            const quantity = item.qty || (item?.verticalUnit
-                ? Number(item?.verticalPcs || 0)
-                : item?.horizontalUnit
-                    ? Number(item.horizontalPcs || 0)
-                    : 1);
+        if (isTemplate) {
+            const tplPrice = Number(inv.templatePrice || inv.itemsSubtotal || 0);
+            itemsSubtotal = tplPrice;
+            const tplTitle = inv.templateName ? `Template Package: ${inv.templateName}` : "Event Setup Package";
 
-            const lineTotal = item.lineTotal !== undefined ? Number(item.lineTotal) : baseAmount;
-            itemsSubtotal += lineTotal;
+            // Row 1: The consolidated Template Package row showing the template total price
+            itemRows.push([
+                "1",
+                tplTitle,
+                `Full Package (${inv.items?.length || 0} items)`,
+                "1 Pkg",
+                `INR ${tplPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+                `INR ${tplPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+            ]);
 
-            return [
-                index + 1,
-                item.categoryName || "-",
-                item.subCategoryName || "-",
-                quantity,
-                `INR ${baseAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
-                `INR ${lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
-            ];
-        });
+            // Following rows: The individual items listed as inclusions without specific individual item prices
+            (inv.items || []).forEach((item: any, idx: number) => {
+                const quantity = item.qty || (item?.verticalUnit
+                    ? Number(item?.verticalPcs || 0)
+                    : item?.horizontalUnit
+                        ? Number(item.horizontalPcs || 0)
+                        : 1);
+                const unitStr = item.verticalUnit || item.horizontalUnit || "pcs";
+                itemRows.push([
+                    `1.${idx + 1}`,
+                    `  • ${item.categoryName || "Item"}`,
+                    item.subCategoryName || "-",
+                    `${quantity} ${unitStr}`,
+                    "Included",
+                    "Included"
+                ]);
+            });
+        } else {
+            itemRows = (inv.items || []).map((item: any, index: number) => {
+                const baseAmount = item.rate || (item.vprice && Number(item.vprice) > 0
+                    ? Number(item.vprice)
+                    : item.hprice && Number(item.hprice) > 0
+                        ? Number(item.hprice)
+                        : Number(item.sprice || 0));
+
+                const quantity = item.qty || (item?.verticalUnit
+                    ? Number(item?.verticalPcs || 0)
+                    : item?.horizontalUnit
+                        ? Number(item.horizontalPcs || 0)
+                        : 1);
+
+                const lineTotal = item.lineTotal !== undefined ? Number(item.lineTotal) : baseAmount;
+                itemsSubtotal += lineTotal;
+
+                return [
+                    index + 1,
+                    item.categoryName || "-",
+                    item.subCategoryName || "-",
+                    quantity,
+                    `INR ${baseAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+                    `INR ${lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                ];
+            });
+        }
 
         autoTable(pdf, {
             startY: runningY,
@@ -401,7 +448,7 @@ export default function InvoiceListPage() {
             },
             head: [[
                 "Sl.",
-                "Category",
+                isTemplate ? "Package / Category" : "Category",
                 "Sub-Category",
                 "Qty",
                 "Rate",
@@ -501,7 +548,7 @@ export default function InvoiceListPage() {
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(71, 85, 105);
 
-        pdf.text("Event Materials Subtotal:", 124, finalY + 6);
+        pdf.text(isTemplate ? "Template Package Subtotal:" : "Event Materials Subtotal:", 124, finalY + 6);
         pdf.text(`INR ${itemsSubtotal.toFixed(2)}`, 192, finalY + 6, { align: "right" });
 
         pdf.text("Vehicle Logistics Subtotal:", 124, finalY + 12);
@@ -686,7 +733,7 @@ export default function InvoiceListPage() {
                                 <th className="p-3.5">Invoice No</th>
                                 <th className="p-3.5">Customer & Venue</th>
                                 <th className="p-3.5">Event Date</th>
-                                <th className="p-3.5 text-right">Items Subtotal</th>
+                                <th className="p-3.5 text-right">Package / Materials</th>
                                 <th className="p-3.5 text-right">Vehicle Logistics</th>
                                 <th className="p-3.5 text-right">Total Bill</th>
                                 <th className="p-3.5 text-right">Balance Due</th>
@@ -740,9 +787,15 @@ export default function InvoiceListPage() {
                                                     <Layers size={13} className="text-blue-500" />
                                                     ₹ {itemsTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                                 </div>
-                                                <span className="text-[10px] text-gray-400">
-                                                    ({inv.items?.length || 0} items)
-                                                </span>
+                                                {inv.templateName ? (
+                                                    <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 block truncate max-w-[150px] ml-auto" title={inv.templateName}>
+                                                        Tpl: {inv.templateName}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-400">
+                                                        ({inv.items?.length || 0} items)
+                                                    </span>
+                                                )}
                                             </td>
 
                                             <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
@@ -967,73 +1020,161 @@ export default function InvoiceListPage() {
                                 </div>
                             </div>
 
-                            {/* Section 1: Calendar Booked Event Items */}
-                            <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                        <Layers size={16} className="text-blue-600" />
-                                        1. Event Inventory & Materials (From Calendar)
-                                    </h3>
-                                    <span className="text-xs font-semibold text-gray-500">
-                                        Subtotal: ₹ {Number(selectedInvoice.itemsSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                    </span>
-                                </div>
+                            {/* Section 1: Event Materials & Template Package */}
+                            {(() => {
+                                const isModalTemplate = !!(
+                                    selectedInvoice.hasTemplate ||
+                                    selectedInvoice.templateName ||
+                                    (selectedInvoice.templatePrice && Number(selectedInvoice.templatePrice) > 0)
+                                );
+                                const tplTotal = Number(
+                                    selectedInvoice.templatePrice || selectedInvoice.itemsSubtotal || 0
+                                );
 
-                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                                    <table className="w-full text-xs text-left">
-                                        <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
-                                            <tr>
-                                                <th className="p-2.5 text-center">Sl</th>
-                                                <th className="p-2.5">Category</th>
-                                                <th className="p-2.5">Sub-Category</th>
-                                                <th className="p-2.5 text-center">Qty</th>
-                                                <th className="p-2.5 text-right">Unit Rate</th>
-                                                <th className="p-2.5 text-right">Line Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                            {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                                                selectedInvoice.items.map((item: any, i: number) => {
-                                                    const rate = item.rate || (item.vprice && Number(item.vprice) > 0
-                                                        ? Number(item.vprice)
-                                                        : item.hprice && Number(item.hprice) > 0
-                                                            ? Number(item.hprice)
-                                                            : Number(item.sprice || 0));
-                                                    const lineTotal = item.lineTotal !== undefined ? Number(item.lineTotal) : rate;
-                                                    const qty = item.qty || (item?.verticalUnit ? item?.verticalPcs : item?.horizontalUnit ? item.horizontalPcs : 1);
+                                return (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                                <Layers size={16} className="text-blue-600" />
+                                                1. {isModalTemplate ? `Event Materials & Template Package (${selectedInvoice.templateName || "Template"})` : "Event Inventory & Materials (From Calendar)"}
+                                            </h3>
+                                            <span className="text-xs font-semibold text-gray-500">
+                                                Subtotal: ₹ {Number(selectedInvoice.itemsSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
 
-                                                    return (
-                                                        <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                                                            <td className="p-2.5 text-center text-gray-400">{i + 1}</td>
-                                                            <td className="p-2.5 font-medium text-gray-900 dark:text-white">
-                                                                {item.categoryName || "-"}
-                                                            </td>
-                                                            <td className="p-2.5 text-gray-600 dark:text-gray-300">
-                                                                {item.subCategoryName || "-"}
-                                                            </td>
-                                                            <td className="p-2.5 text-center font-bold">
-                                                                {qty} {item.verticalUnit || item.horizontalUnit || "pcs"}
-                                                            </td>
-                                                            <td className="p-2.5 text-right font-mono">
-                                                                ₹ {rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                            </td>
-                                                            <td className="p-2.5 text-right font-bold font-mono text-gray-900 dark:text-white">
-                                                                ₹ {lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        {isModalTemplate && (
+                                            <div className="mb-3 p-3.5 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/30 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="px-2 py-1 rounded-md bg-indigo-600 text-white font-bold text-[10px] tracking-wider uppercase shrink-0">
+                                                        PACKAGE
+                                                    </span>
+                                                    <div>
+                                                        <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-200">
+                                                            {selectedInvoice.templateName || "Event Package Template"}
+                                                        </h4>
+                                                        <p className="text-[11px] text-indigo-700 dark:text-indigo-300">
+                                                            Package total amount applied. Specific stock items are included in this package without separate individual charges.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-left sm:text-right shrink-0">
+                                                    <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 block">
+                                                        Template Total Price
+                                                    </span>
+                                                    <span className="text-base font-extrabold text-indigo-900 dark:text-indigo-100 font-mono">
+                                                        ₹ {tplTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
+                                                    <tr>
+                                                        <th className="p-2.5 text-center">Sl</th>
+                                                        <th className="p-2.5">{isModalTemplate ? "Package / Category" : "Category"}</th>
+                                                        <th className="p-2.5">Sub-Category</th>
+                                                        <th className="p-2.5 text-center">Qty</th>
+                                                        <th className="p-2.5 text-right">Unit Rate</th>
+                                                        <th className="p-2.5 text-right">Line Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                    {isModalTemplate ? (
+                                                        <>
+                                                            {/* Main Template Package Line */}
+                                                            <tr className="bg-indigo-50/70 dark:bg-indigo-950/30 font-semibold border-b border-indigo-100 dark:border-indigo-900/60">
+                                                                <td className="p-2.5 text-center font-bold text-indigo-700 dark:text-indigo-300">1</td>
+                                                                <td className="p-2.5 font-bold text-indigo-950 dark:text-indigo-100">
+                                                                    📦 Template Package: {selectedInvoice.templateName || "Event Package"}
+                                                                </td>
+                                                                <td className="p-2.5 text-indigo-700 dark:text-indigo-300">
+                                                                    Consolidated Event Setup ({selectedInvoice.items?.length || 0} items)
+                                                                </td>
+                                                                <td className="p-2.5 text-center font-bold text-indigo-900 dark:text-indigo-200">
+                                                                    1 Pkg
+                                                                </td>
+                                                                <td className="p-2.5 text-right font-mono font-bold text-indigo-900 dark:text-indigo-200">
+                                                                    ₹ {tplTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                                <td className="p-2.5 text-right font-bold font-mono text-indigo-900 dark:text-indigo-100">
+                                                                    ₹ {tplTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                            </tr>
+
+                                                            {/* Inclusions without separate pricing */}
+                                                            {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                                                                selectedInvoice.items.map((item: any, i: number) => {
+                                                                    const qty = item.qty || (item?.verticalUnit ? item?.verticalPcs : item?.horizontalUnit ? item.horizontalPcs : 1);
+                                                                    return (
+                                                                        <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 text-gray-600 dark:text-gray-300">
+                                                                            <td className="p-2.5 text-center text-gray-400">1.{i + 1}</td>
+                                                                            <td className="p-2.5 font-medium text-gray-800 dark:text-gray-200 pl-5">
+                                                                                • {item.categoryName || "-"}
+                                                                            </td>
+                                                                            <td className="p-2.5">
+                                                                                {item.subCategoryName || "-"}
+                                                                            </td>
+                                                                            <td className="p-2.5 text-center font-medium">
+                                                                                {qty} {item.verticalUnit || item.horizontalUnit || "pcs"}
+                                                                            </td>
+                                                                            <td className="p-2.5 text-right italic text-indigo-600 dark:text-indigo-400 font-medium">
+                                                                                Included in Package
+                                                                            </td>
+                                                                            <td className="p-2.5 text-right italic text-indigo-600 dark:text-indigo-400 font-medium">
+                                                                                Included
+                                                                            </td>
+                                                                        </tr>
+                                                                    );
+                                                                })
+                                                            ) : null}
+                                                        </>
+                                                    ) : selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                                                        selectedInvoice.items.map((item: any, i: number) => {
+                                                            const rate = item.rate || (item.vprice && Number(item.vprice) > 0
+                                                                ? Number(item.vprice)
+                                                                : item.hprice && Number(item.hprice) > 0
+                                                                    ? Number(item.hprice)
+                                                                    : Number(item.sprice || 0));
+                                                            const lineTotal = item.lineTotal !== undefined ? Number(item.lineTotal) : rate;
+                                                            const qty = item.qty || (item?.verticalUnit ? item?.verticalPcs : item?.horizontalUnit ? item.horizontalPcs : 1);
+
+                                                            return (
+                                                                <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                                                                    <td className="p-2.5 text-center text-gray-400">{i + 1}</td>
+                                                                    <td className="p-2.5 font-medium text-gray-900 dark:text-white">
+                                                                        {item.categoryName || "-"}
+                                                                    </td>
+                                                                    <td className="p-2.5 text-gray-600 dark:text-gray-300">
+                                                                        {item.subCategoryName || "-"}
+                                                                    </td>
+                                                                    <td className="p-2.5 text-center font-bold">
+                                                                        {qty} {item.verticalUnit || item.horizontalUnit || "pcs"}
+                                                                    </td>
+                                                                    <td className="p-2.5 text-right font-mono">
+                                                                        ₹ {rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                    </td>
+                                                                    <td className="p-2.5 text-right font-bold font-mono text-gray-900 dark:text-white">
+                                                                        ₹ {lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={6} className="text-center py-4 text-gray-400">
+                                                                No materials booked in calendar.
                                                             </td>
                                                         </tr>
-                                                    );
-                                                })
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan={6} className="text-center py-4 text-gray-400">
-                                                        No materials booked in calendar.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Section 2: Assigned Vehicles Logistics */}
                             <div>
@@ -1110,7 +1251,9 @@ export default function InvoiceListPage() {
                             {/* Section 3: Consolidated Summary Card */}
                             <div className="bg-gradient-to-br from-gray-50 to-blue-50/40 dark:from-gray-800/40 dark:to-blue-950/20 p-5 rounded-2xl border border-blue-100 dark:border-gray-700 space-y-2">
                                 <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300">
-                                    <span>Event Materials Subtotal (Calendar):</span>
+                                    <span>
+                                        {selectedInvoice.hasTemplate ? `Template Package Subtotal (${selectedInvoice.templateName || "Package"}):` : "Event Materials Subtotal (Calendar):"}
+                                    </span>
                                     <span className="font-semibold font-mono">
                                         ₹ {Number(selectedInvoice.itemsSubtotal || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                     </span>

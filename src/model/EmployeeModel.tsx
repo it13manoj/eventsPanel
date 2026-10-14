@@ -18,6 +18,7 @@ export default function EmployeeModel({ isOpen, closeModal, editData, onSuccess 
         gender: "male",
         role_id: 3,
         shift: "Day Shift (9:00 AM - 6:00 PM)",
+        shift_hour: 8,
         address: "",
         city: "",
         state: "",
@@ -40,6 +41,7 @@ export default function EmployeeModel({ isOpen, closeModal, editData, onSuccess 
                 gender: editData.gender || "male",
                 role_id: editData.role_id || 3,
                 shift: editData.shift || (editData.sifting_type === 2 ? "Night Shift (9:00 PM - 6:00 AM)" : "Day Shift (9:00 AM - 6:00 PM)"),
+                shift_hour: editData.shift_hour !== undefined && editData.shift_hour !== null ? editData.shift_hour : 8,
                 address: editData.address || "",
                 city: editData.city || "",
                 state: editData.state || "",
@@ -60,6 +62,7 @@ export default function EmployeeModel({ isOpen, closeModal, editData, onSuccess 
                 gender: "male",
                 role_id: 3,
                 shift: "Day Shift (9:00 AM - 6:00 PM)",
+                shift_hour: 8,
                 address: "",
                 city: "",
                 state: "",
@@ -109,6 +112,7 @@ export default function EmployeeModel({ isOpen, closeModal, editData, onSuccess 
                 const sType = form.shift.toLowerCase().includes("night") ? 2 : 1;
                 formData.append("sifting_type", String(sType));
             }
+            formData.append("shift_hour", String(form.shift_hour !== undefined && form.shift_hour !== "" ? form.shift_hour : 8));
             formData.append("isactive", String(form.isactive));
             if (form.password) formData.append("password", form.password);
             if (file) formData.append("img", file);
@@ -281,7 +285,7 @@ export default function EmployeeModel({ isOpen, closeModal, editData, onSuccess 
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                         {/* Employee Shift */}
                         <div>
                             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -300,6 +304,30 @@ export default function EmployeeModel({ isOpen, closeModal, editData, onSuccess 
                                 <option value="Rotational Shift">Rotational Shift</option>
                                 <option value="Flexible / Event Basis">Flexible / Event Basis</option>
                             </select>
+                        </div>
+
+                        {/* Shift Hours */}
+                        <div>
+                            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                                Shift Hours (Daily Target)
+                            </label>
+                            <div className="relative flex items-center">
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="24"
+                                    step="0.5"
+                                    className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                                    name="shift_hour"
+                                    value={form.shift_hour !== undefined ? form.shift_hour : 8}
+                                    onChange={handleChange}
+                                    placeholder="8"
+                                    required
+                                />
+                                <span className="absolute right-3 text-xs text-gray-400 font-semibold pointer-events-none">
+                                    Hrs
+                                </span>
+                            </div>
                         </div>
 
                         {/* Base Pay */}

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
-import SignIn from "./pages/AuthPages/SignIn";
+import RootRedirect from "./components/RootRedirect";
 import SignUp from "./pages/AuthPages/SignUp";
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
@@ -37,6 +37,7 @@ import InvoiceList from "./components/Invoice/InvoiceList";
 import { useEffect, useState } from "react";
 import AvailableStock from "./pages/Dashboard/AvailableStock";
 import SettingPage from "./pages/Settings/SettingPage";
+import TemplatePage from "./pages/Templates/TemplatePage";
 
 import AdminRoute from "./components/AdminRoute";
 
@@ -91,6 +92,7 @@ export default function App() {
                 <Route path="/warehouselist" element={<WareHouseList />} />
                 <Route path="/employeelist" element={<EmployeeList />} />
                 <Route path="/invoicelist" element={<InvoiceList />} />
+                <Route path="/templates" element={<TemplatePage />} />
                 <Route path="/blank" element={<Blank />} />
 
                 {/* Forms */}
@@ -113,8 +115,10 @@ export default function App() {
               </Route>
             </Route>
           </Route>
-          {/* Auth Layout */}
-          <Route path="/" element={<SignIn />} />
+          {/* Auth & Home Navigation Routes */}
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/login" element={<RootRedirect />} />
+          <Route path="/signin" element={<RootRedirect />} />
           {is_enabled == true &&
             <Route path="/signup" element={<SignUp />} />
           }

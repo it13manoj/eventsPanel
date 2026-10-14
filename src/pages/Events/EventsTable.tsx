@@ -104,7 +104,7 @@ export default function EventsTable() {
         }
     };
     
-    const [events, setEvents] = useState([{
+    const [events, setEvents] = useState<any[]>([{
         "id": 0,
         "c_name": "",
         "vanus": "",
@@ -117,7 +117,9 @@ export default function EventsTable() {
         "sr": "",
         "amount": "",
         "status": "",
-        "created_at": ""
+        "created_at": "",
+        "template_id": 0,
+        "template_name": ""
     }])
 
 
@@ -361,6 +363,11 @@ export default function EventsTable() {
                                     >
                                         {rows?.c_name}
                                     </span>
+                                    {rows?.template_name && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 mt-0.5">
+                                            ⚡ {rows.template_name}
+                                        </span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                     {rows?.vanus}

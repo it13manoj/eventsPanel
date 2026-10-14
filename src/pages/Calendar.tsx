@@ -16,6 +16,8 @@ import AvaliableItems from "../model/AvaliableItems";
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { EVENT_STATUSES, normalizeStatusCode, getStatusColor } from "../utils/eventStatus";
+import { LayoutTemplate, CheckCircle2, Sparkles, RotateCcw } from "lucide-react";
+import { toast } from "react-toastify";
 
 
 
@@ -75,8 +77,24 @@ type StockAddToEventsType = {
   events: any[];
 };
 
+type SizeOption = {
+  size: string;
+  unit: string;
+};
+
+type DimensionSizeData = {
+  vertical: SizeOption[];
+  horizontal: SizeOption[];
+  loading: boolean;
+  loaded?: boolean;
+  error?: string;
+};
+
 const Calendar: React.FC = () => {
   const [isOpens, setIsOpens] = useState(false);
+  const [dimensionSizeData, setDimensionSizeData] = useState<
+    Record<string, DimensionSizeData>
+  >({});
   const [hideAvailableButton, setHideAvailableButton] =
     useState<{ [key: number]: boolean }>({});
   const [stockAddToEvents, setStockAddToEvents] =
@@ -153,8 +171,11 @@ const Calendar: React.FC = () => {
     quntites: 0,
     width: null,
     height: null
+  });
 
-  })
+  const [templatesList, setTemplatesList] = useState<any[]>([]);
+  const [templateId, setTemplateId] = useState<number>(0);
+  const [templateName, setTemplateName] = useState<string>("");
 
   console.log(eventStartDate, eventEndDate, eventLevel);
 
@@ -231,6 +252,10 @@ const Calendar: React.FC = () => {
           (r: any) => r.id === id
         );
 
+        if (selectedSub?.is_enable && updated[lastIndex]?.categories?.id) {
+          loadDimensionSizes(updated[lastIndex].categories.id, id);
+        }
+
         updated[lastIndex] = {
           ...updated[lastIndex],
           subCategories: {
@@ -280,6 +305,153 @@ const Calendar: React.FC = () => {
       return updated;
     });
   };
+
+  const handleDimensionSelect = (
+    index: number,
+    dimension: "vertical" | "horizontal",
+    size: string,
+    unit: string
+  ) => {
+    setAppendsAll((prev: any) => {
+      const updated = [...prev];
+      const prefix = dimension;
+      updated[index] = {
+        ...updated[index],
+        inputs: {
+          ...updated[index].inputs,
+          [`${prefix}Value`]: size,
+          [`${prefix}Unit`]: unit,
+        },
+      };
+      return updated;
+    });
+  };
+
+  const loadDimensionSizes = async (
+    categoryId: number,
+    subCategoryId: number
+  ) => {
+    if (!categoryId || !subCategoryId) return;
+
+    const cacheKey = `${categoryId}:${subCategoryId}`;
+    const cachedData = dimensionSizeData[cacheKey];
+
+    if (cachedData?.loading || cachedData?.loaded) return;
+
+    setDimensionSizeData((prev) => ({
+      ...prev,
+      [cacheKey]: {
+        vertical: prev[cacheKey]?.vertical || [],
+        horizontal: prev[cacheKey]?.horizontal || [],
+        loading: true,
+      },
+    }));
+
+    try {
+      let stocks: any[] = [];
+      try {
+        const response = await apiClient.get(
+          `/admin/Inverntory/findBycategoriesAndSubCategories/${categoryId}/${subCategoryId}`
+        );
+        const raw = response?.data?.results || response?.data?.data || [];
+        stocks = Array.isArray(raw) ? raw : (raw.results || []);
+      } catch (err) {
+        console.warn("findBycategoriesAndSubCategories failed, trying eventStocks", err);
+      }
+
+      if ((!stocks || stocks.length === 0) && dateOfEvent) {
+        try {
+          const fallbackRes = await apiClient.get(
+            `/admin/Inverntory/items/eventStocks/${dateOfEvent}/${categoryId}/${subCategoryId}`
+          );
+          const raw = fallbackRes?.data?.results?.results || fallbackRes?.data?.results || [];
+          stocks = Array.isArray(raw) ? raw : [];
+        } catch (err) {
+          console.warn("Fallback eventStocks also failed", err);
+        }
+      }
+
+      const collectSizes = (dimension: "verticalSizes" | "horizontalSizes") => {
+        const uniqueSizes = new Map<string, SizeOption>();
+
+        stocks.forEach((stock: any) => {
+          (stock[dimension] || []).forEach((size: any) => {
+            if (size.size == null || size.size === "" || !size.unit) return;
+            const option: SizeOption = {
+              size: String(size.size).trim(),
+              unit: String(size.unit).trim(),
+            };
+            uniqueSizes.set(
+              `${option.size.toLowerCase()}_${option.unit.toLowerCase()}`,
+              option
+            );
+          });
+        });
+
+        return Array.from(uniqueSizes.values()).sort((a, b) => {
+          const numA = parseFloat(a.size);
+          const numB = parseFloat(b.size);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+          }
+          return a.size.localeCompare(b.size);
+        });
+      };
+
+      setDimensionSizeData((prev) => ({
+        ...prev,
+        [cacheKey]: {
+          vertical: collectSizes("verticalSizes"),
+          horizontal: collectSizes("horizontalSizes"),
+          loading: false,
+          loaded: true,
+        },
+      }));
+    } catch (error) {
+      console.error("Failed to load available dimension sizes:", error);
+      setDimensionSizeData((prev) => ({
+        ...prev,
+        [cacheKey]: {
+          vertical: [],
+          horizontal: [],
+          loading: false,
+          error: "Unable to load sizes.",
+        },
+      }));
+    }
+  };
+
+  const getSizeOptions = (
+    options: SizeOption[],
+    selectedSize: string,
+    selectedUnit: string
+  ) => {
+    if (
+      !selectedSize ||
+      options.some(
+        (option) =>
+          option.size.toLowerCase() === selectedSize.toLowerCase() &&
+          option.unit.toLowerCase() === (selectedUnit || "ft").toLowerCase()
+      )
+    ) {
+      return options;
+    }
+
+    return [{ size: selectedSize, unit: selectedUnit || "ft" }, ...options];
+  };
+
+  useEffect(() => {
+    appendsAll.forEach((row: any) => {
+      if (
+        row.subCategories?.is_enable &&
+        (row.inputs?.vertical || row.inputs?.horizontal)
+      ) {
+        if (row.categories?.id && row.subCategories?.id) {
+          loadDimensionSizes(row.categories.id, row.subCategories.id);
+        }
+      }
+    });
+  }, [appendsAll]);
   // --- Handlers ---
 
   // console.log(eventStartDate, eventLevel, eventEndDate);
@@ -405,7 +577,10 @@ const Calendar: React.FC = () => {
       }, {})
     );
 
-    // ==================================================================================================
+    if (!templateId) {
+      toast.error("Please select an Event Template (Required as per requirements).");
+      return;
+    }
 
     const data = {
       id: eventId ? eventId : null,
@@ -428,7 +603,9 @@ const Calendar: React.FC = () => {
       bookedItems: appendsAll.filter(r => r.categories.id != 0),
       stockDetails: groupedData,
       eventDetails: groupedEventData,
-      status: normalizeStatusCode(eventLevel)
+      status: normalizeStatusCode(eventLevel),
+      template_id: templateId,
+      template_name: templateName
     };
 
 
@@ -488,8 +665,84 @@ const Calendar: React.FC = () => {
 
     }
   }
+
+  const [stockList, setStockList] = useState<any[]>([]);
+
+  const getStockSummary = async () => {
+    try {
+      const res = await apiClient.get("/admin/Inverntory/availableStockSummary");
+      setStockList(res?.data?.results || []);
+    } catch (err) {
+      console.warn("Error fetching availableStockSummary in Calendar:", err);
+    }
+  };
+
+  const getTemplates = async () => {
+    try {
+      const results = await apiClient.get("/admin/template/all");
+      setTemplatesList(results?.data?.results || results?.data?.data || []);
+    } catch (err) {
+      console.error("Error fetching templates:", err);
+    }
+  };
+
+  const applyTemplateItems = (tpl: any) => {
+    if (!tpl) return;
+    if (tpl.total_price !== undefined && tpl.total_price !== null) {
+      setAmountTaxes(String(tpl.total_price));
+    }
+    if (Array.isArray(tpl.items) && tpl.items.length > 0) {
+      const mapped = tpl.items.map((it: any) => ({
+        categories: {
+          id: it.category_id,
+          name: it.category_name,
+        },
+        subCategories: {
+          id: it.subcategory_id,
+          name: it.subcategory_name,
+          is_enable: Boolean(it.vertical || it.horizontal),
+        },
+        inputs: {
+          width: "",
+          height: "",
+          price: it.price !== undefined ? String(it.price) : "0",
+          vprice: it.price !== undefined ? String(it.price) : "0",
+          hprice: it.price !== undefined ? String(it.price) : "0",
+          vertical: Boolean(it.vertical),
+          horizontal: Boolean(it.horizontal),
+          verticalValue: it.verticalValue || "",
+          horizontalValue: it.horizontalValue || "",
+          verticalUnit: it.verticalUnit || "ft",
+          horizontalUnit: it.horizontalUnit || "ft",
+          verticalPcs: it.verticalPcs ? String(it.verticalPcs) : "",
+          horizontalPcs: it.horizontalPcs ? String(it.horizontalPcs) : "",
+          value: it.quantity ? String(it.quantity) : "1",
+          eventsName: "",
+          eventsId: 0,
+          stockName: "",
+          stockId: it.category_id || 0,
+        },
+      }));
+      setAppendsAll(mapped);
+    }
+  };
+
+  const handleSelectTemplate = (id: number) => {
+    setTemplateId(id);
+    const found = templatesList.find((t: any) => t.id === id);
+    if (found) {
+      setTemplateName(found.name);
+      applyTemplateItems(found);
+      toast.success(`Template "${found.name}" applied! (₹${found.total_price})`);
+    } else {
+      setTemplateName("");
+    }
+  };
+
   useEffect(() => {
     getCategories();
+    getTemplates();
+    getStockSummary();
   }, [])
 
 
@@ -653,6 +906,9 @@ const Calendar: React.FC = () => {
       height: data.height || null
     });
 
+    setTemplateId(data.template_id || 0);
+    setTemplateName(data.template_name || "");
+
     // load subcategory list
     if (data.categories_id) {
       eventHandler({ target: { value: data.categories_id } });
@@ -760,7 +1016,9 @@ const Calendar: React.FC = () => {
     setDate(null);
     setSelectedEvent(null);
     setAppendsAll([]);
-    setHideAvailableButton([])
+    setHideAvailableButton([]);
+    setTemplateId(0);
+    setTemplateName("");
   }
 
   return (
@@ -856,6 +1114,158 @@ const Calendar: React.FC = () => {
               designId={designId}
             />
             <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* Event Template Dropdown - Not Optional / Required per requirements */}
+              <div className="md:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/80 to-purple-50/80 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/30 border-2 border-indigo-200 dark:border-indigo-800 shadow-xs space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
+                      <LayoutTemplate size={16} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider block">
+                        Event Template <span className="text-rose-500 font-extrabold">* (Required per requirements)</span>
+                      </label>
+                      <span className="text-[11px] text-indigo-700 dark:text-indigo-300">
+                        Select a pre-configured template to automatically populate stock items and package price.
+                      </span>
+                    </div>
+                  </div>
+                  {templateId > 0 && (
+                    <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                      ✓ Template Active
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                  <div className="sm:col-span-9">
+                    <select
+                      value={templateId || 0}
+                      onChange={(e) => handleSelectTemplate(Number(e.target.value))}
+                      className="h-11 w-full rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-gray-900 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-white shadow-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                    >
+                      <option value={0}>-- Select Event Template (Required) --</option>
+                      {templatesList.map((tpl: any) => (
+                        <option key={tpl.id} value={tpl.id}>
+                          {tpl.name} — (₹{Number(tpl.total_price || 0).toLocaleString()} | {tpl.items?.length || 0} stock items)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-3">
+                    <Link
+                      to="/templates"
+                      target="_blank"
+                      className="h-11 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 transition"
+                    >
+                      <Sparkles size={14} />
+                      Manage Templates
+                    </Link>
+                  </div>
+                </div>
+
+                {templateId > 0 && (() => {
+                  const currentTpl = templatesList.find((t: any) => t.id === templateId);
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-white/80 dark:bg-gray-900/80 border border-indigo-200 dark:border-indigo-800/60 text-xs">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                          <span className="text-gray-700 dark:text-gray-200">
+                            Template: <strong>{templateName}</strong> | Package Price:{" "}
+                            <strong className="text-emerald-600 dark:text-emerald-400">
+                              ₹{Number(currentTpl?.total_price || 0).toLocaleString()}
+                            </strong>
+                            {currentTpl?.items?.length ? ` (${currentTpl.items.length} items)` : ""}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentTpl) applyTemplateItems(currentTpl);
+                          }}
+                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 flex items-center gap-1"
+                        >
+                          <RotateCcw size={12} /> Reload Template Items
+                        </button>
+                      </div>
+
+                      {/* Live Stock Availability for Template Items */}
+                      {currentTpl && Array.isArray(currentTpl.items) && currentTpl.items.length > 0 && (
+                        <div className="p-3 rounded-xl bg-white dark:bg-gray-900/90 border border-indigo-100 dark:border-indigo-900/50 space-y-2 text-xs">
+                          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-1.5">
+                            <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                              <span>📦</span> Stock Availability & Remaining Ratio:
+                            </span>
+                            <span className="text-[11px] text-gray-500">
+                              (Deducts items in uncompleted events)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {currentTpl.items.map((it: any, idx: number) => {
+                              const matchedStock = stockList.find(
+                                (s: any) =>
+                                  Number(s.categories_id) === Number(it.category_id) &&
+                                  Number(s.sub_categories_id) === Number(it.subcategory_id)
+                              );
+                              const totalStock = matchedStock
+                                ? matchedStock.total_quantity !== undefined
+                                  ? matchedStock.total_quantity
+                                  : matchedStock.quantity
+                                : 0;
+                              const inUseStock = matchedStock ? matchedStock.allocated_quantity || 0 : 0;
+                              const availStock = matchedStock
+                                ? matchedStock.available_quantity !== undefined
+                                  ? matchedStock.available_quantity
+                                  : totalStock
+                                : 0;
+                              const reqQty = Number(it.quantity || 1);
+                              const hasEnough = availStock >= reqQty;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`p-2 rounded-lg border text-[11px] flex items-center justify-between gap-2 ${
+                                    hasEnough
+                                      ? "bg-gray-50/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700"
+                                      : "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                                  }`}
+                                >
+                                  <div className="truncate">
+                                    <span className="font-bold text-gray-900 dark:text-white">
+                                      {it.subcategory_name || `Item #${idx + 1}`}
+                                    </span>
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                      Needs: <strong>{reqQty} pcs</strong>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right shrink-0">
+                                    <span
+                                      className={`font-bold ${
+                                        hasEnough
+                                          ? "text-emerald-600 dark:text-emerald-400"
+                                          : "text-rose-600 dark:text-rose-400"
+                                      }`}
+                                    >
+                                      {availStock} / {totalStock} avail
+                                    </span>
+                                    <div className="text-[10px] text-gray-400">
+                                      {inUseStock > 0 ? `${inUseStock} in use` : "Idle"}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Client Name</label>
                 <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
@@ -975,8 +1385,53 @@ const Calendar: React.FC = () => {
               <div className="md:col-span-2">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                   {appendsAll &&
-                    appendsAll.map((rows, i) =>
-                      rows.categories.id !== 0 ? (
+                    appendsAll.map((rows, i) => {
+                      if (rows.categories.id === 0) return null;
+
+                      const cacheKey = `${rows.categories?.id}:${rows.subCategories?.id}`;
+                      const dimData = dimensionSizeData[cacheKey];
+                      const verticalOptions = getSizeOptions(
+                        dimData?.vertical || [],
+                        rows.inputs?.verticalValue || "",
+                        rows.inputs?.verticalUnit || "ft"
+                      );
+                      const horizontalOptions = getSizeOptions(
+                        dimData?.horizontal || [],
+                        rows.inputs?.horizontalValue || "",
+                        rows.inputs?.horizontalUnit || "ft"
+                      );
+
+                      const selectedVerticalOption = verticalOptions.find(
+                        (opt) =>
+                          opt.size.toLowerCase() ===
+                            (rows.inputs?.verticalValue || "").toLowerCase() &&
+                          opt.unit.toLowerCase() ===
+                            (rows.inputs?.verticalUnit || "ft").toLowerCase()
+                      );
+                      const verticalSelectValue = selectedVerticalOption
+                        ? `${selectedVerticalOption.size}|${selectedVerticalOption.unit}`
+                        : rows.inputs?.verticalValue
+                        ? `${rows.inputs.verticalValue}|${
+                            rows.inputs?.verticalUnit || "ft"
+                          }`
+                        : "";
+
+                      const selectedHorizontalOption = horizontalOptions.find(
+                        (opt) =>
+                          opt.size.toLowerCase() ===
+                            (rows.inputs?.horizontalValue || "").toLowerCase() &&
+                          opt.unit.toLowerCase() ===
+                            (rows.inputs?.horizontalUnit || "ft").toLowerCase()
+                      );
+                      const horizontalSelectValue = selectedHorizontalOption
+                        ? `${selectedHorizontalOption.size}|${selectedHorizontalOption.unit}`
+                        : rows.inputs?.horizontalValue
+                        ? `${rows.inputs.horizontalValue}|${
+                            rows.inputs?.horizontalUnit || "ft"
+                          }`
+                        : "";
+
+                      return (
                         <div
                           key={i}
                           className="
@@ -1004,11 +1459,8 @@ const Calendar: React.FC = () => {
                               );
                               setAppendsAll(updated);
                               setHideAvailableButton((prev) => {
-
                                 const newState = { ...prev };
-
                                 delete newState[rows.subCategories?.id];
-
                                 return newState;
                               });
                             }}
@@ -1062,13 +1514,24 @@ const Calendar: React.FC = () => {
                                   <input
                                     type="checkbox"
                                     checked={rows.inputs.vertical || false}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
                                       handleInputChange(
                                         i,
                                         "vertical",
-                                        e.target.checked
-                                      )
-                                    }
+                                        checked
+                                      );
+                                      if (
+                                        checked &&
+                                        rows.categories?.id &&
+                                        rows.subCategories?.id
+                                      ) {
+                                        loadDimensionSizes(
+                                          rows.categories.id,
+                                          rows.subCategories.id
+                                        );
+                                      }
+                                    }}
                                   />
                                   Vertical
                                 </label>
@@ -1077,13 +1540,24 @@ const Calendar: React.FC = () => {
                                   <input
                                     type="checkbox"
                                     checked={rows.inputs.horizontal || false}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
+                                      const checked = e.target.checked;
                                       handleInputChange(
                                         i,
                                         "horizontal",
-                                        e.target.checked
-                                      )
-                                    }
+                                        checked
+                                      );
+                                      if (
+                                        checked &&
+                                        rows.categories?.id &&
+                                        rows.subCategories?.id
+                                      ) {
+                                        loadDimensionSizes(
+                                          rows.categories.id,
+                                          rows.subCategories.id
+                                        );
+                                      }
+                                    }}
                                   />
                                   Horizontal
                                 </label>
@@ -1103,41 +1577,45 @@ const Calendar: React.FC = () => {
                                         Vertical Size
                                       </label>
 
-                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
-                                        <input
-                                          type="text"
-                                          placeholder="Enter Vertical Size"
-                                          value={
-                                            rows.inputs.verticalValue || ""
-                                          }
-                                          onChange={(e) =>
-                                            handleInputChange(
-                                              i,
-                                              "verticalValue",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
-                                        />
-
+                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
                                         <select
-                                          value={
-                                            rows.inputs.verticalUnit ||
-                                            "ft"
-                                          }
-                                          onChange={(e) =>
-                                            handleInputChange(
-                                              i,
-                                              "verticalUnit",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="h-12 border-l border-gray-300 dark:border-gray-700 px-4 bg-gray-50 dark:bg-gray-800 outline-none"
+                                          value={verticalSelectValue}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val) {
+                                              const [size, unit] = val.split("|");
+                                              handleDimensionSelect(
+                                                i,
+                                                "vertical",
+                                                size,
+                                                unit || "ft"
+                                              );
+                                            } else {
+                                              handleDimensionSelect(
+                                                i,
+                                                "vertical",
+                                                "",
+                                                "ft"
+                                              );
+                                            }
+                                          }}
+                                          className="w-full h-12 px-4 bg-transparent outline-none text-sm text-gray-800 dark:text-white"
                                         >
-                                          <option value="ft">FT</option>
-                                          <option value="m">M</option>
-                                          <option value="mm">MM</option>
-                                          <option value="in">IN</option>
+                                          <option value="">
+                                            {dimData?.loading
+                                              ? "Loading sizes..."
+                                              : verticalOptions.length === 0
+                                              ? "No sizes available"
+                                              : "Select Vertical Size"}
+                                          </option>
+                                          {verticalOptions.map((opt, optIdx) => (
+                                            <option
+                                              key={`vert-${optIdx}-${opt.size}-${opt.unit}`}
+                                              value={`${opt.size}|${opt.unit}`}
+                                            >
+                                              {`${opt.size}${opt.unit}`}
+                                            </option>
+                                          ))}
                                         </select>
                                       </div>
                                     </div>
@@ -1212,42 +1690,45 @@ const Calendar: React.FC = () => {
                                         Horizontal Size
                                       </label>
 
-                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700">
-                                        <input
-                                          type="text"
-                                          placeholder="Enter Horizontal Size"
-                                          value={
-                                            rows.inputs.horizontalValue ||
-                                            ""
-                                          }
-                                          onChange={(e) =>
-                                            handleInputChange(
-                                              i,
-                                              "horizontalValue",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="flex-1 h-12 px-4 bg-transparent outline-none text-sm"
-                                        />
-
+                                      <div className="flex items-center overflow-hidden rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
                                         <select
-                                          value={
-                                            rows.inputs.horizontalUnit ||
-                                            "ft"
-                                          }
-                                          onChange={(e) =>
-                                            handleInputChange(
-                                              i,
-                                              "horizontalUnit",
-                                              e.target.value
-                                            )
-                                          }
-                                          className="h-12 border-l border-gray-300 dark:border-gray-700 px-4 bg-gray-50 dark:bg-gray-800 outline-none"
+                                          value={horizontalSelectValue}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val) {
+                                              const [size, unit] = val.split("|");
+                                              handleDimensionSelect(
+                                                i,
+                                                "horizontal",
+                                                size,
+                                                unit || "ft"
+                                              );
+                                            } else {
+                                              handleDimensionSelect(
+                                                i,
+                                                "horizontal",
+                                                "",
+                                                "ft"
+                                              );
+                                            }
+                                          }}
+                                          className="w-full h-12 px-4 bg-transparent outline-none text-sm text-gray-800 dark:text-white"
                                         >
-                                          <option value="ft">FT</option>
-                                          <option value="m">M</option>
-                                          <option value="mm">MM</option>
-                                          <option value="in">IN</option>
+                                          <option value="">
+                                            {dimData?.loading
+                                              ? "Loading sizes..."
+                                              : horizontalOptions.length === 0
+                                              ? "No sizes available"
+                                              : "Select Horizontal Size"}
+                                          </option>
+                                          {horizontalOptions.map((opt, optIdx) => (
+                                            <option
+                                              key={`horiz-${optIdx}-${opt.size}-${opt.unit}`}
+                                              value={`${opt.size}|${opt.unit}`}
+                                            >
+                                              {`${opt.size}${opt.unit}`}
+                                            </option>
+                                          ))}
                                         </select>
                                       </div>
                                     </div>
@@ -1456,8 +1937,8 @@ const Calendar: React.FC = () => {
                           }
 
                         </div>
-                      ) : null
-                    )}
+                      );
+                    })}
                 </div>
               </div>
 

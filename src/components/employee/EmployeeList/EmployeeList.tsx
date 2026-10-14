@@ -322,7 +322,7 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                           : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                       }`}
                     >
-                      <Clock size={10} /> {isNight ? "Night Shift" : "Day Shift"}
+                      <Clock size={10} /> {isNight ? "Night Shift" : "Day Shift"} ({emp.shift_hour ? `${emp.shift_hour}h` : "8h"})
                     </span>
                   </div>
 
@@ -466,7 +466,7 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                           }`}
                         >
                           <Clock size={11} />
-                          {isNight ? "Night Shift" : "Day Shift"}
+                          {isNight ? "Night Shift" : "Day Shift"} ({rows.shift_hour ? `${rows.shift_hour}h` : "8h"})
                         </span>
                       </TableCell>
 

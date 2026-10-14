@@ -28,6 +28,9 @@ type SizeType = {
   size: string;
   quantity: number;
   unit: string;
+  allocated_qty?: number;
+  available_qty?: number;
+  available_ratio?: number;
 };
 
 type InventoryType = {
@@ -64,6 +67,18 @@ type InventoryType = {
 
   verticalSizes: SizeType[];
   horizontalSizes: SizeType[];
+
+  total_quantity?: number;
+  allocated_quantity?: number;
+  available_quantity?: number;
+  available_ratio?: number;
+  available_percent?: number;
+  matched_active_events?: Array<{
+    event_id: number;
+    event_name: string;
+    template_name?: string;
+    allocated: number;
+  }>;
 };
 
 // ======================================================
@@ -265,6 +280,20 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                 isHeader
                 className="px-5 py-3 text-start"
               >
+                In Use (Active)
+              </TableCell>
+
+              <TableCell
+                isHeader
+                className="px-5 py-3 text-start"
+              >
+                Available (Ratio)
+              </TableCell>
+
+              <TableCell
+                isHeader
+                className="px-5 py-3 text-start"
+              >
                 Good
               </TableCell>
 
@@ -350,8 +379,14 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                   {/* QUANTITY */}
                   {/* ====================================================== */}
 
-                  <TableCell className="px-5 py-4 text-start">
-                    {rows.have_size ? (
+                  {/* ====================================================== */}
+                  {/* TOTAL QUANTITY */}
+                  {/* ====================================================== */}
+
+                  <TableCell className="px-5 py-4 text-start font-semibold text-gray-900 dark:text-white">
+                    {rows.total_quantity !== undefined ? (
+                      rows.total_quantity
+                    ) : rows.have_size ? (
                       <span
                         onClick={() =>
                           handleOpen(rows.id)
@@ -364,6 +399,58 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                     ) : (
                       rows.quantity
                     )}
+                  </TableCell>
+
+                  {/* ====================================================== */}
+                  {/* IN USE (ACTIVE / UNCOMPLETED EVENTS) */}
+                  {/* ====================================================== */}
+
+                  <TableCell className="px-5 py-4 text-start">
+                    {(rows.allocated_quantity || 0) > 0 ? (
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          {rows.allocated_quantity} in use
+                        </span>
+                        {rows.matched_active_events && rows.matched_active_events.length > 0 && (
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                            {rows.matched_active_events.map((ev, i) => (
+                              <div key={i} className="truncate max-w-[140px]" title={`${ev.event_name} (${ev.allocated} pcs)${ev.template_name ? ` [${ev.template_name}]` : ""}`}>
+                                • {ev.event_name}: <strong>{ev.allocated}</strong>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-medium">0 (Idle)</span>
+                    )}
+                  </TableCell>
+
+                  {/* ====================================================== */}
+                  {/* AVAILABLE (REMAINING RATIO) */}
+                  {/* ====================================================== */}
+
+                  <TableCell className="px-5 py-4 text-start">
+                    <div className="space-y-1 min-w-[125px]">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-sm font-bold ${(rows.available_quantity || 0) > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                          {rows.available_quantity !== undefined ? rows.available_quantity : rows.quantity} avail
+                        </span>
+                        <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                          {rows.available_percent !== undefined ? rows.available_percent : 100}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className={`h-1.5 rounded-full transition-all duration-300 ${(rows.available_percent || 0) > 50 ? "bg-emerald-500" : (rows.available_percent || 0) > 20 ? "bg-amber-500" : "bg-red-500"}`}
+                          style={{ width: `${Math.min(100, Math.max(0, rows.available_percent !== undefined ? rows.available_percent : 100))}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                        Ratio: {rows.available_quantity !== undefined ? rows.available_quantity : rows.quantity} / {rows.total_quantity !== undefined ? rows.total_quantity : rows.quantity}
+                      </div>
+                    </div>
                   </TableCell>
 
                   {/* ====================================================== */}
@@ -403,14 +490,14 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                   {/* ====================================================== */}
 
                   <TableCell className="px-5 py-4 text-start">
-                    <div className="space-y-3">
+                    <div className="space-y-3 min-w-[150px]">
                       {/* ================= VERTICAL ================= */}
 
                       {rows.vertical_enabled &&
                         rows.verticalSizes
                           ?.length > 0 && (
                           <div>
-                            <h4 className="font-semibold text-blue-600">
+                            <h4 className="font-semibold text-blue-600 text-xs mb-1">
                               Vertical
                             </h4>
 
@@ -419,13 +506,20 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                                 (v) => (
                                   <div
                                     key={v.id}
-                                    className="rounded-lg bg-blue-50 px-2 py-1 text-xs dark:bg-blue-900/20"
+                                    className="rounded-lg bg-blue-50/80 dark:bg-blue-900/20 px-2.5 py-1.5 text-xs border border-blue-100 dark:border-blue-800/40"
                                   >
-                                    {v.size}
-                                    {v.unit}
-                                    {" - "}
-                                    Qty:
-                                    {v.quantity}
+                                    <div className="flex items-center justify-between font-semibold text-blue-700 dark:text-blue-300">
+                                      <span>{v.size} {v.unit}</span>
+                                      <span className={v.available_qty !== undefined && v.available_qty <= 0 ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
+                                        {v.available_qty !== undefined ? v.available_qty : v.quantity} Avail
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                                      <span>Total: <strong>{v.quantity}</strong></span>
+                                      {(v.allocated_qty || 0) > 0 && (
+                                        <span className="text-amber-600 dark:text-amber-400">In Use: <strong>{v.allocated_qty}</strong></span>
+                                      )}
+                                    </div>
                                   </div>
                                 )
                               )}
@@ -440,7 +534,7 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                           .horizontalSizes
                           ?.length > 0 && (
                           <div>
-                            <h4 className="font-semibold text-green-600">
+                            <h4 className="font-semibold text-green-600 text-xs mb-1">
                               Horizontal
                             </h4>
 
@@ -449,13 +543,20 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                                 (h) => (
                                   <div
                                     key={h.id}
-                                    className="rounded-lg bg-green-50 px-2 py-1 text-xs dark:bg-green-900/20"
+                                    className="rounded-lg bg-green-50/80 dark:bg-green-900/20 px-2.5 py-1.5 text-xs border border-green-100 dark:border-green-800/40"
                                   >
-                                    {h.size}
-                                    {h.unit}
-                                    {" - "}
-                                    Qty:
-                                    {h.quantity}
+                                    <div className="flex items-center justify-between font-semibold text-green-700 dark:text-green-300">
+                                      <span>{h.size} {h.unit}</span>
+                                      <span className={h.available_qty !== undefined && h.available_qty <= 0 ? "text-red-600 font-bold" : "text-emerald-600 font-bold"}>
+                                        {h.available_qty !== undefined ? h.available_qty : h.quantity} Avail
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-600 dark:text-gray-400">
+                                      <span>Total: <strong>{h.quantity}</strong></span>
+                                      {(h.allocated_qty || 0) > 0 && (
+                                        <span className="text-amber-600 dark:text-amber-400">In Use: <strong>{h.allocated_qty}</strong></span>
+                                      )}
+                                    </div>
                                   </div>
                                 )
                               )}
@@ -466,8 +567,8 @@ export default function BasicTableOne({ refreshKey = 0, onEdit, onRefresh }: Bas
                       {/* ================= SIMPLE QTY ================= */}
 
                       {!rows.have_size && (
-                        <span className="text-gray-500">
-                          No Sizes
+                        <span className="text-xs text-gray-400 italic">
+                          Standard Stock
                         </span>
                       )}
                     </div>
