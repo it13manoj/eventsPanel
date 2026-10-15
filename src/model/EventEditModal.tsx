@@ -4,6 +4,7 @@ import apiClient from "../hooks/api/apiClient";
 import { toast } from "react-toastify";
 import { EVENT_STATUSES, normalizeStatusCode, isEventLocked, getStatusLabel } from "../utils/eventStatus";
 import { Lock } from "lucide-react";
+import { normalizeTemplateItems } from "../utils/templateHelpers";
 
 interface EventEditModalProps {
     isOpen: boolean;
@@ -33,7 +34,12 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
         const fetchTemplatesAndStock = async () => {
             try {
                 const res = await apiClient.get("/admin/template/all");
-                setTemplates(res.data.results || res.data.data || []);
+                const rawList = res.data.results || res.data.data || [];
+                const list = rawList.map((tpl: any) => ({
+                    ...tpl,
+                    items: normalizeTemplateItems(tpl.items),
+                }));
+                setTemplates(list);
             } catch (err) {
                 console.error("Error fetching templates:", err);
             }
@@ -171,7 +177,9 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
                         {/* Live Stock Availability Breakdown */}
                         {form.template_id > 0 && (() => {
                             const curTpl = templates.find((t: any) => t.id === Number(form.template_id));
-                            if (!curTpl || !Array.isArray(curTpl.items) || curTpl.items.length === 0) return null;
+                            if (!curTpl) return null;
+                            const curItems = normalizeTemplateItems(curTpl.items);
+                            if (curItems.length === 0) return null;
                             return (
                                 <div className="mt-2 p-2.5 rounded-lg bg-white/90 dark:bg-gray-900 border border-indigo-200 dark:border-indigo-800 space-y-1.5 text-xs">
                                     <div className="flex items-center justify-between font-semibold text-indigo-900 dark:text-indigo-300 border-b border-gray-100 dark:border-gray-800 pb-1 text-[11px]">
@@ -179,7 +187,7 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
                                         <span className="text-gray-400 font-normal">Active event deduction applied</span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                        {curTpl.items.map((it: any, idx: number) => {
+                                        {curItems.map((it: any, idx: number) => {
                                             const matchedStock = stockList.find(
                                                 (s: any) =>
                                                     Number(s.categories_id) === Number(it.category_id) &&

@@ -19,35 +19,15 @@ import {
   RefreshCw,
   Sparkles,
   FolderPlus,
+  Check,
 } from "lucide-react";
+import {
+  TemplateItem,
+  EventTemplateData,
+  normalizeTemplateItems,
+} from "../../utils/templateHelpers";
 
-export interface TemplateItem {
-  id?: string;
-  category_id: number;
-  category_name: string;
-  subcategory_id: number;
-  subcategory_name: string;
-  quantity: number;
-  price: number;
-  vertical?: boolean;
-  horizontal?: boolean;
-  verticalValue?: string;
-  verticalUnit?: string;
-  verticalPcs?: number;
-  horizontalValue?: string;
-  horizontalUnit?: string;
-  horizontalPcs?: number;
-}
-
-export interface EventTemplateData {
-  id?: number;
-  name: string;
-  total_price: number;
-  description?: string;
-  items: TemplateItem[];
-  created_at?: string;
-  updated_at?: string;
-}
+export type { TemplateItem, EventTemplateData };
 
 export default function TemplatePage() {
   const [templates, setTemplates] = useState<EventTemplateData[]>([]);
@@ -67,6 +47,7 @@ export default function TemplatePage() {
   const [formTotalPrice, setFormTotalPrice] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formItems, setFormItems] = useState<TemplateItem[]>([]);
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Item builder states inside form
@@ -96,7 +77,11 @@ export default function TemplatePage() {
     try {
       setLoading(true);
       const res = await apiClient.get("/admin/template/all");
-      const list = res.data.results || res.data.data || [];
+      const rawList = res.data.results || res.data.data || [];
+      const list = rawList.map((tpl: any) => ({
+        ...tpl,
+        items: normalizeTemplateItems(tpl.items),
+      }));
       setTemplates(list);
     } catch (err: any) {
       console.error("Error fetching templates:", err);
@@ -188,6 +173,7 @@ export default function TemplatePage() {
     setFormTotalPrice("");
     setFormDescription("");
     setFormItems([]);
+    setEditingItemIndex(null);
     resetItemBuilder();
     setIsFormModalOpen(true);
   };
@@ -198,7 +184,9 @@ export default function TemplatePage() {
     setFormName(tpl.name || "");
     setFormTotalPrice(String(tpl.total_price || 0));
     setFormDescription(tpl.description || "");
-    setFormItems(Array.isArray(tpl.items) ? [...tpl.items] : []);
+    const normalizedItems = normalizeTemplateItems(tpl.items);
+    setFormItems(normalizedItems);
+    setEditingItemIndex(null);
     resetItemBuilder();
     setIsFormModalOpen(true);
   };
@@ -221,9 +209,50 @@ export default function TemplatePage() {
     setItemHorizontalValue("10");
     setItemHorizontalUnit("ft");
     setItemHorizontalPcs(1);
+    setEditingItemIndex(null);
   };
 
-  // Add Item to Template List
+  // Load an existing item into builder for editing
+  const handleEditExistingItem = async (index: number) => {
+    const item = formItems[index];
+    if (!item) return;
+
+    setEditingItemIndex(index);
+    setSelectedCatId(item.category_id);
+    setSelectedCatName(item.category_name);
+
+    // Fetch subcategories for this category so dropdown displays accurately
+    try {
+      const res = await apiClient.get(`/admin/subCategory/findByid/${item.category_id}`);
+      const subs = res.data.results || res.data.data || [];
+      setSubCategories(subs);
+      const sub = subs.find((s: any) => s.id === item.subcategory_id);
+      setSubCatIsEnable(Boolean(sub?.is_enable || item.vertical || item.horizontal));
+    } catch (err) {
+      console.error("Error loading subcategories for item edit:", err);
+    }
+
+    setSelectedSubCatId(item.subcategory_id);
+    setSelectedSubCatName(item.subcategory_name);
+    setItemQuantity(item.quantity || 1);
+    setItemPrice(item.price || 0);
+
+    setItemVertical(Boolean(item.vertical));
+    setItemVerticalValue(item.verticalValue || "10");
+    setItemVerticalUnit(item.verticalUnit || "ft");
+    setItemVerticalPcs(item.verticalPcs || 1);
+
+    setItemHorizontal(Boolean(item.horizontal));
+    setItemHorizontalValue(item.horizontalValue || "10");
+    setItemHorizontalUnit(item.horizontalUnit || "ft");
+    setItemHorizontalPcs(item.horizontalPcs || 1);
+  };
+
+  const handleCancelEditItem = () => {
+    resetItemBuilder();
+  };
+
+  // Add or Update Item to Template List
   const handleAddItem = () => {
     if (!selectedCatId || !selectedSubCatId) {
       toast.warning("Please select both Category and Sub Category from stock.");
@@ -236,7 +265,10 @@ export default function TemplatePage() {
     }
 
     const newItem: TemplateItem = {
-      id: `${Date.now()}-${Math.random()}`,
+      id:
+        editingItemIndex !== null && formItems[editingItemIndex]?.id
+          ? formItems[editingItemIndex].id
+          : `${Date.now()}-${Math.random()}`,
       category_id: selectedCatId,
       category_name: selectedCatName,
       subcategory_id: selectedSubCatId,
@@ -253,7 +285,16 @@ export default function TemplatePage() {
       horizontalPcs: itemHorizontal ? Number(itemHorizontalPcs) : undefined,
     };
 
-    const updated = [...formItems, newItem];
+    let updated: TemplateItem[];
+    if (editingItemIndex !== null) {
+      updated = [...formItems];
+      updated[editingItemIndex] = newItem;
+      toast.success(`Updated item "${selectedSubCatName}" in template!`);
+    } else {
+      updated = [...formItems, newItem];
+      toast.success(`Added ${selectedSubCatName} (${itemQuantity} pcs) to template!`);
+    }
+
     setFormItems(updated);
 
     // Auto-calculate suggested total price if user hasn't overridden or form is empty
@@ -265,12 +306,14 @@ export default function TemplatePage() {
       setFormTotalPrice(String(autoTotal));
     }
 
-    toast.success(`Added ${selectedSubCatName} (${itemQuantity} pcs) to template!`);
     resetItemBuilder();
   };
 
   // Remove Item from Template
   const handleRemoveItem = (index: number) => {
+    if (editingItemIndex === index) {
+      resetItemBuilder();
+    }
     const updated = formItems.filter((_, idx) => idx !== index);
     setFormItems(updated);
   };
@@ -509,7 +552,8 @@ export default function TemplatePage() {
                 </tr>
               ) : (
                 filteredTemplates.map((tpl, idx) => {
-                  const itemCount = Array.isArray(tpl.items) ? tpl.items.length : 0;
+                  const items = normalizeTemplateItems(tpl.items);
+                  const itemCount = items.length;
                   return (
                     <tr
                       key={tpl.id || idx}
@@ -540,15 +584,14 @@ export default function TemplatePage() {
                           <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                             {itemCount} item{itemCount !== 1 ? "s" : ""}
                           </span>
-                          {Array.isArray(tpl.items) &&
-                            tpl.items.slice(0, 2).map((it, itIdx) => (
-                              <span
-                                key={itIdx}
-                                className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium truncate max-w-[130px]"
-                              >
-                                {it.subcategory_name} ({it.quantity})
-                              </span>
-                            ))}
+                          {items.slice(0, 2).map((it, itIdx) => (
+                            <span
+                              key={it.id || itIdx}
+                              className="text-[11px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium truncate max-w-[130px]"
+                            >
+                              {it.subcategory_name} ({it.quantity})
+                            </span>
+                          ))}
                           {itemCount > 2 && (
                             <span className="text-[11px] text-gray-400 font-medium">
                               +{itemCount - 2} more
@@ -574,17 +617,20 @@ export default function TemplatePage() {
                         <div className="inline-flex items-center gap-1.5">
                           <button
                             onClick={() => {
-                              setSelectedTemplate(tpl);
+                              setSelectedTemplate({
+                                ...tpl,
+                                items: normalizeTemplateItems(tpl.items),
+                              });
                               setIsViewModalOpen(true);
                             }}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-blue-600 transition"
+                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-blue-600 transition cursor-pointer"
                             title="View Template Details"
                           >
                             <Eye size={16} />
                           </button>
                           <button
                             onClick={() => handleOpenEditModal(tpl)}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-emerald-600 transition"
+                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-emerald-600 transition cursor-pointer"
                             title="Edit Template"
                           >
                             <Edit2 size={16} />
@@ -594,7 +640,7 @@ export default function TemplatePage() {
                               setTemplateToDelete(tpl);
                               setIsDeleteModalOpen(true);
                             }}
-                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 transition"
+                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 transition cursor-pointer"
                             title="Delete Template"
                           >
                             <Trash2 size={16} />
@@ -922,15 +968,51 @@ export default function TemplatePage() {
                   </div>
                 )}
 
-                <div className="text-right pt-1">
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    disabled={!selectedSubCatId}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-semibold shadow-xs disabled:opacity-40 transition"
-                  >
-                    <Plus size={15} /> Add Item to Template
-                  </button>
+                <div className="flex items-center justify-between pt-1">
+                  {editingItemIndex !== null ? (
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 font-bold text-[11px] flex items-center gap-1.5">
+                        <Edit2 size={12} /> Editing Item #{editingItemIndex + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleCancelEditItem}
+                        className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 underline font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div />
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    {editingItemIndex !== null && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEditItem}
+                        className="px-3.5 py-2 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      disabled={!selectedSubCatId}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-semibold shadow-xs disabled:opacity-40 transition"
+                    >
+                      {editingItemIndex !== null ? (
+                        <>
+                          <Check size={15} /> Update Item in Template
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={15} /> Add Item to Template
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -959,49 +1041,78 @@ export default function TemplatePage() {
                     No items added yet. Use the selector above to add stock items and number of items to this template.
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                     {formItems.map((it, idx) => (
                       <div
                         key={it.id || idx}
-                        className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/60 flex items-center justify-between gap-3 text-xs"
+                        className={`p-3 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                          editingItemIndex === idx
+                            ? "border-brand-500 ring-2 ring-brand-500/20 bg-brand-50/20 dark:bg-brand-950/30"
+                            : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/60"
+                        }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 font-bold flex items-center justify-center text-[11px]">
+                        <div className="flex items-start gap-3">
+                          <span className="w-6 h-6 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 font-bold flex items-center justify-center text-[11px] shrink-0 mt-0.5">
                             {idx + 1}
                           </span>
-                          <div>
-                            <span className="font-bold text-gray-800 dark:text-white text-sm">
-                              {it.subcategory_name}
-                            </span>
-                            <span className="text-[11px] text-gray-400 block">
-                              Category: {it.category_name}
-                              {it.vertical &&
-                                ` | V: ${it.verticalValue}${it.verticalUnit} (${it.verticalPcs} pcs)`}
-                              {it.horizontal &&
-                                ` | H: ${it.horizontalValue}${it.horizontalUnit} (${it.horizontalPcs} pcs)`}
-                            </span>
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-bold text-gray-800 dark:text-white text-sm">
+                                {it.subcategory_name}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                                Cat: {it.category_name}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500">
+                              {it.vertical && (
+                                <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-medium">
+                                  📏 V: {it.verticalValue || "-"}{it.verticalUnit || "ft"} ({it.verticalPcs || 1} pcs)
+                                </span>
+                              )}
+                              {it.horizontal && (
+                                <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-medium">
+                                  📐 H: {it.horizontalValue || "-"}{it.horizontalUnit || "ft"} ({it.horizontalPcs || 1} pcs)
+                                </span>
+                              )}
+                              {!it.vertical && !it.horizontal && (
+                                <span className="text-gray-400">Standard Spec</span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-between sm:justify-end gap-3 self-end sm:self-center">
                           <div className="text-right">
                             <span className="font-bold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
                               Qty: {it.quantity}
                             </span>
                             {it.price > 0 && (
                               <span className="text-[11px] text-gray-500 block mt-0.5">
-                                ₹{it.price} each = ₹{it.price * it.quantity}
+                                ₹{it.price} each = ₹{(it.price * it.quantity).toLocaleString()}
                               </span>
                             )}
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(idx)}
-                            className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 rounded-lg transition"
-                            title="Remove Item"
-                          >
-                            <X size={16} />
-                          </button>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleEditExistingItem(idx)}
+                              className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg transition cursor-pointer"
+                              title="Edit this item"
+                            >
+                              <Edit2 size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(idx)}
+                              className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-500 rounded-lg transition cursor-pointer"
+                              title="Remove this item"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1037,135 +1148,192 @@ export default function TemplatePage() {
       )}
 
       {/* VIEW TEMPLATE DETAILS MODAL */}
-      {isViewModalOpen && selectedTemplate && (
-        <Modal
-          isOpen={isViewModalOpen}
-          onClose={() => setIsViewModalOpen(false)}
-          className="max-w-2xl w-full p-4 sm:p-6 lg:p-8"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="text-brand-500" size={20} />
-                <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">
-                  {selectedTemplate.name}
-                </h3>
+      {isViewModalOpen && selectedTemplate && (() => {
+        const viewItems = normalizeTemplateItems(selectedTemplate.items);
+        return (
+          <Modal
+            isOpen={isViewModalOpen}
+            onClose={() => setIsViewModalOpen(false)}
+            className="max-w-2xl w-full p-4 sm:p-6 lg:p-8"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-brand-50 dark:bg-brand-950/50 text-brand-500 font-bold">
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">
+                      {selectedTemplate.name}
+                    </h3>
+                    {selectedTemplate.created_at && (
+                      <span className="text-[11px] text-gray-400">
+                        Created: {new Date(selectedTemplate.created_at).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsViewModalOpen(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => setIsViewModalOpen(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
 
-            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div>
-                <span className="text-xs text-gray-400 block font-medium">Total Package Price</span>
-                <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-                  ₹{Number(selectedTemplate.total_price || 0).toLocaleString()}
+              <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-gray-400 block font-medium">Total Package Price</span>
+                  <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                    ₹{Number(selectedTemplate.total_price || 0).toLocaleString()}
+                  </span>
+                </div>
+                <span className="text-xs px-3 py-1 rounded-full bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-300 font-bold">
+                  {viewItems.length} Stock Item{viewItems.length !== 1 ? "s" : ""}
                 </span>
               </div>
-              <span className="text-xs px-3 py-1 rounded-full bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-300 font-bold">
-                {Array.isArray(selectedTemplate.items) ? selectedTemplate.items.length : 0} Items
-              </span>
-            </div>
 
-            {selectedTemplate.description && (
-              <p className="text-xs text-gray-600 dark:text-gray-300 italic">
-                "{selectedTemplate.description}"
-              </p>
-            )}
+              {selectedTemplate.description ? (
+                <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800">
+                  <span className="text-[11px] uppercase font-bold text-gray-400 block mb-0.5">Description / Scope</span>
+                  <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                    {selectedTemplate.description}
+                  </p>
+                </div>
+              ) : null}
 
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                Configured Stock Items & Quantities
-              </h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {Array.isArray(selectedTemplate.items) && selectedTemplate.items.length > 0 ? (
-                  selectedTemplate.items.map((it, idx) => {
-                    const matchedStock = stockList.find(
-                      (s: any) =>
-                        Number(s.categories_id) === Number(it.category_id) &&
-                        Number(s.sub_categories_id) === Number(it.subcategory_id)
-                    );
-                    const totalStock = matchedStock
-                      ? matchedStock.total_quantity !== undefined
-                        ? matchedStock.total_quantity
-                        : matchedStock.quantity
-                      : "-";
-                    const inUseStock = matchedStock ? matchedStock.allocated_quantity || 0 : 0;
-                    const availStock = matchedStock
-                      ? matchedStock.available_quantity !== undefined
-                        ? matchedStock.available_quantity
-                        : totalStock
-                      : "-";
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    Configured Stock Items & Quantities ({viewItems.length})
+                  </h4>
+                  {viewItems.length > 0 && (
+                    <span className="text-[11px] text-gray-400 font-medium">
+                      Items Subtotal: ₹{viewItems.reduce((s, it) => s + (Number(it.price || 0) * Number(it.quantity || 1)), 0).toLocaleString()}
+                    </span>
+                  )}
+                </div>
 
-                    return (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs flex items-center justify-between"
-                      >
-                        <div>
-                          <span className="font-bold text-gray-800 dark:text-white block">
-                            {it.subcategory_name}
-                          </span>
-                          <span className="text-[11px] text-gray-400">
-                            Category: {it.category_name}
-                            {it.vertical &&
-                              ` | V: ${it.verticalValue}${it.verticalUnit} (${it.verticalPcs} pcs)`}
-                            {it.horizontal &&
-                              ` | H: ${it.horizontalValue}${it.horizontalUnit} (${it.horizontalPcs} pcs)`}
-                          </span>
-                          <div className="text-[10px] text-gray-500 mt-1 flex flex-wrap items-center gap-1.5">
-                            <span>📦 Live Inventory: Total <strong>{totalStock}</strong></span>
-                            {inUseStock > 0 && (
-                              <span className="text-amber-600 font-medium">
-                                | In-Use: <strong>{inUseStock}</strong>
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                  {viewItems.length > 0 ? (
+                    viewItems.map((it, idx) => {
+                      const matchedStock = stockList.find(
+                        (s: any) =>
+                          Number(s.categories_id) === Number(it.category_id) &&
+                          Number(s.sub_categories_id) === Number(it.subcategory_id)
+                      );
+                      const totalStock = matchedStock
+                        ? matchedStock.total_quantity !== undefined
+                          ? matchedStock.total_quantity
+                          : matchedStock.quantity
+                        : "-";
+                      const inUseStock = matchedStock ? matchedStock.allocated_quantity || 0 : 0;
+                      const availStock = matchedStock
+                        ? matchedStock.available_quantity !== undefined
+                          ? matchedStock.available_quantity
+                          : totalStock
+                        : "-";
+
+                      return (
+                        <div
+                          key={it.id || idx}
+                          className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-bold text-gray-800 dark:text-white text-sm">
+                                {it.subcategory_name}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                                Category: {it.category_name}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500">
+                              {it.vertical && (
+                                <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-medium">
+                                  📏 V: {it.verticalValue || "-"}{it.verticalUnit || "ft"} ({it.verticalPcs || 1} pcs)
+                                </span>
+                              )}
+                              {it.horizontal && (
+                                <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 font-medium">
+                                  📐 H: {it.horizontalValue || "-"}{it.horizontalUnit || "ft"} ({it.horizontalPcs || 1} pcs)
+                                </span>
+                              )}
+                              {!it.vertical && !it.horizontal && (
+                                <span className="text-gray-400">Standard Dimension Spec</span>
+                              )}
+                            </div>
+
+                            <div className="text-[10px] text-gray-500 pt-0.5 flex flex-wrap items-center gap-1.5">
+                              <span>📦 Live Inventory: Total <strong>{totalStock}</strong></span>
+                              {inUseStock > 0 && (
+                                <span className="text-amber-600 font-medium">
+                                  | In-Use: <strong>{inUseStock}</strong>
+                                </span>
+                              )}
+                              <span
+                                className={
+                                  typeof availStock === "number" && availStock < it.quantity
+                                    ? "text-rose-600 font-bold"
+                                    : "text-emerald-600 font-bold"
+                                }
+                              >
+                                | Available: <strong>{availStock}</strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <span className="font-bold text-sm px-2.5 py-0.5 rounded bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 block">
+                              {it.quantity} Pcs
+                            </span>
+                            {it.price > 0 ? (
+                              <span className="text-[11px] text-gray-500 block mt-1">
+                                ₹{it.price} each = ₹{(it.price * it.quantity).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 block mt-1">
+                                Included in package
                               </span>
                             )}
-                            <span
-                              className={
-                                typeof availStock === "number" && availStock < it.quantity
-                                  ? "text-rose-600 font-bold"
-                                  : "text-emerald-600 font-bold"
-                              }
-                            >
-                              | Available: <strong>{availStock}</strong>
-                            </span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="font-bold text-sm text-brand-600">
-                            {it.quantity} Pcs
-                          </span>
-                          {it.price > 0 && (
-                            <span className="text-[11px] text-gray-500 block">
-                              ₹{it.price * it.quantity}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="text-xs text-gray-400">No items configured in this template.</p>
-                )}
+                      );
+                    })
+                  ) : (
+                    <div className="p-6 text-center rounded-xl border border-dashed border-gray-200 dark:border-gray-800 text-xs text-gray-400">
+                      No stock items configured in this template.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t dark:border-gray-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tpl = selectedTemplate;
+                    setIsViewModalOpen(false);
+                    handleOpenEditModal(tpl);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-semibold shadow-theme-xs transition cursor-pointer"
+                >
+                  <Edit2 size={14} /> Edit Template
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsViewModalOpen(false)}
+                  className="px-5 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 transition cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </div>
-
-            <div className="pt-3 border-t dark:border-gray-800 text-right">
-              <button
-                type="button"
-                onClick={() => setIsViewModalOpen(false)}
-                className="px-5 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-200 transition"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
 
       {/* DELETE CONFIRMATION MODAL */}
       {isDeleteModalOpen && templateToDelete && (

@@ -18,6 +18,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { EVENT_STATUSES, normalizeStatusCode, getStatusColor } from "../utils/eventStatus";
 import { LayoutTemplate, CheckCircle2, Sparkles, RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
+import { normalizeTemplateItems } from "../utils/templateHelpers";
 
 
 
@@ -680,7 +681,12 @@ const Calendar: React.FC = () => {
   const getTemplates = async () => {
     try {
       const results = await apiClient.get("/admin/template/all");
-      setTemplatesList(results?.data?.results || results?.data?.data || []);
+      const rawList = results?.data?.results || results?.data?.data || [];
+      const list = rawList.map((tpl: any) => ({
+        ...tpl,
+        items: normalizeTemplateItems(tpl.items),
+      }));
+      setTemplatesList(list);
     } catch (err) {
       console.error("Error fetching templates:", err);
     }
@@ -691,8 +697,9 @@ const Calendar: React.FC = () => {
     if (tpl.total_price !== undefined && tpl.total_price !== null) {
       setAmountTaxes(String(tpl.total_price));
     }
-    if (Array.isArray(tpl.items) && tpl.items.length > 0) {
-      const mapped = tpl.items.map((it: any) => ({
+    const items = normalizeTemplateItems(tpl.items);
+    if (items.length > 0) {
+      const mapped = items.map((it: any) => ({
         categories: {
           id: it.category_id,
           name: it.category_name,
@@ -1191,76 +1198,80 @@ const Calendar: React.FC = () => {
                       </div>
 
                       {/* Live Stock Availability for Template Items */}
-                      {currentTpl && Array.isArray(currentTpl.items) && currentTpl.items.length > 0 && (
-                        <div className="p-3 rounded-xl bg-white dark:bg-gray-900/90 border border-indigo-100 dark:border-indigo-900/50 space-y-2 text-xs">
-                          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-1.5">
-                            <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
-                              <span>📦</span> Stock Availability & Remaining Ratio:
-                            </span>
-                            <span className="text-[11px] text-gray-500">
-                              (Deducts items in uncompleted events)
-                            </span>
-                          </div>
+                      {currentTpl && (() => {
+                        const curItems = normalizeTemplateItems(currentTpl.items);
+                        if (curItems.length === 0) return null;
+                        return (
+                          <div className="p-3 rounded-xl bg-white dark:bg-gray-900/90 border border-indigo-100 dark:border-indigo-900/50 space-y-2 text-xs">
+                            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-1.5">
+                              <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                                <span>📦</span> Stock Availability & Remaining Ratio:
+                              </span>
+                              <span className="text-[11px] text-gray-500">
+                                (Deducts items in uncompleted events)
+                              </span>
+                            </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {currentTpl.items.map((it: any, idx: number) => {
-                              const matchedStock = stockList.find(
-                                (s: any) =>
-                                  Number(s.categories_id) === Number(it.category_id) &&
-                                  Number(s.sub_categories_id) === Number(it.subcategory_id)
-                              );
-                              const totalStock = matchedStock
-                                ? matchedStock.total_quantity !== undefined
-                                  ? matchedStock.total_quantity
-                                  : matchedStock.quantity
-                                : 0;
-                              const inUseStock = matchedStock ? matchedStock.allocated_quantity || 0 : 0;
-                              const availStock = matchedStock
-                                ? matchedStock.available_quantity !== undefined
-                                  ? matchedStock.available_quantity
-                                  : totalStock
-                                : 0;
-                              const reqQty = Number(it.quantity || 1);
-                              const hasEnough = availStock >= reqQty;
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {curItems.map((it: any, idx: number) => {
+                                const matchedStock = stockList.find(
+                                  (s: any) =>
+                                    Number(s.categories_id) === Number(it.category_id) &&
+                                    Number(s.sub_categories_id) === Number(it.subcategory_id)
+                                );
+                                const totalStock = matchedStock
+                                  ? matchedStock.total_quantity !== undefined
+                                    ? matchedStock.total_quantity
+                                    : matchedStock.quantity
+                                  : 0;
+                                const inUseStock = matchedStock ? matchedStock.allocated_quantity || 0 : 0;
+                                const availStock = matchedStock
+                                  ? matchedStock.available_quantity !== undefined
+                                    ? matchedStock.available_quantity
+                                    : totalStock
+                                  : 0;
+                                const reqQty = Number(it.quantity || 1);
+                                const hasEnough = availStock >= reqQty;
 
-                              return (
-                                <div
-                                  key={idx}
-                                  className={`p-2 rounded-lg border text-[11px] flex items-center justify-between gap-2 ${
-                                    hasEnough
-                                      ? "bg-gray-50/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700"
-                                      : "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                                  }`}
-                                >
-                                  <div className="truncate">
-                                    <span className="font-bold text-gray-900 dark:text-white">
-                                      {it.subcategory_name || `Item #${idx + 1}`}
-                                    </span>
-                                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                                      Needs: <strong>{reqQty} pcs</strong>
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`p-2 rounded-lg border text-[11px] flex items-center justify-between gap-2 ${
+                                      hasEnough
+                                        ? "bg-gray-50/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700"
+                                        : "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                                    }`}
+                                  >
+                                    <div className="truncate">
+                                      <span className="font-bold text-gray-900 dark:text-white">
+                                        {it.subcategory_name || `Item #${idx + 1}`}
+                                      </span>
+                                      <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                        Needs: <strong>{reqQty} pcs</strong>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-right shrink-0">
+                                      <span
+                                        className={`font-bold ${
+                                          hasEnough
+                                            ? "text-emerald-600 dark:text-emerald-400"
+                                            : "text-rose-600 dark:text-rose-400"
+                                        }`}
+                                      >
+                                        {availStock} / {totalStock} avail
+                                      </span>
+                                      <div className="text-[10px] text-gray-400">
+                                        {inUseStock > 0 ? `${inUseStock} in use` : "Idle"}
+                                      </div>
                                     </div>
                                   </div>
-
-                                  <div className="text-right shrink-0">
-                                    <span
-                                      className={`font-bold ${
-                                        hasEnough
-                                          ? "text-emerald-600 dark:text-emerald-400"
-                                          : "text-rose-600 dark:text-rose-400"
-                                      }`}
-                                    >
-                                      {availStock} / {totalStock} avail
-                                    </span>
-                                    <div className="text-[10px] text-gray-400">
-                                      {inUseStock > 0 ? `${inUseStock} in use` : "Idle"}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   );
                 })()}
