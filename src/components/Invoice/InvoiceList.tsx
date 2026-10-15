@@ -454,7 +454,7 @@ export default function InvoiceListPage() {
                 "Rate",
                 "Total Amount",
             ]],
-            body: itemRows.length > 0 ? itemRows : [[ "-", "No inventory items booked", "-", "-", "-", "INR 0.00" ]],
+            body: itemRows.length > 0 ? itemRows : [["-", "No inventory items booked", "-", "-", "-", "INR 0.00"]],
             columnStyles: {
                 0: { halign: "center", cellWidth: 12 },
                 1: { cellWidth: 45 },
@@ -520,7 +520,7 @@ export default function InvoiceListPage() {
                 "Charges",
                 "Total Cost"
             ]],
-            body: vehicleRows.length > 0 ? vehicleRows : [[ "-", "No vehicles assigned", "-", "-", "-", "-", "-", "INR 0.00" ]],
+            body: vehicleRows.length > 0 ? vehicleRows : [["-", "No vehicles assigned", "-", "-", "-", "-", "-", "INR 0.00"]],
             columnStyles: {
                 0: { halign: "center", cellWidth: 10 },
                 1: { cellWidth: 32 },
@@ -712,11 +712,10 @@ export default function InvoiceListPage() {
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                                statusFilter === status
-                                    ? "bg-blue-600 text-white shadow-sm"
-                                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
-                            }`}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${statusFilter === status
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200"
+                                }`}
                         >
                             {status}
                         </button>
@@ -726,7 +725,133 @@ export default function InvoiceListPage() {
 
             {/* Invoices Table */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
-                <div className="overflow-x-auto">
+
+                {/* ========================================================= */}
+                {/* 1. MOBILE VIEW: Stacked Cards (Visible on mobile only)     */}
+                {/* ========================================================= */}
+                <div className="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                    {filteredInvoices.length > 0 ? (
+                        filteredInvoices.map((inv) => {
+                            const total = Number(inv.amount || 0);
+                            const unpaid = Number(inv.unpaidAmount || 0);
+                            const itemsTotal = Number(inv.itemsSubtotal || 0);
+                            const vehicleTotal = Number(inv.vehiclesSubtotal || 0);
+                            const isPaid = unpaid <= 0 && total > 0;
+                            const isPartial = inv.paidAmount > 0 && unpaid > 0;
+
+                            return (
+                                <div key={inv.id} className="p-4 space-y-3">
+
+                                    {/* Header: Invoice No, Customer & Payment Status */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <span className="font-bold text-blue-600 dark:text-blue-400 text-sm">
+                                                #{inv.id}
+                                            </span>
+                                            <h3 className="font-semibold text-gray-900 dark:text-white text-base">
+                                                {inv.customer || "Customer"}
+                                            </h3>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
+                                                <MapPin size={12} />
+                                                {inv.venue || inv.address || "Venue"}
+                                            </div>
+                                        </div>
+
+                                        {/* Status Badge */}
+                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${isPaid
+                                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                                                : isPartial
+                                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                                                    : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+                                            }`}>
+                                            {isPaid ? "Paid" : isPartial ? "Partial" : "Unpaid"}
+                                        </span>
+                                    </div>
+
+                                    {/* Metadata Grid */}
+                                    <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Event Date</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium flex items-center gap-1 mt-0.5">
+                                                <Calendar size={12} />
+                                                {inv.eventDate ? new Date(inv.eventDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "NA"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Balance Due</span>
+                                            <span className={`font-mono font-bold ${unpaid > 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                                ₹ {unpaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Package / Materials</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium font-mono">
+                                                ₹ {itemsTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Vehicle Logistics</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium font-mono">
+                                                ₹ {vehicleTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="col-span-2 pt-1 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                            <span className="text-[11px] text-gray-500 uppercase font-bold">Total Bill Amount</span>
+                                            <span className="font-mono font-bold text-gray-900 dark:text-white text-sm">
+                                                ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Bar */}
+                                    <div className="flex items-center justify-end gap-2 pt-1">
+                                        <button
+                                            onClick={() => handleOpenBillPay(inv)}
+                                            className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
+                                        >
+                                            <FaFileInvoiceDollar size={13} /> Pay
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedInvoice(inv)}
+                                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg transition-all"
+                                            title="View Bill Details"
+                                        >
+                                            <Eye size={16} />
+                                        </button>
+                                        <button
+                                            onClick={() => downloadPDF(inv)}
+                                            className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded-lg transition-all"
+                                            title="Download PDF"
+                                        >
+                                            <Download size={16} />
+                                        </button>
+                                        {inv.status !== "Cancelled" && (
+                                            <button
+                                                onClick={() => handleCancel(inv.id)}
+                                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg transition-all"
+                                                title="Cancel Invoice"
+                                            >
+                                                <XCircle size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="p-12 text-center text-gray-400">
+                            <AlertCircle size={32} className="mx-auto mb-2 text-gray-300" />
+                            No invoices found matching your criteria.
+                        </div>
+                    )}
+                </div>
+
+
+                {/* ========================================================= */}
+                {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
+                {/* ========================================================= */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-100/75 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
@@ -814,11 +939,10 @@ export default function InvoiceListPage() {
 
                                             <td className="p-3.5 text-right font-bold whitespace-nowrap">
                                                 <span
-                                                    className={`px-2 py-0.5 rounded-lg text-xs ${
-                                                        unpaid > 0
+                                                    className={`px-2 py-0.5 rounded-lg text-xs ${unpaid > 0
                                                             ? "text-red-700 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
                                                             : "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     ₹ {unpaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                                 </span>
@@ -826,13 +950,12 @@ export default function InvoiceListPage() {
 
                                             <td className="p-3.5 text-center">
                                                 <span
-                                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                                                        isPaid
+                                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${isPaid
                                                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
                                                             : isPartial
                                                                 ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
                                                                 : "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {isPaid ? "Paid" : isPartial ? "Partial" : "Unpaid"}
                                                 </span>
@@ -840,7 +963,6 @@ export default function InvoiceListPage() {
 
                                             <td className="p-3.5 text-center whitespace-nowrap">
                                                 <div className="flex items-center justify-center gap-1.5">
-                                                    {/* Quick Bill Pay */}
                                                     <button
                                                         onClick={() => handleOpenBillPay(inv)}
                                                         title="Pay Bill"
@@ -850,7 +972,6 @@ export default function InvoiceListPage() {
                                                         Pay
                                                     </button>
 
-                                                    {/* View Modal */}
                                                     <button
                                                         onClick={() => setSelectedInvoice(inv)}
                                                         title="View Bill Details"
@@ -859,7 +980,6 @@ export default function InvoiceListPage() {
                                                         <Eye size={16} />
                                                     </button>
 
-                                                    {/* Direct PDF Download */}
                                                     <button
                                                         onClick={() => downloadPDF(inv)}
                                                         title="Print / Download PDF"
@@ -868,7 +988,6 @@ export default function InvoiceListPage() {
                                                         <Download size={16} />
                                                     </button>
 
-                                                    {/* Cancel Invoice */}
                                                     {inv.status !== "Cancelled" && (
                                                         <button
                                                             onClick={() => handleCancel(inv.id)}
@@ -900,11 +1019,8 @@ export default function InvoiceListPage() {
             {/* VIEW BILL & INVOICE DETAILS MODAL                                         */}
             {/* ========================================================================= */}
             {selectedInvoice && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-xs z-999999 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
-                    style={{ zIndex: 999999 }}
-                >
-                    <div className="bg-white dark:bg-gray-900 w-full max-w-5xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-99999 flex items-center justify-center p-3 sm:p-5 overflow-hidden overscroll-none">
+                    <div className="bg-white dark:bg-gray-900 w-full max-w-5xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden my-auto max-h-[92vh] flex flex-col" style={{ transform: "translateZ(0)" }}>
                         {/* Modal Header */}
                         <div className="bg-gradient-to-r from-blue-700 to-indigo-800 p-5 text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -930,7 +1046,7 @@ export default function InvoiceListPage() {
                         </div>
 
                         {/* Modal Body */}
-                        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                        <div className="p-4 sm:p-6 overflow-y-auto max-h-[82vh] custom-scrollbar space-y-6 flex-1">
                             {/* Official Company Letterhead / Header */}
                             <div className="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/40 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
@@ -1188,63 +1304,136 @@ export default function InvoiceListPage() {
                                     </span>
                                 </div>
 
-                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                                    <table className="w-full text-xs text-left">
-                                        <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
-                                            <tr>
-                                                <th className="p-2.5 text-center">Sl</th>
-                                                <th className="p-2.5">Vehicle</th>
-                                                <th className="p-2.5">Vehicle No</th>
-                                                <th className="p-2.5">Agency / Driver</th>
-                                                <th className="p-2.5 text-center">Fuel Details</th>
-                                                <th className="p-2.5 text-right">Fuel Cost</th>
-                                                <th className="p-2.5 text-right">Vehicle Charges</th>
-                                                <th className="p-2.5 text-right">Total Cost</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                            {selectedInvoice.vehicles && selectedInvoice.vehicles.length > 0 ? (
-                                                selectedInvoice.vehicles.map((v: VehicleItem, i: number) => {
-                                                    const fuel = Number(v.fuelAmount || 0);
-                                                    const charges = Number(v.commission || 0);
-                                                    const total = v.totalCost !== undefined ? Number(v.totalCost) : (fuel + charges);
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-900">
 
-                                                    return (
-                                                        <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                                                            <td className="p-2.5 text-center text-gray-400">{i + 1}</td>
-                                                            <td className="p-2.5 font-medium text-gray-900 dark:text-white">
-                                                                {v.vehicleName || "Vehicle"}
-                                                            </td>
-                                                            <td className="p-2.5 font-mono text-gray-600 dark:text-gray-300">
-                                                                {v.vehicleNumber || "-"}
-                                                            </td>
-                                                            <td className="p-2.5 text-gray-600 dark:text-gray-300">
-                                                                {v.ownerAgency || v.type || "Owner"}
-                                                            </td>
-                                                            <td className="p-2.5 text-center text-gray-600 dark:text-gray-400">
-                                                                {v.fuelQuantity > 0 ? `${v.fuelQuantity} L (${v.fuelType})` : (v.fuelType || "-")}
-                                                            </td>
-                                                            <td className="p-2.5 text-right font-mono">
-                                                                ₹ {fuel.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                            </td>
-                                                            <td className="p-2.5 text-right font-mono">
-                                                                ₹ {charges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                            </td>
-                                                            <td className="p-2.5 text-right font-bold font-mono text-gray-900 dark:text-white">
-                                                                ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })
-                                            ) : (
+                                    {/* ========================================================= */}
+                                    {/* 1. MOBILE VIEW: Stacked Cards (Visible on mobile only)     */}
+                                    {/* ========================================================= */}
+                                    <div className="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+                                        {selectedInvoice.vehicles && selectedInvoice.vehicles.length > 0 ? (
+                                            selectedInvoice.vehicles.map((v: VehicleItem, i: number) => {
+                                                const fuel = Number(v.fuelAmount || 0);
+                                                const charges = Number(v.commission || 0);
+                                                const total = v.totalCost !== undefined ? Number(v.totalCost) : (fuel + charges);
+
+                                                return (
+                                                    <div key={i} className="p-4 space-y-3">
+                                                        {/* Header: Sl. No & Vehicle Name */}
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div>
+                                                                <span className="text-xs font-semibold text-gray-400">#{i + 1}</span>
+                                                                <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                                                                    {v.vehicleName || "Vehicle"}
+                                                                </h4>
+                                                                <span className="font-mono text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                                                    {v.vehicleNumber || "-"}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <span className="block text-[10px] text-gray-400 uppercase font-medium">Total Cost</span>
+                                                                <span className="font-mono font-bold text-gray-900 dark:text-white text-sm">
+                                                                    ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Metadata Grid */}
+                                                        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                                                            <div>
+                                                                <span className="block text-[10px] text-gray-400 uppercase font-medium">Agency / Driver</span>
+                                                                <span className="text-gray-700 dark:text-gray-300 font-medium">{v.ownerAgency || v.type || "Owner"}</span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="block text-[10px] text-gray-400 uppercase font-medium">Fuel Details</span>
+                                                                <span className="text-gray-700 dark:text-gray-300 font-medium">
+                                                                    {v.fuelQuantity > 0 ? `${v.fuelQuantity} L (${v.fuelType})` : (v.fuelType || "-")}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="block text-[10px] text-gray-400 uppercase font-medium">Fuel Cost</span>
+                                                                <span className="font-mono text-gray-700 dark:text-gray-300">
+                                                                    ₹ {fuel.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="block text-[10px] text-gray-400 uppercase font-medium">Vehicle Charges</span>
+                                                                <span className="font-mono text-gray-700 dark:text-gray-300">
+                                                                    ₹ {charges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="p-8 text-center text-gray-400 text-sm">
+                                                No vehicles assigned to this event.
+                                            </div>
+                                        )}
+                                    </div>
+
+
+                                    {/* ========================================================= */}
+                                    {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
+                                    {/* ========================================================= */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-xs text-left">
+                                            <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
                                                 <tr>
-                                                    <td colSpan={8} className="text-center py-4 text-gray-400">
-                                                        No vehicles assigned to this event.
-                                                    </td>
+                                                    <th className="p-2.5 text-center">Sl</th>
+                                                    <th className="p-2.5">Vehicle</th>
+                                                    <th className="p-2.5">Vehicle No</th>
+                                                    <th className="p-2.5">Agency / Driver</th>
+                                                    <th className="p-2.5 text-center">Fuel Details</th>
+                                                    <th className="p-2.5 text-right">Fuel Cost</th>
+                                                    <th className="p-2.5 text-right">Vehicle Charges</th>
+                                                    <th className="p-2.5 text-right">Total Cost</th>
                                                 </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                {selectedInvoice.vehicles && selectedInvoice.vehicles.length > 0 ? (
+                                                    selectedInvoice.vehicles.map((v: VehicleItem, i: number) => {
+                                                        const fuel = Number(v.fuelAmount || 0);
+                                                        const charges = Number(v.commission || 0);
+                                                        const total = v.totalCost !== undefined ? Number(v.totalCost) : (fuel + charges);
+
+                                                        return (
+                                                            <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                                                                <td className="p-2.5 text-center text-gray-400">{i + 1}</td>
+                                                                <td className="p-2.5 font-medium text-gray-900 dark:text-white">
+                                                                    {v.vehicleName || "Vehicle"}
+                                                                </td>
+                                                                <td className="p-2.5 font-mono text-gray-600 dark:text-gray-300">
+                                                                    {v.vehicleNumber || "-"}
+                                                                </td>
+                                                                <td className="p-2.5 text-gray-600 dark:text-gray-300">
+                                                                    {v.ownerAgency || v.type || "Owner"}
+                                                                </td>
+                                                                <td className="p-2.5 text-center text-gray-600 dark:text-gray-400">
+                                                                    {v.fuelQuantity > 0 ? `${v.fuelQuantity} L (${v.fuelType})` : (v.fuelType || "-")}
+                                                                </td>
+                                                                <td className="p-2.5 text-right font-mono">
+                                                                    ₹ {fuel.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                                <td className="p-2.5 text-right font-mono">
+                                                                    ₹ {charges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                                <td className="p-2.5 text-right font-bold font-mono text-gray-900 dark:text-white">
+                                                                    ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={8} className="text-center py-4 text-gray-400">
+                                                            No vehicles assigned to this event.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1326,11 +1515,8 @@ export default function InvoiceListPage() {
             {/* BILL PAY MODAL                                                            */}
             {/* ========================================================================= */}
             {bill && payingInvoice && (
-                <div
-                    className="fixed inset-0 bg-black/70 backdrop-blur-xs z-999999 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
-                    style={{ zIndex: 999999 }}
-                >
-                    <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-99999 flex items-center justify-center p-3 sm:p-5 overflow-hidden overscroll-none">
+                    <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden my-auto max-h-[92vh] flex flex-col" style={{ transform: "translateZ(0)" }}>
                         {/* Header */}
                         <div className="bg-gradient-to-r from-indigo-700 to-purple-800 p-5 text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1356,7 +1542,7 @@ export default function InvoiceListPage() {
                             </button>
                         </div>
 
-                        <div className="p-6 space-y-6">
+                        <div className="p-4 sm:p-6 space-y-6 overflow-y-auto max-h-[82vh] custom-scrollbar flex-1">
                             {/* Summary Card */}
                             {(() => {
                                 const totalPaid = paymentHistory?.reduce((sum, item) => sum + Number(item.price), 0) || 0;
@@ -1455,8 +1641,8 @@ export default function InvoiceListPage() {
                                     Payment Transaction History
                                 </h4>
 
-                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
-                                    <table className="w-full text-xs text-left">
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-x-auto w-full custom-scrollbar">
+                                    <table className="w-full min-w-[340px] text-xs text-left">
                                         <thead className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold uppercase">
                                             <tr>
                                                 <th className="p-2.5">Date Paid</th>

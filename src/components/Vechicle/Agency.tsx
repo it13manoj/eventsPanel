@@ -317,31 +317,29 @@ export default function Agency() {
             </div>
 
             {open && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-                    <div className="relative bg-white rounded-xl shadow-xl w-full max-w-4xl">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-99999 flex items-center justify-center p-3 sm:p-5 overflow-hidden overscroll-none">
+                    <div className="relative bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden" style={{ transform: "translateZ(0)" }}>
 
                         {/* Close Button */}
                         <button
                             onClick={() => setOpen(false)}
-                            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-600 text-white shadow-lg transition"
+                            className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white transition"
                         >
-                            <FaTimes size={18} />
+                            <FaTimes size={16} />
                         </button>
 
                         {/* Header */}
-                        <div className="border-b px-6 py-4">
-                            <h2 className="text-xl font-semibold text-gray-800">
+                        <div className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+                            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
                                 Agent Management
                             </h2>
                         </div>
 
                         {/* Body */}
-
-                        <div className="grid grid-cols-12 gap-6 p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1">
 
                             {/* Left */}
-
-                            <div className="col-span-4">
+                            <div className="md:col-span-5 lg:col-span-4">
 
                                 <h3 className="font-semibold mb-4">
                                     {agent.id === 0 ? "Add Agent" : "Update Agent"}
@@ -381,14 +379,12 @@ export default function Agency() {
                             </div>
 
                             {/* Right */}
-
-                            <div className="col-span-8">
-
-                                <h3 className="font-semibold mb-4">
+                            <div className="md:col-span-7 lg:col-span-8">
+                                <h3 className="font-semibold mb-4 text-gray-800 dark:text-white">
                                     Agent List
                                 </h3>
-
-                                <table className="w-full border">
+                                <div className="overflow-x-auto w-full custom-scrollbar border rounded-xl dark:border-gray-700">
+                                <table className="w-full">
 
                                     <thead className="bg-gray-100">
 
@@ -468,6 +464,7 @@ export default function Agency() {
                                     </tbody>
 
                                 </table>
+                                </div>
 
                             </div>
 

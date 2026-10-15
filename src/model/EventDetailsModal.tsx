@@ -84,33 +84,33 @@ export default function EventDetailsModal({
             </div>
 
             {/* Body */}
-            <div className="p-6 bg-gray-50 space-y-6">
+            <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900 space-y-4 sm:space-y-6 overflow-y-auto max-h-[82vh] custom-scrollbar">
 
                 {/* Top Highlight Cards */}
-                <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white p-4 rounded-xl shadow">
-                        <p className="text-xs text-gray-500">Client</p>
-                        <p className="font-semibold text-gray-800">{data.c_name}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Client</p>
+                        <p className="font-semibold text-gray-800 dark:text-white truncate">{data.c_name}</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-xl shadow">
-                        <p className="text-xs text-gray-500">Event Type</p>
-                        <p className="font-semibold text-gray-800">{data.vanus}</p>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Event Type</p>
+                        <p className="font-semibold text-gray-800 dark:text-white truncate">{data.vanus}</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-xl shadow">
-                        <p className="text-xs text-gray-500">Total Cost</p>
-                        <p className="font-semibold text-blue-600 text-lg">₹ {totalArea+ data.amount}</p>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Total Cost</p>
+                        <p className="font-semibold text-blue-600 dark:text-blue-400 text-lg">₹ {totalArea + data.amount}</p>
                     </div>
                 </div>
 
                 {/* Details Section */}
-                <div className="bg-white rounded-xl shadow p-5">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xs p-5 border border-gray-100 dark:border-gray-700">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                         Event Information
                     </h3>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Detail label="Event Date" value={formatDate(data.doe)} />
                         <Detail label="Arrival Date" value={formatDate(data.v_a_d)} />
                         <Detail label="Venue Location" value={data.v_location} />
@@ -123,8 +123,8 @@ export default function EventDetailsModal({
                 </div>
 
                 {/* Status Section */}
-                <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow">
-                    <span className="text-sm text-gray-600">Status</span>
+                <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-xs border border-gray-100 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-300">Status</span>
                     <span
                         className={`px-3 py-1 text-xs rounded-full font-medium border ${getStatusBadgeClass(data.status)}`}
                     >
@@ -134,10 +134,10 @@ export default function EventDetailsModal({
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end px-6 py-4 bg-white border-t">
+            <div className="flex justify-end px-6 py-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">
                 <button
                     onClick={onClose}
-                    className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    className="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition text-sm"
                 >
                     Close
                 </button>

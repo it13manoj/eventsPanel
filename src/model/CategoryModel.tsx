@@ -57,9 +57,9 @@ export default function CategoryModel({ isOpen, closeModal, categoryData, onSucc
         <Modal
             isOpen={isOpen}
             onClose={closeModal}
-            className="max-w-[100%] p-6 lg:p-10"
+            className="max-w-2xl w-full p-5 sm:p-6 lg:p-8"
         >
-            <div className="overflow-y-auto custom-scrollbar">
+            <div className="overflow-y-auto max-h-[82vh] custom-scrollbar flex-1">
                 <div>
                     <h5 className="mb-2 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
                         {isEdit ? "Edit Category" : "Add Category"}

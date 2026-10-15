@@ -75,7 +75,7 @@ export default function WareHouseModel({ isOpen, closeModal, warehouseData, onSu
         <Modal
             isOpen={isOpen}
             onClose={closeModal}
-            className="max-w-[90%] lg:max-w-4xl p-6 lg:p-10"
+            className="max-w-4xl w-full p-4 sm:p-6 lg:p-8"
         >
             <div className="overflow-y-auto custom-scrollbar max-h-[85vh]">
                 <div>

@@ -11,6 +11,8 @@ import { Truck, FileText } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";
 import SidebarWidget from "./SidebarWidget";
 import { useAuth } from "../hooks/auth";
+import { useCompany } from "../hooks/useCompany";
+import images from "../hooks/api/apiImages";
 
 type NavItem = {
   name: string;
@@ -74,7 +76,11 @@ const navItems: NavItem[] = [
   {
     icon: <Users />,
     name: "Employee",
-    subItems: [{name: "Employee Profile", path:"/profile", pro: false}, {name: "Employee List", path: "/employeelist", pro: false}, {name: "Attendance", path: "/attendance", pro: false}, {name: "Salary", path: "/salary", pro: false}]
+    subItems: [
+      { name: "Employee List", path: "/employeelist", pro: false },
+      { name: "Attendance", path: "/attendance", pro: false },
+      { name: "Salary", path: "/salary", pro: false }
+    ]
   },
 
   {
@@ -174,6 +180,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const { isStaff } = useAuth();
+  const { company } = useCompany();
   const location = useLocation();
 
   const currentNavItems = isStaff ? staffNavItems : navItems;
@@ -375,8 +382,29 @@ const AppSidebar: React.FC = () => {
         className={`py-4 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
           }`}
       >
-        <Link to={isStaff ? "/events" : "/dashboard"}>
-          {isExpanded || isHovered || isMobileOpen ? (
+        <Link to={isStaff ? "/events" : "/dashboard"} className="flex items-center gap-2">
+          {company?.logo ? (
+            isExpanded || isHovered || isMobileOpen ? (
+              <div className="flex items-center gap-2.5 px-2">
+                <img
+                  src={`${images.baseUrl}/${company.logo}`}
+                  alt={company.companyName || "Logo"}
+                  className="max-h-10 max-w-[140px] object-contain rounded-md"
+                />
+                {company.companyName && (
+                  <span className="font-extrabold text-sm text-gray-800 dark:text-white truncate max-w-[90px]">
+                    {company.companyName}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <img
+                src={`${images.baseUrl}/${company.logo}`}
+                alt={company.companyName || "Logo"}
+                className="w-8 h-8 object-contain rounded-md"
+              />
+            )
+          ) : isExpanded || isHovered || isMobileOpen ? (
             <>
               <img
                 className="dark:hidden"

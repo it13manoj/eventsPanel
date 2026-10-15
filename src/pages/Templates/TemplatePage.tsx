@@ -615,16 +615,16 @@ export default function TemplatePage() {
         <Modal
           isOpen={isFormModalOpen}
           onClose={() => setIsFormModalOpen(false)}
-          className="max-w-4xl p-6 lg:p-8"
+          className="max-w-4xl w-full p-4 sm:p-6 lg:p-8"
         >
-          <div className="max-h-[85vh] overflow-y-auto custom-scrollbar pr-2 space-y-6">
+          <div className="max-h-[82vh] overflow-y-auto custom-scrollbar pr-1 sm:pr-2 space-y-6 flex-1">
             <div className="flex items-center justify-between border-b dark:border-gray-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/50 text-brand-500 flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/50 text-brand-500 flex items-center justify-center font-bold shrink-0">
                   <LayoutTemplate size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">
                     {selectedTemplate ? "Edit Event Template" : "Create New Event Template"}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -634,7 +634,7 @@ export default function TemplatePage() {
               </div>
               <button
                 onClick={() => setIsFormModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold p-1"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
               >
                 ✕
               </button>
@@ -1041,19 +1041,19 @@ export default function TemplatePage() {
         <Modal
           isOpen={isViewModalOpen}
           onClose={() => setIsViewModalOpen(false)}
-          className="max-w-2xl p-6 lg:p-8"
+          className="max-w-2xl w-full p-4 sm:p-6 lg:p-8"
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <Sparkles className="text-brand-500" size={20} />
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white">
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">
                   {selectedTemplate.name}
                 </h3>
               </div>
               <button
                 onClick={() => setIsViewModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold p-1"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
               >
                 ✕
               </button>
@@ -1172,7 +1172,7 @@ export default function TemplatePage() {
         <Modal
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
-          className="max-w-md p-6"
+          className="max-w-md w-full p-5 sm:p-6"
         >
           <div className="space-y-4 text-center">
             <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 flex items-center justify-center">

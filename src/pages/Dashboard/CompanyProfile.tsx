@@ -21,6 +21,7 @@ import {
 import apiClient from "../../hooks/api/apiClient";
 import images from "../../hooks/api/apiImages";
 import { toast } from "react-toastify";
+import { updateStoredCompany } from "../../hooks/useCompany";
 
 interface CompanyData {
   id: number;
@@ -131,6 +132,7 @@ export default function CompanyProfile() {
         };
         setCompany(loaded);
         setOriginalCompany(loaded);
+        updateStoredCompany(loaded);
       }
     } catch (err: any) {
       console.error("Failed to load company profile:", err);
@@ -203,6 +205,7 @@ export default function CompanyProfile() {
           };
           setCompany(updatedCompany);
           setOriginalCompany(updatedCompany);
+          updateStoredCompany(updatedCompany);
         }
         handleClearSelectedLogo();
         setIsEditing(false);

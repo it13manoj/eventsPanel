@@ -736,8 +736,8 @@ export default function Attendance() {
 
       {/* Modal for Day Attendance & Duty Management */}
       {selectedDayInfo && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-lg p-6 border border-gray-200 dark:border-gray-800 space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-99999 p-3 sm:p-5 overflow-hidden overscroll-none">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-lg p-5 sm:p-6 border border-gray-100 dark:border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto custom-scrollbar" style={{ transform: "translateZ(0)" }}>
             {/* Header */}
             <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
               <div>
@@ -1081,8 +1081,8 @@ export default function Attendance() {
 
       {/* Multi-Shift Confirmation Popup Modal */}
       {shiftConfirmModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-200 dark:border-gray-800 space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-99999 p-3 sm:p-5 overflow-hidden overscroll-none">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md p-5 sm:p-6 border border-gray-100 dark:border-gray-800 space-y-4 max-h-[92vh] overflow-y-auto custom-scrollbar" style={{ transform: "translateZ(0)" }}>
             <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">

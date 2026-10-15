@@ -29,9 +29,9 @@ useEffect(()=>{
         <Modal
             isOpen={isOpen}
             onClose={closeModal}
-            className="max-w-[100%] p-6 lg:p-10"
+            className="max-w-4xl w-full p-4 sm:p-6 lg:p-8"
         >
-            <div className="overflow-y-auto custom-scrollbar">
+            <div className="overflow-y-auto max-h-[82vh] custom-scrollbar flex-1">
                 <h5 className="mb-4 font-semibold text-gray-800 text-xl dark:text-white">
                     Items
                 </h5>

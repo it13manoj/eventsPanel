@@ -202,11 +202,10 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
               type="button"
               onClick={() => setViewMode("table")}
               title="Table View"
-              className={`p-1.5 rounded-lg transition ${
-                viewMode === "table"
+              className={`p-1.5 rounded-lg transition ${viewMode === "table"
                   ? "bg-white dark:bg-gray-700 text-blue-600 shadow-xs"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              }`}
+                }`}
             >
               <List size={16} />
             </button>
@@ -214,11 +213,10 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
               type="button"
               onClick={() => setViewMode("cards")}
               title="Card Grid View"
-              className={`p-1.5 rounded-lg transition ${
-                viewMode === "cards"
+              className={`p-1.5 rounded-lg transition ${viewMode === "cards"
                   ? "bg-white dark:bg-gray-700 text-blue-600 shadow-xs"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              }`}
+                }`}
             >
               <LayoutGrid size={16} />
             </button>
@@ -274,9 +272,8 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                         </div>
                       )}
                       <span
-                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-gray-900 ${
-                          emp.isactive ? "bg-emerald-500" : "bg-gray-400"
-                        }`}
+                        className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-gray-900 ${emp.isactive ? "bg-emerald-500" : "bg-gray-400"
+                          }`}
                         title={emp.isactive ? "Active" : "Inactive"}
                       />
                     </div>
@@ -316,11 +313,10 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                       <Shield size={10} /> {roleName}
                     </span>
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                        isNight
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${isNight
                           ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                           : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                      }`}
+                        }`}
                     >
                       <Clock size={10} /> {isNight ? "Night Shift" : "Day Shift"} ({emp.shift_hour ? `${emp.shift_hour}h` : "8h"})
                     </span>
@@ -357,38 +353,126 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
       ) : (
         /* ======================== RESPONSIVE TABLE VIEW ======================== */
         <div className="overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xs">
-          <div className="overflow-x-auto custom-scrollbar">
+
+          {/* ========================================================= */}
+          {/* 1. MOBILE VIEW: Stacked Cards (Visible on mobile only)     */}
+          {/* ========================================================= */}
+          <div className="block md:hidden divide-y divide-gray-100 dark:divide-gray-800">
+            {filteredEmployees.map((rows, idx) => {
+              const isNight =
+                rows.sifting_type === 2 ||
+                (rows.shift && rows.shift.toLowerCase().includes("night"));
+
+              return (
+                <div key={rows?.id} className="p-4 space-y-3 bg-white dark:bg-transparent">
+
+                  {/* Top Row: Index, Avatar, Name & Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-medium text-gray-400">#{idx + 1}</span>
+                      {rows?.img ? (
+                        <img
+                          src={`${images.baseUrl}/${rows.img}`}
+                          alt={rows.name}
+                          className="w-10 h-10 object-cover rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 shrink-0"
+                          onError={(e: any) => { e.target.style.display = "none"; }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
+                          {rows?.name?.charAt(0) || "U"}
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                          {rows?.name}
+                        </h4>
+                        <span className="text-[11px] text-gray-400">ID #{rows?.id}</span>
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <span className={`px-2.5 py-0.5 text-[10px] rounded-full font-semibold shrink-0 ${rows?.isactive
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                      }`}>
+                      {rows?.isactive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+
+                  {/* Role & Designation Badges */}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      {roleMap[rows?.role_id] || rows?.role?.role_name || `Role ${rows?.role_id}`}
+                    </span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+                      {rows?.job || "N/A"}
+                    </span>
+                  </div>
+
+                  {/* Grid Meta Information */}
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <div>
+                      <span className="block text-[10px] text-gray-400 uppercase font-medium">Contact</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{rows?.contact || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-gray-400 uppercase font-medium">Email</span>
+                      <span className="text-gray-800 dark:text-gray-200 truncate block">{rows?.email || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-gray-400 uppercase font-medium">Shift</span>
+                      <span className={`inline-flex items-center gap-1 font-semibold ${isNight ? "text-indigo-600 dark:text-indigo-400" : "text-amber-600 dark:text-amber-400"}`}>
+                        <Clock size={10} />
+                        {isNight ? "Night" : "Day"} ({rows.shift_hour ? `${rows.shift_hour}h` : "8h"})
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-gray-400 uppercase font-medium">Base Pay</span>
+                      <span className="font-mono font-semibold text-gray-900 dark:text-white">
+                        {rows?.base_pay ? `₹${Number(rows.base_pay).toLocaleString("en-IN")}` : "N/A"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Bar */}
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      onClick={() => (onEdit ? onEdit(rows) : null)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 transition"
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(rows.id)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 transition"
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+
+
+          {/* ========================================================= */}
+          {/* 2. DESKTOP VIEW: Table with Sticky Actions (md and up)    */}
+          {/* ========================================================= */}
+          <div className="hidden md:block overflow-x-auto custom-scrollbar">
             <Table className="min-w-[1100px] w-full text-xs sm:text-sm">
               {/* Table Header */}
               <TableHeader className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
                 <TableRow>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    #
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Employee
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Contact & Email
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Role
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Designation
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Shift
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Gender
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">
-                    Base Pay
-                  </TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center whitespace-nowrap">
-                    Status
-                  </TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">#</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Employee</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Contact & Email</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Role</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Designation</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Shift</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Gender</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Base Pay</TableCell>
+                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center whitespace-nowrap">Status</TableCell>
                   <TableCell
                     isHeader
                     className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center whitespace-nowrap sticky right-0 bg-gray-50 dark:bg-gray-800 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]"
@@ -418,9 +502,7 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                               src={`${images.baseUrl}/${rows.img}`}
                               alt={rows.name}
                               className="w-9 h-9 object-cover rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 shrink-0"
-                              onError={(e: any) => {
-                                e.target.style.display = "none";
-                              }}
+                              
                             />
                           ) : (
                             <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
@@ -459,11 +541,10 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
 
                       <TableCell className="px-4 py-3 text-start whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            isNight
+                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${isNight
                               ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                               : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                          }`}
+                            }`}
                         >
                           <Clock size={11} />
                           {isNight ? "Night Shift" : "Day Shift"} ({rows.shift_hour ? `${rows.shift_hour}h` : "8h"})
@@ -480,11 +561,10 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
 
                       <TableCell className="px-4 py-3 text-center whitespace-nowrap">
                         <span
-                          className={`px-2.5 py-0.5 text-xs rounded-full font-semibold ${
-                            rows?.isactive
+                          className={`px-2.5 py-0.5 text-xs rounded-full font-semibold ${rows?.isactive
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
                               : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                          }`}
+                            }`}
                         >
                           {rows?.isactive ? "Active" : "Inactive"}
                         </span>

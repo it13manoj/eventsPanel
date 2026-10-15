@@ -19,9 +19,10 @@ import {
   Camera,
   RotateCcw,
   SwitchCamera,
-  Check
+  Check,
+  Lock
 } from "lucide-react";
-import { EVENT_STATUSES, normalizeStatusCode, getStatusBadgeClass, getStatusLabel } from "../utils/eventStatus";
+import { EVENT_STATUSES, normalizeStatusCode, getStatusBadgeClass, getStatusLabel, isEventLocked } from "../utils/eventStatus";
 import { useAuth } from "../hooks/auth";
 
 interface Agent {
@@ -100,6 +101,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
   // Complete Event overall status
   const [eventStatus, setEventStatus] = useState<string>("Pending");
   const [updatingEventStatus, setUpdatingEventStatus] = useState(false);
+  const isLocked = isEventLocked(eventStatus);
 
   // Assigned vehicles state
   const [assignedVehicles, setAssignedVehicles] = useState<AssignedVehicle[]>([]);
@@ -200,6 +202,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
   // Update complete event status
   const handleUpdateEventStatus = async (newStatusCode: string) => {
     if (!id) return;
+    if (isEventLocked(eventStatus)) {
+      toast.warning("This event is Completed or Cancelled. Status cannot be modified.");
+      return;
+    }
     try {
       setUpdatingEventStatus(true);
       const res = await apiClient.put(`/admin/Events/updateStatus/${id}`, { status: newStatusCode });
@@ -386,6 +392,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
   // Handle Create New Assignment
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) {
+      toast.warning("Cannot assign vehicle. Event is Completed or Cancelled.");
+      return;
+    }
     if (!type) {
       toast.error("Please select Ownership Type (Owner or Agent)");
       return;
@@ -453,6 +463,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
 
   // Handle Quick Status Change
   const handleStatusChange = async (movementId: number, newStatus: string) => {
+    if (isLocked) {
+      toast.warning("Cannot change stage status. Event is Completed or Cancelled.");
+      return;
+    }
     try {
       await apiClient.put(`/admin/vehicle-movement/status/${movementId}`, { status: newStatus });
       toast.success(`Status updated to ${newStatus}`);
@@ -476,6 +490,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
     nextStatus?: string,
     immediateLiveCamera?: boolean
   ) => {
+    if (isLocked) {
+      toast.warning("Cannot edit stage. Event is Completed or Cancelled.");
+      return;
+    }
     setEditingStage({
       stageKey,
       title,
@@ -500,6 +518,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
   // Submit Stage Update with Live Image Upload
   const handleSaveStage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) {
+      toast.warning("Cannot update stage data. Event is Completed or Cancelled.");
+      return;
+    }
     if (!currentMovement || !editingStage) return;
 
     try {
@@ -538,6 +560,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
 
   // Handle Save Fuel Details
   const handleSaveFuel = async () => {
+    if (isLocked) {
+      toast.warning("Cannot update fuel details. Event is Completed or Cancelled.");
+      return;
+    }
     if (!currentMovement) return;
     try {
       await apiClient.put(`/admin/vehicle-movement/update/${currentMovement.id}`, {
@@ -556,6 +582,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
 
   // Remove Vehicle Assignment
   const handleRemoveAssignment = async (movementId: number) => {
+    if (isLocked) {
+      toast.warning("Cannot remove vehicle. Event is Completed or Cancelled.");
+      return;
+    }
     if (!window.confirm("Are you sure you want to remove this assigned vehicle? All movement logs will be deleted.")) return;
     try {
       await apiClient.delete(`/admin/vehicle-movement/delete/${movementId}`);
@@ -590,16 +620,16 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-99999 p-3 sm:p-5">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-6xl rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-200 dark:border-gray-800">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-99999 p-3 sm:p-5 overflow-hidden overscroll-none">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-6xl rounded-2xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden border border-gray-100 dark:border-gray-800" style={{ transform: "translateZ(0)" }}>
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 px-6 py-4 bg-gray-50/80 dark:bg-gray-800/50">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-gray-200 dark:border-gray-800 p-4 sm:px-6 sm:py-4 bg-gray-50/80 dark:bg-gray-800/50">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
               <Truck size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white flex flex-wrap items-center gap-2">
                 Vehicle Assignment & Live Movement Tracker
                 {id ? (
                   <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
@@ -617,36 +647,48 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {/* Event Status Controls */}
             {id && (
-              <div className="flex items-center gap-2 bg-white dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xs">
                 <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 hidden sm:inline">
                   Event Status:
                 </span>
-                <select
-                  value={normalizeStatusCode(eventStatus)}
-                  disabled={updatingEventStatus}
-                  onChange={(e) => handleUpdateEventStatus(e.target.value)}
-                  className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition cursor-pointer focus:outline-none ${getStatusBadgeClass(eventStatus)}`}
-                >
-                  {EVENT_STATUSES.map((st) => (
-                    <option key={st.code} value={st.code}>
-                      {st.label}
-                    </option>
-                  ))}
-                </select>
-
-                {normalizeStatusCode(eventStatus) !== "3" && (
-                  <button
-                    onClick={() => handleUpdateEventStatus("3")}
-                    disabled={updatingEventStatus}
-                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition disabled:opacity-50"
-                    title="Mark Event as Event Finished (Complete Event)"
+                {isLocked ? (
+                  <span
+                    className={`text-xs font-bold rounded-lg px-2.5 py-1 border inline-flex items-center gap-1.5 cursor-not-allowed opacity-90 ${getStatusBadgeClass(eventStatus)}`}
+                    title={`Event is ${getStatusLabel(eventStatus)} (Locked - Status cannot be modified)`}
                   >
-                    <CheckCircle2 size={13} />
-                    <span className="hidden md:inline">Finish Event</span>
-                  </button>
+                    <Lock size={12} />
+                    {getStatusLabel(eventStatus)}
+                  </span>
+                ) : (
+                  <>
+                    <select
+                      value={normalizeStatusCode(eventStatus)}
+                      disabled={updatingEventStatus}
+                      onChange={(e) => handleUpdateEventStatus(e.target.value)}
+                      className={`text-xs font-bold rounded-lg px-2.5 py-1 border transition cursor-pointer focus:outline-none ${getStatusBadgeClass(eventStatus)}`}
+                    >
+                      {EVENT_STATUSES.map((st) => (
+                        <option key={st.code} value={st.code}>
+                          {st.label}
+                        </option>
+                      ))}
+                    </select>
+
+                    {normalizeStatusCode(eventStatus) !== "3" && (
+                      <button
+                        onClick={() => handleUpdateEventStatus("3")}
+                        disabled={updatingEventStatus}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+                        title="Mark Event as Event Finished (Complete Event)"
+                      >
+                        <CheckCircle2 size={13} />
+                        <span className="hidden md:inline">Finish Event</span>
+                      </button>
+                    )}
+                  </>
                 )}
                 {updatingEventStatus && <RefreshCw size={13} className="animate-spin text-blue-600" />}
               </div>
@@ -654,15 +696,25 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
 
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer shrink-0"
             >
               <X size={22} />
             </button>
           </div>
         </div>
 
+        {/* Locked Event Alert Banner */}
+        {isLocked && (
+          <div className="mx-4 sm:mx-6 mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-2 text-amber-800 dark:text-amber-200 text-xs sm:text-sm font-semibold">
+            <Lock size={16} className="shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              This event is <strong>{getStatusLabel(eventStatus)}</strong>. Vehicle assignments, live stage logs, and vehicle records are locked in read-only mode and cannot be updated.
+            </span>
+          </div>
+        )}
+
         {/* Tab Switcher */}
-        <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 px-6 pt-3 bg-white dark:bg-gray-900">
+        <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 pt-3 bg-white dark:bg-gray-900 overflow-x-auto w-full custom-scrollbar whitespace-nowrap">
           <button
             onClick={() => setActiveTab("assigned")}
             className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
@@ -679,7 +731,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
           </button>
 
           {/* Tab buttons */}
-          {!isStaff && (
+          {!isStaff && !isLocked && (
             <button
               onClick={() => setActiveTab("new")}
               className={`pb-3 px-4 text-sm font-semibold border-b-2 flex items-center gap-2 transition-all ${
@@ -705,7 +757,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
           {/* TAB 1: Assigned Vehicles & Live Stages Tracker */}
           {activeTab === "assigned" && (
             <div>
@@ -793,9 +845,10 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                                 Workflow Status
                               </span>
                               <select
-                                className="h-9 text-xs font-semibold rounded-lg px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white shadow-xs focus:ring-2 focus:ring-blue-500"
+                                className="h-9 text-xs font-semibold rounded-lg px-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-white shadow-xs focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                                 value={currentMovement.status}
                                 onChange={(e) => handleStatusChange(currentMovement.id, e.target.value)}
+                                disabled={isLocked}
                               >
                                 {STATUS_STAGES.map((st) => (
                                   <option key={st.key} value={st.key}>
@@ -805,7 +858,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                               </select>
                             </div>
 
-                            {!isStaff && (
+                            {!isStaff && !isLocked && (
                               <button
                                 type="button"
                                 onClick={() => handleRemoveAssignment(currentMovement.id)}
@@ -831,8 +884,11 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                                 <button
                                   type="button"
                                   key={stage.key}
+                                  disabled={isLocked}
                                   onClick={() => handleStatusChange(currentMovement.id, stage.key)}
-                                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                                    isLocked ? "cursor-default" : "cursor-pointer"
+                                  } ${
                                     isCurrent
                                       ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                                       : isCompleted
@@ -861,7 +917,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                             <Fuel size={18} className="text-amber-500" />
                             Fuel & Travel Expense Details
                           </h4>
-                          {!isEditingFuel ? (
+                          {!isLocked && (!isEditingFuel ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -892,7 +948,7 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                                 Save
                               </button>
                             </div>
-                          )}
+                          ))}
                         </div>
 
                         {!isEditingFuel ? (
@@ -1026,47 +1082,54 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "loading",
-                                  "Warehouse Loading",
-                                  "loading_image",
-                                  "loading_datetime",
-                                  "loading_location",
-                                  currentMovement.loading_image,
-                                  currentMovement.loading_datetime,
-                                  currentMovement.loading_location,
-                                  "LOADING",
-                                  true // Open live camera immediately
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
-                              >
-                                <Camera size={14} />
-                                Take Live Photo
-                              </button>
+                            {isLocked ? (
+                              <div className="py-2.5 px-3 text-xs font-semibold rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-700">
+                                <Lock size={13} />
+                                Stage Finalized (Read-Only)
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "loading",
+                                    "Warehouse Loading",
+                                    "loading_image",
+                                    "loading_datetime",
+                                    "loading_location",
+                                    currentMovement.loading_image,
+                                    currentMovement.loading_datetime,
+                                    currentMovement.loading_location,
+                                    "LOADING",
+                                    true // Open live camera immediately
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
+                                >
+                                  <Camera size={14} />
+                                  Take Live Photo
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "loading",
-                                  "Warehouse Loading",
-                                  "loading_image",
-                                  "loading_datetime",
-                                  "loading_location",
-                                  currentMovement.loading_image,
-                                  currentMovement.loading_datetime,
-                                  currentMovement.loading_location,
-                                  "LOADING",
-                                  false
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
-                              >
-                                <Upload size={14} />
-                                Upload File
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "loading",
+                                    "Warehouse Loading",
+                                    "loading_image",
+                                    "loading_datetime",
+                                    "loading_location",
+                                    currentMovement.loading_image,
+                                    currentMovement.loading_datetime,
+                                    currentMovement.loading_location,
+                                    "LOADING",
+                                    false
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <Upload size={14} />
+                                  Upload File
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* STAGE 2: Installation Time (Venue Unloading) */}
@@ -1129,47 +1192,54 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "unloading",
-                                  "Install Time (Venue Unloading)",
-                                  "unloading_image",
-                                  "unloading_datetime",
-                                  "unloading_location",
-                                  currentMovement.unloading_image,
-                                  currentMovement.unloading_datetime,
-                                  currentMovement.unloading_location,
-                                  "UNLOADING",
-                                  true // Open live camera immediately
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
-                              >
-                                <Camera size={14} />
-                                Take Live Photo
-                              </button>
+                            {isLocked ? (
+                              <div className="py-2.5 px-3 text-xs font-semibold rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-700">
+                                <Lock size={13} />
+                                Stage Finalized (Read-Only)
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "unloading",
+                                    "Install Time (Venue Unloading)",
+                                    "unloading_image",
+                                    "unloading_datetime",
+                                    "unloading_location",
+                                    currentMovement.unloading_image,
+                                    currentMovement.unloading_datetime,
+                                    currentMovement.unloading_location,
+                                    "UNLOADING",
+                                    true // Open live camera immediately
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
+                                >
+                                  <Camera size={14} />
+                                  Take Live Photo
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "unloading",
-                                  "Install Time (Venue Unloading)",
-                                  "unloading_image",
-                                  "unloading_datetime",
-                                  "unloading_location",
-                                  currentMovement.unloading_image,
-                                  currentMovement.unloading_datetime,
-                                  currentMovement.unloading_location,
-                                  "UNLOADING",
-                                  false
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
-                              >
-                                <Upload size={14} />
-                                Upload File
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "unloading",
+                                    "Install Time (Venue Unloading)",
+                                    "unloading_image",
+                                    "unloading_datetime",
+                                    "unloading_location",
+                                    currentMovement.unloading_image,
+                                    currentMovement.unloading_datetime,
+                                    currentMovement.unloading_location,
+                                    "UNLOADING",
+                                    false
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <Upload size={14} />
+                                  Upload File
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* STAGE 3: Uninstalling Time (Venue Reloading) */}
@@ -1232,47 +1302,54 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "event_loading",
-                                  "Uninstalling Time (Venue Reloading)",
-                                  "event_loading_image",
-                                  "event_loading_datetime",
-                                  "event_loading_location",
-                                  currentMovement.event_loading_image,
-                                  currentMovement.event_loading_datetime,
-                                  currentMovement.event_loading_location,
-                                  "EVENT_LOADING",
-                                  true // Open live camera immediately
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
-                              >
-                                <Camera size={14} />
-                                Take Live Photo
-                              </button>
+                            {isLocked ? (
+                              <div className="py-2.5 px-3 text-xs font-semibold rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-700">
+                                <Lock size={13} />
+                                Stage Finalized (Read-Only)
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "event_loading",
+                                    "Uninstalling Time (Venue Reloading)",
+                                    "event_loading_image",
+                                    "event_loading_datetime",
+                                    "event_loading_location",
+                                    currentMovement.event_loading_image,
+                                    currentMovement.event_loading_datetime,
+                                    currentMovement.event_loading_location,
+                                    "EVENT_LOADING",
+                                    true // Open live camera immediately
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
+                                >
+                                  <Camera size={14} />
+                                  Take Live Photo
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "event_loading",
-                                  "Uninstalling Time (Venue Reloading)",
-                                  "event_loading_image",
-                                  "event_loading_datetime",
-                                  "event_loading_location",
-                                  currentMovement.event_loading_image,
-                                  currentMovement.event_loading_datetime,
-                                  currentMovement.event_loading_location,
-                                  "EVENT_LOADING",
-                                  false
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
-                              >
-                                <Upload size={14} />
-                                Upload File
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "event_loading",
+                                    "Uninstalling Time (Venue Reloading)",
+                                    "event_loading_image",
+                                    "event_loading_datetime",
+                                    "event_loading_location",
+                                    currentMovement.event_loading_image,
+                                    currentMovement.event_loading_datetime,
+                                    currentMovement.event_loading_location,
+                                    "EVENT_LOADING",
+                                    false
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <Upload size={14} />
+                                  Upload File
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* STAGE 4: Warehouse Return Unloading */}
@@ -1335,47 +1412,54 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "event_unloading",
-                                  "Warehouse Return Unloading",
-                                  "event_unloading_image",
-                                  "event_unloading_datetime",
-                                  "event_unloading_location",
-                                  currentMovement.event_unloading_image,
-                                  currentMovement.event_unloading_datetime,
-                                  currentMovement.event_unloading_location,
-                                  "EVENT_UNLOADING",
-                                  true // Open live camera immediately
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
-                              >
-                                <Camera size={14} />
-                                Take Live Photo
-                              </button>
+                            {isLocked ? (
+                              <div className="py-2.5 px-3 text-xs font-semibold rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1.5 border border-gray-200 dark:border-gray-700">
+                                <Lock size={13} />
+                                Stage Finalized (Read-Only)
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "event_unloading",
+                                    "Warehouse Return Unloading",
+                                    "event_unloading_image",
+                                    "event_unloading_datetime",
+                                    "event_unloading_location",
+                                    currentMovement.event_unloading_image,
+                                    currentMovement.event_unloading_datetime,
+                                    currentMovement.event_unloading_location,
+                                    "EVENT_UNLOADING",
+                                    true // Open live camera immediately
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-purple-600 hover:bg-purple-700 text-white flex items-center justify-center gap-1.5 shadow-sm transition-colors"
+                                >
+                                  <Camera size={14} />
+                                  Take Live Photo
+                                </button>
 
-                              <button
-                                type="button"
-                                onClick={() => openStageEditor(
-                                  "event_unloading",
-                                  "Warehouse Return Unloading",
-                                  "event_unloading_image",
-                                  "event_unloading_datetime",
-                                  "event_unloading_location",
-                                  currentMovement.event_unloading_image,
-                                  currentMovement.event_unloading_datetime,
-                                  currentMovement.event_unloading_location,
-                                  "EVENT_UNLOADING",
-                                  false
-                                )}
-                                className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
-                              >
-                                <Upload size={14} />
-                                Upload File
-                              </button>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openStageEditor(
+                                    "event_unloading",
+                                    "Warehouse Return Unloading",
+                                    "event_unloading_image",
+                                    "event_unloading_datetime",
+                                    "event_unloading_location",
+                                    currentMovement.event_unloading_image,
+                                    currentMovement.event_unloading_datetime,
+                                    currentMovement.event_unloading_location,
+                                    "EVENT_UNLOADING",
+                                    false
+                                  )}
+                                  className="py-2 px-3 text-xs font-semibold rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-1.5 transition-colors"
+                                >
+                                  <Upload size={14} />
+                                  Upload File
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

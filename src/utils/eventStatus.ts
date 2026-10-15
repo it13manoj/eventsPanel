@@ -72,3 +72,9 @@ export const getStatusBadgeClass = (rawStatus: any): string => {
   const found = EVENT_STATUSES.find(s => s.code === code);
   return found ? found.badgeClass : "bg-gray-100 text-gray-700 border-gray-300";
 };
+
+export const isEventLocked = (rawStatus: any): boolean => {
+  const code = normalizeStatusCode(rawStatus);
+  return code === "3" || code === "4";
+};
+

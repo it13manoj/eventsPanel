@@ -264,20 +264,32 @@ layer(base);
   scrollbar-width: none; /* Firefox */
 }
 @utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+
   &::-webkit-scrollbar {
-    @apply size-1.5;
+    width: 6px;
+    height: 6px;
   }
 
   &::-webkit-scrollbar-track {
-    @apply rounded-full;
+    background: transparent;
+    border-radius: 9999px;
   }
 
   &::-webkit-scrollbar-thumb {
-    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+    background-color: rgba(156, 163, 175, 0.4);
+    border-radius: 9999px;
   }
 }
+.dark .custom-scrollbar {
+  scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
+}
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #344054;
+  background-color: rgba(100, 116, 139, 0.5);
 }
 
 @layer utilities {

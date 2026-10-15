@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Modal } from "../components/ui/modal";
 import apiClient from "../hooks/api/apiClient";
 import { toast } from "react-toastify";
-import { EVENT_STATUSES, normalizeStatusCode } from "../utils/eventStatus";
+import { EVENT_STATUSES, normalizeStatusCode, isEventLocked, getStatusLabel } from "../utils/eventStatus";
+import { Lock } from "lucide-react";
 
 interface EventEditModalProps {
     isOpen: boolean;
@@ -69,8 +70,14 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
         setForm((prev: any) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
+    const isLocked = isEventLocked(eventData?.status);
+
     const handleSubmit = async (e: any) => {
         e.preventDefault();
+        if (isLocked) {
+            toast.warning("This event is Completed or Cancelled and cannot be updated.");
+            return;
+        }
         if (!form.template_id) {
             toast.error("Please select an Event Template (Required as per requirements).");
             return;
@@ -100,14 +107,30 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            className="max-w-[100%] p-6 lg:p-10"
+            className="max-w-5xl w-full p-4 sm:p-6 lg:p-8"
         >
             <div className="overflow-y-auto max-h-[80vh] custom-scrollbar">
-                <h5 className="mb-4 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
-                    Edit Event Details
-                </h5>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                    <h5 className="font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl flex items-center gap-2">
+                        Edit Event Details
+                        {isLocked && (
+                            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 inline-flex items-center gap-1">
+                                <Lock size={12} />
+                                Locked (Read-Only)
+                            </span>
+                        )}
+                    </h5>
+                </div>
+
+                {isLocked && (
+                    <div className="mb-4 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center gap-2 text-amber-800 dark:text-amber-200 text-sm font-semibold">
+                        <Lock size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>This event is finalized ({getStatusLabel(eventData?.status)}). All fields are locked and records cannot be updated or changed.</span>
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <fieldset disabled={isLocked} className="space-y-4">
                     {/* Event Template Dropdown - Not Optional / Required per requirements */}
                     <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 space-y-1.5">
                         <label className="block text-xs font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
@@ -328,6 +351,7 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
                             rows={2}
                         ></textarea>
                     </div>
+                    </fieldset>
 
                     <div className="flex items-center gap-3 mt-6 sm:justify-end">
                         <button
@@ -335,14 +359,16 @@ export default function EventEditModal({ isOpen, onClose, eventData, onSuccess }
                             onClick={onClose}
                             className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
                         >
-                            Cancel
+                            {isLocked ? "Close" : "Cancel"}
                         </button>
-                        <button
-                            type="submit"
-                            className="btn btn-success flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
-                        >
-                            Update Event
-                        </button>
+                        {!isLocked && (
+                            <button
+                                type="submit"
+                                className="btn btn-success flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
+                            >
+                                Update Event
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>

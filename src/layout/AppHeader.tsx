@@ -6,9 +6,12 @@ import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import NotificationDropdown from "../components/header/NotificationDropdown";
 import UserDropdown from "../components/header/UserDropdown";
 import { useAuth } from "../hooks/auth";
+import { useCompany } from "../hooks/useCompany";
+import images from "../hooks/api/apiImages";
 
 const AppHeader: React.FC = () => {
   const { isStaff } = useAuth();
+  const { company } = useCompany();
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
@@ -85,17 +88,32 @@ const AppHeader: React.FC = () => {
             {/* Cross Icon */}
           </button>
 
-          <Link to={isStaff ? "/events" : "/dashboard"} className="lg:hidden">
-            <img
-              className="dark:hidden"
-              src="./images/logo/logo.svg"
-              alt="Logo"
-            />
-            <img
-              className="hidden dark:block"
-              src="./images/logo/logo-dark.svg"
-              alt="Logo"
-            />
+          <Link to={isStaff ? "/events" : "/dashboard"} className="lg:hidden flex items-center gap-2">
+            {company?.logo ? (
+              <img
+                src={`${images.baseUrl}/${company.logo}`}
+                alt={company.companyName || "Logo"}
+                className="max-h-9 max-w-[120px] object-contain rounded-md"
+              />
+            ) : (
+              <>
+                <img
+                  className="dark:hidden max-h-8"
+                  src="./images/logo/logo.svg"
+                  alt="Logo"
+                />
+                <img
+                  className="hidden dark:block max-h-8"
+                  src="./images/logo/logo-dark.svg"
+                  alt="Logo"
+                />
+              </>
+            )}
+            {company?.companyName && (
+              <span className="font-bold text-sm text-gray-800 dark:text-white truncate max-w-[110px]">
+                {company.companyName}
+              </span>
+            )}
           </Link>
 
           <button

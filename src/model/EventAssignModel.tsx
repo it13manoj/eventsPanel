@@ -90,9 +90,9 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
     <Modal
       isOpen={isOpen}
       onClose={() => closeModal(false)}
-      className="max-w-4xl p-6 lg:p-8"
+      className="max-w-4xl w-full p-4 sm:p-6 lg:p-8"
     >
-      <div className="overflow-y-auto max-h-[80vh] custom-scrollbar">
+      <div className="overflow-y-auto max-h-[82vh] custom-scrollbar">
         <h5 className="mb-4 font-semibold text-gray-800 modal-title text-theme-xl dark:text-white/90 lg:text-2xl">
           Team Assign
         </h5>

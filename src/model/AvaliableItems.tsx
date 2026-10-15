@@ -910,37 +910,35 @@ console.log( stockAddToEvents);
         <Modal
             isOpen={isOpens}
             onClose={() => setIsOpens(false)}
-
-            className="max-w-8xl w-full mx-auto p-0 rounded-2xl overflow-hidden [&>button]:hidden"
+            className="max-w-6xl w-full mx-auto p-0 rounded-2xl sm:rounded-3xl overflow-hidden [&>button]:hidden"
         >
             {/* Header */}
-            <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+            <div className="flex justify-between items-center px-4 sm:px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
                 <h2 className="text-lg font-semibold text-white">
-                    Event Details
+                    Available Items & Warehouse Stock
                 </h2>
                 <button
                     onClick={() => {
-
                         setIsOpens(false);
-
                         setHideAvailableButton((prev) => ({
                             ...prev,
                             [getItemsIs_enabled.subCategoryId]: true
                         }));
                     }}
-                    className="text-white hover:text-red-200 text-xl"
+                    className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-semibold text-xs transition cursor-pointer"
                 >
                     Done
                 </button>
             </div>
 
             {/* Body */}
-            <div className="p-6 bg-gray-50 space-y-6">
+            <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900/50 space-y-6 overflow-y-auto max-h-[82vh] custom-scrollbar">
                 <div className="md:col-span-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                         <div>
-                            <span>Ware House</span>
-                            <Table className="resizable-table">
+                            <span className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-2 block">Warehouse Stock</span>
+                            <div className="overflow-x-auto w-full custom-scrollbar rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                <Table className="resizable-table">
                                 {/* Table Header */}
 
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -1289,10 +1287,12 @@ console.log( stockAddToEvents);
                                     )}
                                 </TableBody>
                             </Table>
+                            </div>
                         </div>
                         <div>
-                            <span>Events</span>
-                            <Table className="resizable-table">
+                            <span className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-2 block">Events Stock</span>
+                            <div className="overflow-x-auto w-full custom-scrollbar rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                                <Table className="resizable-table">
                                 {/* Table Header */}
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                                     <TableRow>
@@ -1618,6 +1618,7 @@ console.log( stockAddToEvents);
                                         )}
                                 </TableBody>
                             </Table>
+                            </div>
                         </div>
                     </div>
                 </div>

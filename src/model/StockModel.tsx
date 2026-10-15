@@ -279,17 +279,24 @@ export default function StockModel({ isOpen, closeModal, stockData, onSuccess }:
         <Modal
             isOpen={isOpen}
             onClose={closeModal}
-            className="relative mx-auto my-10 w-[95%] max-w-7xl rounded-2xl overflow-hidden bg-white dark:bg-gray-900"
+            className="max-w-6xl w-full p-0 overflow-hidden [&>button]:hidden"
         >
             {/* HEADER */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
-                <h2 className="text-xl font-semibold text-white">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl font-semibold text-white">
                     {isEdit ? "Edit Inventory Stock" : "Inventory Stock"}
                 </h2>
+                <button
+                    type="button"
+                    onClick={closeModal}
+                    className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition text-lg"
+                >
+                    ✕
+                </button>
             </div>
 
             {/* BODY */}
-            <div className="p-5 overflow-y-auto max-h-[90vh]">
+            <div className="p-4 sm:p-6 overflow-y-auto max-h-[82vh] custom-scrollbar">
                 <form onSubmit={submitHandler} className="space-y-6">
                     {/* WAREHOUSE */}
                     <div>

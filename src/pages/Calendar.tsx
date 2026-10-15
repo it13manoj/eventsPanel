@@ -1029,7 +1029,7 @@ const Calendar: React.FC = () => {
 
       {menuVisible && (
         <div
-          className="absolute z-50 w-40 bg-white border border-gray-200 rounded-lg shadow-xl dark:bg-gray-800 dark:border-gray-700 py-2"
+          className="absolute z-50 w-44 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl py-1.5 overflow-hidden text-sm"
           style={{ top: menuPosition.y, left: menuPosition.x }}
           key={refreshKey}
         >
@@ -1042,7 +1042,7 @@ const Calendar: React.FC = () => {
               }
               openModal();
             }}
-            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+            className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-2"
           >
             ➕ Create Event
           </button>
@@ -1052,7 +1052,7 @@ const Calendar: React.FC = () => {
                 fillEventForm(contextData.event);
                 openModal();
               }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+              className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-2"
             >
               👁️ View Details
             </button>
@@ -1096,19 +1096,19 @@ const Calendar: React.FC = () => {
           />
         </div>
 
-        <Modal isOpen={isOpen} onClose={closeModal} className="max-w-8xl w-full mx-auto p-0 rounded-2xl overflow-hidden [&>button]:hidden">
+        <Modal isOpen={isOpen} onClose={closeModal} className="max-w-6xl w-full mx-auto p-0 rounded-2xl sm:rounded-3xl overflow-hidden [&>button]:hidden">
           <div className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
             <h2 className="text-lg font-semibold text-white">
               {selectedEvent ? "Update Event" : "Create Event"}
             </h2>
             <button
               onClick={() => { closeModal(); refresh() }}
-              className="text-white hover:text-red-200 text-xl"
+              className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-all flex items-center justify-center cursor-pointer text-base"
             >
               ✕
             </button>
           </div>
-          <div className="overflow-y-auto custom-scrollbar p-5">
+          <div className="overflow-y-auto custom-scrollbar p-4 sm:p-6 flex-1 max-h-[82vh]">
             {/* SAME DESIGN AS PREVIOUS */}
             <AutoComplete setSelectedTech={setSelectedTech}
               designId={designId}

@@ -78,7 +78,96 @@ export default function WareHouseList() {
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-                    <div className="max-w-full overflow-x-auto">
+
+                    {/* ========================================================= */}
+                    {/* 1. MOBILE VIEW: Stacked Cards (Visible on mobile only)     */}
+                    {/* ========================================================= */}
+                    <div className="block md:hidden divide-y divide-gray-100 dark:divide-white/[0.05]">
+                        {warehouses && warehouses.length > 0 ? (
+                            warehouses.map((rows, index) => (
+                                <div key={rows?.id} className="p-4 space-y-3 bg-white dark:bg-transparent">
+
+                                    {/* Header: Index, Name & Code */}
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <span className="text-xs font-semibold text-gray-400">#{index + 1}</span>
+                                            <h3 className="font-semibold text-gray-800 text-base dark:text-white/90">
+                                                {rows?.name}
+                                            </h3>
+                                        </div>
+                                        {rows?.code && (
+                                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                                                {rows.code}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Metadata Grid */}
+                                    <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 dark:bg-white/[0.02] p-2.5 rounded-xl border border-gray-100 dark:border-white/[0.03]">
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Location</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{rows?.location || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Capacity</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{rows?.capacity || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Manager</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{rows?.manager_name || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">Contact</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{rows?.contact_number || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">GST Number</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{rows?.gst_number || "-"}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] text-gray-400 uppercase font-medium">License</span>
+                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{rows?.license_number || "-"}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Full-width Address if present */}
+                                    {rows?.address && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                            <span className="font-semibold text-gray-600 dark:text-gray-300">Address: </span>
+                                            {rows.address}
+                                        </div>
+                                    )}
+
+                                    {/* Actions Bar */}
+                                    <div className="flex items-center justify-end gap-2 pt-1">
+                                        <button
+                                            onClick={() => handleEdit(rows)}
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 transition"
+                                        >
+                                            ✏️ Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(rows.id)}
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 transition"
+                                        >
+                                            🗑️ Delete
+                                        </button>
+                                    </div>
+
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-8 text-center text-gray-400 text-sm">
+                                No Warehouses Found
+                            </div>
+                        )}
+                    </div>
+
+
+                    {/* ========================================================= */}
+                    {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
+                    {/* ========================================================= */}
+                    <div className="hidden md:block max-w-full overflow-x-auto">
                         <Table className="resizable-table">
                             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                                 <TableRow>
@@ -138,13 +227,13 @@ export default function WareHouseList() {
                                                         onClick={() => handleEdit(rows)}
                                                         className="text-blue-500 hover:text-blue-700"
                                                     >
-                                                        ✏️Edit
+                                                        ✏️ Edit
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(rows.id)}
                                                         className="text-red-500 hover:text-red-700"
                                                     >
-                                                        🗑️Delete
+                                                        🗑️ Delete
                                                     </button>
                                                 </div>
                                             </TableCell>
