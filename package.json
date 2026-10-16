@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "cap:sync": "cap sync",
+    "cap:open": "cap open",
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",
     "cap:build:android": "npm run build && cap sync android",
