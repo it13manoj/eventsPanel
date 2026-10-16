@@ -1049,25 +1049,25 @@ export default function InvoiceListPage() {
                 {/* ========================================================= */}
                 {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
                 {/* ========================================================= */}
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                <div className="hidden md:block overflow-x-hidden w-full max-w-full">
+                    <table className="w-full table-fixed border-collapse text-left">
                         <thead>
-                            <tr className="bg-gray-100/75 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                                <th className="p-3.5">Invoice No</th>
-                                <th className="p-3.5">Customer & Venue</th>
-                                <th className="p-3.5">Event Date</th>
-                                <th className="p-3.5 text-right">Booked Items</th>
-                                <th className="p-3.5 text-right">Event Cost</th>
-                                <th className="p-3.5 text-right">Transport</th>
-                                <th className="p-3.5 text-right">Vehicle Logistics</th>
-                                <th className="p-3.5 text-right">Total Bill</th>
-                                <th className="p-3.5 text-right">Balance Due</th>
-                                <th className="p-3.5 text-center">Status</th>
-                                <th className="p-3.5 text-center">Actions</th>
+                            <tr className="bg-gray-100/75 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800 text-[11px] font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                                <th className="w-[6%] p-2 text-start whitespace-normal break-words">Invoice No</th>
+                                <th className="w-[16%] p-2 text-start whitespace-normal break-words">Customer & Venue</th>
+                                <th className="w-[8%] p-2 text-start whitespace-normal break-words">Event Date</th>
+                                <th className="w-[9%] p-2 text-right whitespace-normal break-words">Booked Items</th>
+                                <th className="w-[9%] p-2 text-right whitespace-normal break-words">Event Cost</th>
+                                <th className="w-[7%] p-2 text-right whitespace-normal break-words">Transport</th>
+                                <th className="w-[9%] p-2 text-right whitespace-normal break-words">Vehicle Logistics</th>
+                                <th className="w-[9%] p-2 text-right whitespace-normal break-words">Total Bill</th>
+                                <th className="w-[9%] p-2 text-right whitespace-normal break-words">Balance Due</th>
+                                <th className="w-[7%] p-2 text-center whitespace-normal break-words">Status</th>
+                                <th className="w-[11%] p-2 text-center">Actions</th>
                             </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs">
                             {filteredInvoices.length > 0 ? (
                                 filteredInvoices.map((inv) => {
                                     const total = Number(inv.amount || 0);
@@ -1082,36 +1082,36 @@ export default function InvoiceListPage() {
                                     return (
                                         <tr
                                             key={inv.id}
-                                            className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors"
+                                            className="group hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors"
                                         >
-                                            <td className="p-3.5 font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                                            <td className="w-[6%] p-2 font-bold text-blue-600 dark:text-blue-400 text-xs align-top whitespace-normal break-words">
                                                 {inv.id}
                                             </td>
 
-                                            <td className="p-3.5">
-                                                <div className="font-semibold text-gray-900 dark:text-white">
+                                            <td className="w-[16%] p-2 whitespace-normal break-words align-top leading-tight">
+                                                <div className="font-semibold text-gray-900 dark:text-white text-xs break-words" title={inv.customer || "Customer"}>
                                                     {inv.customer || "Customer"}
                                                 </div>
-                                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
-                                                    <MapPin size={12} />
-                                                    {inv.venue || inv.address || "Venue"}
+                                                <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-start gap-1 mt-0.5 break-words leading-tight" title={inv.venue || inv.address || "Venue"}>
+                                                    <MapPin size={10} className="shrink-0 mt-0.5" />
+                                                    <span className="break-words">{inv.venue || inv.address || "Venue"}</span>
                                                 </div>
                                             </td>
 
-                                            <td className="p-3.5 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                                            <td className="w-[8%] p-2 text-xs text-gray-600 dark:text-gray-400 align-top whitespace-normal break-words leading-tight">
                                                 <div className="flex items-center gap-1">
-                                                    <Calendar size={13} />
-                                                    {inv.eventDate ? new Date(inv.eventDate).toLocaleDateString("en-IN", {
+                                                    <Calendar size={11} className="shrink-0" />
+                                                    <span>{inv.eventDate ? new Date(inv.eventDate).toLocaleDateString("en-IN", {
                                                         day: "numeric",
                                                         month: "short",
                                                         year: "numeric"
-                                                    }) : "NA"}
+                                                    }) : "NA"}</span>
                                                 </div>
                                             </td>
 
-                                            <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
-                                                <div className="flex items-center justify-end gap-1 text-xs">
-                                                    <Layers size={13} className="text-blue-500" />
+                                            <td className="w-[9%] p-2 text-right font-medium text-gray-700 dark:text-gray-300 align-top text-xs whitespace-normal break-words">
+                                                <div className="flex items-center justify-end gap-1 text-xs font-mono">
+                                                    <Layers size={11} className="text-blue-500 shrink-0" />
                                                     ₹ {itemsTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                                 </div>
                                                 <span className="text-[10px] text-gray-400">
@@ -1119,14 +1119,14 @@ export default function InvoiceListPage() {
                                                 </span>
                                             </td>
 
-                                            <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
+                                            <td className="w-[9%] p-2 text-right font-medium text-gray-700 dark:text-gray-300 align-top text-xs whitespace-normal break-words">
                                                 {eventCostVal > 0 ? (
                                                     <div>
                                                         <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 font-mono">
                                                             ₹ {eventCostVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                                         </div>
                                                         {inv.templateName && (
-                                                            <span className="text-[10px] text-gray-400 block truncate max-w-[120px] ml-auto" title={inv.templateName}>
+                                                            <span className="text-[10px] text-gray-400 block truncate max-w-[100px] ml-auto" title={inv.templateName}>
                                                                 {inv.templateName}
                                                             </span>
                                                         )}
@@ -1136,7 +1136,7 @@ export default function InvoiceListPage() {
                                                 )}
                                             </td>
 
-                                            <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
+                                            <td className="w-[7%] p-2 text-right font-medium text-gray-700 dark:text-gray-300 align-top text-xs whitespace-normal break-words">
                                                 {transportCostVal > 0 ? (
                                                     <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
                                                         ₹ {transportCostVal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
@@ -1146,11 +1146,11 @@ export default function InvoiceListPage() {
                                                 )}
                                             </td>
 
-                                            <td className="p-3.5 text-right font-medium text-gray-700 dark:text-gray-300">
+                                            <td className="w-[9%] p-2 text-right font-medium text-gray-700 dark:text-gray-300 align-top text-xs whitespace-normal break-words">
                                                 {vehicleTotal > 0 ? (
                                                     <div>
                                                         <div className="flex items-center justify-end gap-1 text-xs font-mono">
-                                                            <Truck size={13} className="text-amber-500" />
+                                                            <Truck size={11} className="text-amber-500 shrink-0" />
                                                             ₹ {vehicleTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                                         </div>
                                                         <span className="text-[10px] text-gray-400">
@@ -1162,13 +1162,13 @@ export default function InvoiceListPage() {
                                                 )}
                                             </td>
 
-                                            <td className="p-3.5 text-right font-bold text-gray-900 dark:text-white text-base font-mono">
+                                            <td className="w-[9%] p-2 text-right font-bold text-gray-900 dark:text-white text-xs align-top font-mono whitespace-normal break-words">
                                                 ₹ {total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                                             </td>
 
-                                            <td className="p-3.5 text-right font-bold whitespace-nowrap font-mono">
+                                            <td className="w-[9%] p-2 text-right font-bold align-top whitespace-normal break-words font-mono">
                                                 <span
-                                                    className={`px-2 py-0.5 rounded-lg text-xs ${unpaid > 0
+                                                    className={`px-1.5 py-0.5 rounded text-[11px] block ${unpaid > 0
                                                             ? "text-red-700 bg-red-50 dark:bg-red-900/30 dark:text-red-400"
                                                             : "text-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400"
                                                         }`}
@@ -1177,9 +1177,9 @@ export default function InvoiceListPage() {
                                                 </span>
                                             </td>
 
-                                            <td className="p-3.5 text-center">
+                                            <td className="w-[7%] p-2 text-center align-top whitespace-normal break-words">
                                                 <span
-                                                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${isPaid
+                                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${isPaid
                                                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
                                                             : isPartial
                                                                 ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
@@ -1190,48 +1190,48 @@ export default function InvoiceListPage() {
                                                 </span>
                                             </td>
 
-                                            <td className="p-3.5 text-center whitespace-nowrap">
-                                                <div className="flex items-center justify-center gap-1.5">
+                                            <td className="w-[11%] p-2 text-center align-top">
+                                                <div className="flex items-center justify-center gap-1 flex-wrap">
                                                     <button
                                                         onClick={() => handleOpenBillPay(inv)}
                                                         title="Pay Bill"
-                                                        className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
+                                                        className="flex items-center gap-0.5 bg-indigo-600 hover:bg-indigo-700 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer"
                                                     >
-                                                        <FaFileInvoiceDollar size={13} />
-                                                        Pay
+                                                        <FaFileInvoiceDollar size={10} />
+                                                        <span>Pay</span>
                                                     </button>
 
                                                     <button
                                                         onClick={() => handleOpenPartnerModal(inv)}
                                                         title="Add / Edit Partner & GST Details"
-                                                        className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 rounded-lg transition-all"
+                                                        className="p-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded transition cursor-pointer"
                                                     >
-                                                        <Building2 size={16} />
+                                                        <Building2 size={13} />
                                                     </button>
 
                                                     <button
                                                         onClick={() => setSelectedInvoice(inv)}
                                                         title="View Bill Details"
-                                                        className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg transition-all"
+                                                        className="p-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded transition cursor-pointer"
                                                     >
-                                                        <Eye size={16} />
+                                                        <Eye size={13} />
                                                     </button>
 
                                                     <button
                                                         onClick={() => downloadPDF(inv)}
                                                         title="Print / Download PDF"
-                                                        className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg transition-all"
+                                                        className="p-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 rounded transition cursor-pointer"
                                                     >
-                                                        <Download size={16} />
+                                                        <Download size={13} />
                                                     </button>
 
                                                     {inv.status !== "Cancelled" && (
                                                         <button
                                                             onClick={() => handleCancel(inv.id)}
                                                             title="Cancel Invoice"
-                                                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg transition-all"
+                                                            className="p-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded transition cursor-pointer"
                                                         >
-                                                            <XCircle size={16} />
+                                                            <XCircle size={13} />
                                                         </button>
                                                     )}
                                                 </div>
@@ -1241,7 +1241,7 @@ export default function InvoiceListPage() {
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan={9} className="text-center py-12 text-gray-400">
+                                    <td colSpan={11} className="text-center py-12 text-gray-400">
                                         <AlertCircle size={32} className="mx-auto mb-2 text-gray-300" />
                                         No invoices found matching your criteria.
                                     </td>

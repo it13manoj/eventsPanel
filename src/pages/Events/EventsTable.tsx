@@ -262,40 +262,7 @@ export default function EventsTable() {
     }, [events]);
 
 
-    // ============================================================Resize Able Table=================================
 
-
-    useEffect(() => {
-        const thElements = document.querySelectorAll(".resizable-table th");
-
-        thElements.forEach((th: any) => {
-            const handleWheel = (e: WheelEvent) => {
-                e.preventDefault(); // stop page scroll
-
-                const delta = e.deltaY;
-
-                const currentWidth = th.offsetWidth;
-
-                // scroll up = increase, scroll down = decrease
-                let newWidth = delta < 0
-                    ? currentWidth + 20
-                    : currentWidth - 20;
-
-                // min width protection
-                newWidth = Math.max(80, newWidth);
-
-                th.style.width = newWidth + "px";
-            };
-
-            th.addEventListener("wheel", handleWheel, { passive: false });
-        });
-
-        return () => {
-            thElements.forEach((th: any) => {
-                th.removeEventListener("wheel", () => { });
-            });
-        };
-    }, []);
 
 
 
@@ -469,19 +436,19 @@ export default function EventsTable() {
     {/* ========================================================= */}
     {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
     {/* ========================================================= */}
-    <div className="hidden md:block max-w-full overflow-x-scroll" style={{ whiteSpace: "nowrap" }}>
-        <Table className="resizable-table">
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+    <div className="hidden md:block w-full max-w-full overflow-x-hidden">
+        <Table className="w-full table-fixed border-collapse">
+            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/75 dark:bg-gray-900/40">
                 <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">#</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Client Name</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">VANUS</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Start Date Of Event</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Teams</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">installation</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Uninstallation</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Status</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Action</TableCell>
+                    <TableCell isHeader className="w-[4%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs">#</TableCell>
+                    <TableCell isHeader className="w-[19%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Client Name</TableCell>
+                    <TableCell isHeader className="w-[14%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">VANUS</TableCell>
+                    <TableCell isHeader className="w-[10%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Start Date</TableCell>
+                    <TableCell isHeader className="w-[6%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs">Teams</TableCell>
+                    <TableCell isHeader className="w-[11%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Installation</TableCell>
+                    <TableCell isHeader className="w-[11%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Uninstallation</TableCell>
+                    <TableCell isHeader className="w-[11%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs">Status</TableCell>
+                    <TableCell isHeader className="w-[14%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs">Action</TableCell>
                 </TableRow>
             </TableHeader>
 
@@ -491,133 +458,162 @@ export default function EventsTable() {
                     const teamCount = teamSizes[rows.id] !== undefined ? teamSizes[rows.id] : (Number(rows.team_count) || 0);
                     return (
                         <TableRow key={rows?.id} className={isLocked ? "bg-gray-50/60 dark:bg-gray-900/40" : ""}>
-                            <TableCell className="px-5 py-4 sm:px-6 text-start">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="font-semibold text-gray-700 dark:text-gray-300">#{rows?.id}</span>
-                                    {isLocked && <Lock size={13} className="text-amber-500" />}
+                            <TableCell className="w-[4%] p-2 text-start align-top">
+                                <div className="flex items-center gap-1">
+                                    <span className="font-semibold text-gray-700 dark:text-gray-300 text-xs">#{rows?.id}</span>
+                                    {isLocked && <Lock size={12} className="text-amber-500 shrink-0" />}
                                 </div>
                             </TableCell>
-                            <TableCell className="px-5 py-4 sm:px-6 text-start">
+
+                            <TableCell className="w-[19%] p-2 text-start whitespace-normal break-words align-top">
                                 <span
-                                    className="block font-medium text-gray-800 text-theme-sm dark:text-white/90 cursor-pointer hover:text-blue-600"
+                                    className="block font-semibold text-gray-800 text-xs sm:text-sm dark:text-white/90 cursor-pointer hover:text-blue-600 leading-snug break-words"
                                     onClick={() => { setSelectedRow(rows); setIsOpenes(true); }}
                                 >
                                     {rows?.c_name}
                                 </span>
                                 {rows?.template_name && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 mt-0.5">
+                                    <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 mt-1 whitespace-normal break-words leading-tight">
                                         ⚡ {rows.template_name}
                                     </span>
                                 )}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{rows?.vanus}</TableCell>
-                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+
+                            <TableCell className="w-[14%] p-2 text-gray-600 dark:text-gray-300 text-start text-xs whitespace-normal break-words leading-snug align-top">
+                                {rows?.vanus || "-"}
+                            </TableCell>
+
+                            <TableCell className="w-[10%] p-2 text-gray-600 dark:text-gray-300 text-start text-xs break-words align-top">
                                 {rows?.doe && !isNaN(new Date(rows.doe).getTime()) ? new Date(rows.doe).toISOString().split("T")[0] : "-"}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+
+                            <TableCell className="w-[6%] p-2 text-center text-xs align-top">
                                 <span
-                                    className={isLocked ? "cursor-pointer text-gray-700 dark:text-gray-300 font-medium hover:text-blue-600" : "cursor-pointer text-blue-600 hover:underline"}
+                                    className={isLocked ? "cursor-pointer text-gray-700 dark:text-gray-300 font-medium hover:text-blue-600" : "cursor-pointer text-blue-600 hover:underline font-bold"}
                                     onClick={() => { setSelectedTeamId(rows.id); setSelectedTeamLocked(isLocked); setIsOpenTeam(true); }}
                                 >
                                     {teamCount}
-                                    {isLocked && <Lock className="w-3 h-3 inline ml-1 text-amber-500" />}
+                                    {isLocked && <Lock className="w-2.5 h-2.5 inline ml-0.5 text-amber-500" />}
                                 </span>
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                {inst[rows.id]?.[0]?.installing && !isNaN(new Date(inst[rows.id][0].installing).getTime())
-                                    ? format(new Date(inst[rows.id][0].installing), "dd-MM-yyyy hh:mm aa")
-                                    : "-"}
+
+                            <TableCell className="w-[11%] p-2 text-start text-xs break-words align-top">
+                                {inst[rows.id]?.[0]?.installing && !isNaN(new Date(inst[rows.id][0].installing).getTime()) ? (
+                                    <div className="leading-tight">
+                                        <span className="block font-medium text-gray-800 dark:text-gray-200 text-xs">
+                                            {format(new Date(inst[rows.id][0].installing), "dd-MM-yyyy")}
+                                        </span>
+                                        <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                            {format(new Date(inst[rows.id][0].installing), "hh:mm aa")}
+                                        </span>
+                                    </div>
+                                ) : "-"}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                {inst[rows.id]?.[0]?.uninstalling && !isNaN(new Date(inst[rows.id][0].uninstalling).getTime())
-                                    ? format(new Date(inst[rows.id][0].uninstalling), "dd-MM-yyyy hh:mm aa")
-                                    : "-"}
+
+                            <TableCell className="w-[11%] p-2 text-start text-xs break-words align-top">
+                                {inst[rows.id]?.[0]?.uninstalling && !isNaN(new Date(inst[rows.id][0].uninstalling).getTime()) ? (
+                                    <div className="leading-tight">
+                                        <span className="block font-medium text-gray-800 dark:text-gray-200 text-xs">
+                                            {format(new Date(inst[rows.id][0].uninstalling), "dd-MM-yyyy")}
+                                        </span>
+                                        <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                            {format(new Date(inst[rows.id][0].uninstalling), "hh:mm aa")}
+                                        </span>
+                                    </div>
+                                ) : "-"}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-start text-theme-sm">
+
+                            <TableCell className="w-[11%] p-2 text-start align-top">
                                 {!canEditEvents || isLocked ? (
-                                    <span className={`text-xs font-semibold rounded-lg px-2.5 py-1.5 border inline-flex items-center gap-1.5 ${isLocked ? "opacity-90" : ""} ${getStatusBadgeClass(rows.status)}`}>
-                                        {isLocked && <Lock className="w-3 h-3 text-current" />}
-                                        {getStatusLabel(rows.status)}
+                                    <span className={`text-[11px] font-semibold rounded px-1.5 py-0.5 border inline-flex items-center gap-1 ${isLocked ? "opacity-90" : ""} ${getStatusBadgeClass(rows.status)}`}>
+                                        {isLocked && <Lock className="w-2.5 h-2.5 text-current shrink-0" />}
+                                        <span className="truncate">{getStatusLabel(rows.status)}</span>
                                     </span>
                                 ) : (
                                     <select
                                         value={normalizeStatusCode(rows.status)}
                                         onChange={(e) => handleUpdateStatus(rows.id, e.target.value)}
-                                        className={`text-xs font-semibold rounded-lg px-2.5 py-1.5 border transition cursor-pointer focus:outline-none ${getStatusBadgeClass(rows.status)}`}
+                                        className={`text-[11px] font-semibold rounded px-1.5 py-1 border transition cursor-pointer focus:outline-none w-full ${getStatusBadgeClass(rows.status)}`}
                                     >
                                         {EVENT_STATUSES.map((st) => (
-                                            <option key={st.code} value={st.code}>{st.label}</option>
+                                             <option key={st.code} value={st.code}>{st.label}</option>
                                         ))}
                                     </select>
                                 )}
                             </TableCell>
-                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                                <div className="flex items-center gap-2">
+
+                            <TableCell className="w-[14%] p-2 text-start align-top">
+                                <div className="flex flex-wrap items-center gap-1">
                                     {canEditEvents && (
                                         teamCount > 0 ? (
-                                            <span className={`rounded-lg px-2 py-1 text-xs font-medium ${isLocked ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"}`}>
-                                                Team Assigned
+                                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold leading-tight ${isLocked ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"}`}>
+                                                Assigned
                                             </span>
                                         ) : (
                                             <button
                                                 disabled={isLocked}
-                                                className={`flex items-center justify-center p-2 rounded-lg transition ${isLocked ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed opacity-60" : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"}`}
+                                                className={`flex items-center justify-center p-1 rounded text-xs transition ${isLocked ? "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed opacity-60" : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"}`}
                                                 onClick={() => {
                                                     if (isLocked) return;
                                                     openModal();
                                                     getEventsByID(rows.id);
                                                 }}
+                                                title="Assign Team"
                                             >
-                                                <HiUserGroup size={16} />
+                                                <HiUserGroup size={14} />
                                             </button>
                                         )
                                     )}
 
                                     {isLocked ? (
                                         <button
-                                            className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+                                            className="flex items-center gap-0.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded text-[10px] font-semibold transition cursor-pointer"
                                             onClick={() => {
                                                 setSelectedVehicleEventId(rows.id);
                                                 setSelectedTeamId(rows.id);
                                                 getEventsByID(rows.id);
                                                 setIsOpenvehicle(true);
                                             }}
+                                            title="View Vehicle"
                                         >
-                                            <FaTruck size={14} className="text-gray-400" />
-                                            <span className="flex items-center gap-1"><Lock size={11} className="text-gray-400" />View</span>
+                                            <FaTruck size={10} className="text-gray-400" />
+                                            <span className="flex items-center gap-0.5"><Lock size={8} className="text-gray-400" />View</span>
                                         </button>
                                     ) : (
                                         <button
-                                            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer"
+                                            className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white px-1.5 py-0.5 rounded text-[10px] font-semibold shadow-xs transition cursor-pointer"
                                             onClick={() => {
                                                 setSelectedVehicleEventId(rows.id);
                                                 setSelectedTeamId(rows.id);
                                                 getEventsByID(rows.id);
                                                 setIsOpenvehicle(true);
                                             }}
+                                            title="Track Vehicle"
                                         >
-                                            <FaTruck size={14} />
-                                            {isStaff ? "Update Vehicle" : ""}
+                                            <FaTruck size={11} />
+                                            <span>{isStaff ? "Vehicle" : "Track"}</span>
                                         </button>
                                     )}
 
                                     {canEditEvents && (
-                                        <>
+                                        <div className="flex items-center gap-0.5">
                                             <button
                                                 disabled={isLocked}
-                                                className={`p-1.5 transition ${isLocked ? "text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40" : "text-gray-500 hover:text-brand-500 dark:text-gray-400 cursor-pointer"}`}
+                                                className={`p-1 transition rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${isLocked ? "text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40" : "text-gray-500 hover:text-brand-500 dark:text-gray-400 cursor-pointer"}`}
                                                 onClick={() => !isLocked && handleEditEvent(rows)}
+                                                title="Edit Event"
                                             >
-                                                <Pencil className="w-4 h-4" />
+                                                <Pencil className="w-3.5 h-3.5" />
                                             </button>
                                             <button
                                                 disabled={isLocked}
-                                                className={`p-1.5 transition ${isLocked ? "text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40" : "text-gray-500 hover:text-red-500 dark:text-gray-400 cursor-pointer"}`}
+                                                className={`p-1 transition rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${isLocked ? "text-gray-300 dark:text-gray-600 cursor-not-allowed opacity-40" : "text-gray-500 hover:text-red-500 dark:text-gray-400 cursor-pointer"}`}
                                                 onClick={() => !isLocked && handleDeleteEvent(rows.id)}
+                                                title="Delete Event"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </button>
-                                        </>
+                                        </div>
                                     )}
                                 </div>
                             </TableCell>

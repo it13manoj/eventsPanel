@@ -13,6 +13,7 @@ import WareHouseModel from "../../model/WareHouseModel";
 import { useModal } from "../../hooks/useModal";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Pencil, Trash2 } from "lucide-react";
 
 export default function WareHouseList() {
     const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -167,21 +168,21 @@ export default function WareHouseList() {
                     {/* ========================================================= */}
                     {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
                     {/* ========================================================= */}
-                    <div className="hidden md:block max-w-full overflow-x-auto">
-                        <Table className="resizable-table">
-                            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                    <div className="hidden md:block w-full max-w-full overflow-x-hidden">
+                        <Table className="w-full table-fixed border-collapse">
+                            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/70 dark:bg-gray-900/40">
                                 <TableRow>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">#</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Name</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Code</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Location</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Capacity</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Manager</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Contact</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">GST</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">License</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Address</TableCell>
-                                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Actions</TableCell>
+                                    <TableCell isHeader className="w-[3.5%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs">#</TableCell>
+                                    <TableCell isHeader className="w-[14%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Name</TableCell>
+                                    <TableCell isHeader className="w-[8%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Code</TableCell>
+                                    <TableCell isHeader className="w-[8.5%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Location</TableCell>
+                                    <TableCell isHeader className="w-[6%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs break-words">Capacity</TableCell>
+                                    <TableCell isHeader className="w-[9%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Manager</TableCell>
+                                    <TableCell isHeader className="w-[9.5%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Contact</TableCell>
+                                    <TableCell isHeader className="w-[12%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">GST</TableCell>
+                                    <TableCell isHeader className="w-[7%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">License</TableCell>
+                                    <TableCell isHeader className="w-[14%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Address</TableCell>
+                                    <TableCell isHeader className="w-[8.5%] p-2 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs">Actions</TableCell>
                                 </TableRow>
                             </TableHeader>
 
@@ -189,51 +190,53 @@ export default function WareHouseList() {
                                 {warehouses && warehouses.length > 0 ? (
                                     warehouses.map((rows, index) => (
                                         <TableRow key={rows?.id}>
-                                            <TableCell className="px-5 py-4 sm:px-6 text-start">
+                                            <TableCell className="w-[3.5%] p-2 text-center font-medium text-gray-400 text-xs align-top">
                                                 {index + 1}
                                             </TableCell>
-                                            <TableCell className="px-5 py-4 sm:px-6 text-start">
+                                            <TableCell className="w-[14%] p-2 text-start whitespace-normal break-words leading-snug text-xs align-top">
                                                 <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
                                                     {rows?.name}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                                {rows?.code}
+                                            <TableCell className="w-[8%] p-2 text-start whitespace-normal break-words text-gray-500 font-mono text-xs align-top dark:text-gray-400">
+                                                {rows?.code || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            <TableCell className="w-[8.5%] p-2 text-start whitespace-normal break-words text-gray-600 text-xs align-top dark:text-gray-300">
                                                 {rows?.location || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                                {rows?.capacity || "-"}
+                                            <TableCell className="w-[6%] p-2 text-center whitespace-normal break-words text-gray-600 text-xs align-top dark:text-gray-300">
+                                                {rows?.capacity ?? "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                            <TableCell className="w-[9%] p-2 text-start whitespace-normal break-words text-gray-600 text-xs align-top dark:text-gray-300">
                                                 {rows?.manager_name || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                            <TableCell className="w-[9.5%] p-2 text-start whitespace-normal break-words text-gray-600 text-xs align-top dark:text-gray-300">
                                                 {rows?.contact_number || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                            <TableCell className="w-[12%] p-2 text-start whitespace-normal break-all font-mono text-gray-600 text-xs align-top dark:text-gray-300">
                                                 {rows?.gst_number || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                            <TableCell className="w-[7%] p-2 text-start whitespace-normal break-words text-gray-600 text-xs align-top dark:text-gray-300">
                                                 {rows?.license_number || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
+                                            <TableCell className="w-[14%] p-2 text-start whitespace-normal break-words text-gray-600 text-xs leading-snug align-top dark:text-gray-300">
                                                 {rows?.address || "-"}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-start">
-                                                <div className="flex items-center gap-2">
+                                            <TableCell className="w-[8.5%] p-2 text-center align-top">
+                                                <div className="flex items-center justify-center gap-1.5">
                                                     <button
                                                         onClick={() => handleEdit(rows)}
-                                                        className="text-blue-500 hover:text-blue-700"
+                                                        className="p-1 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition cursor-pointer"
+                                                        title="Edit Warehouse"
                                                     >
-                                                        ✏️ Edit
+                                                        <Pencil className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(rows.id)}
-                                                        className="text-red-500 hover:text-red-700"
+                                                        className="p-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition cursor-pointer"
+                                                        title="Delete Warehouse"
                                                     >
-                                                        🗑️ Delete
+                                                        <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
                                             </TableCell>

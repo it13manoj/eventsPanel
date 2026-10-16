@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import apiClient from "./api/apiClient";
+import apiClient, { isTokenExpired, clearAuthSession, redirectToLogin } from "./api/apiClient";
+
+export { isTokenExpired, clearAuthSession, redirectToLogin };
 
 export interface ModulePermission {
   view: boolean;
@@ -83,7 +85,12 @@ export const DEFAULT_STAFF_PERMISSIONS: PermissionsMap = {
 
 export const isAuthenticated = (): boolean => {
   const token = localStorage.getItem("token");
-  return !!token;
+  if (!token) return false;
+  if (isTokenExpired(token)) {
+    clearAuthSession();
+    return false;
+  }
+  return true;
 };
 
 export const getStoredUser = (): AuthUser | null => {
@@ -144,7 +151,10 @@ export const useAuth = () => {
 
   const fetchProfile = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
+    if (!token || isTokenExpired(token)) {
+      if (token && isTokenExpired(token)) {
+        redirectToLogin("expired");
+      }
       setUser(null);
       setLoading(false);
       return;
@@ -191,6 +201,24 @@ export const useAuth = () => {
 
   useEffect(() => {
     fetchProfile();
+
+    // Check token expiration periodically and on tab focus
+    const checkTokenStatus = () => {
+      const token = localStorage.getItem("token");
+      if (token && isTokenExpired(token)) {
+        redirectToLogin("expired");
+      }
+    };
+
+    const interval = setInterval(checkTokenStatus, 15000);
+    window.addEventListener("focus", checkTokenStatus);
+    document.addEventListener("visibilitychange", checkTokenStatus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", checkTokenStatus);
+      document.removeEventListener("visibilitychange", checkTokenStatus);
+    };
   }, []);
 
   const role = user?.role?.toUpperCase() || getStoredRole();
@@ -255,12 +283,9 @@ export const useAuth = () => {
   );
 
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("role");
-    localStorage.removeItem("permissions");
+    clearAuthSession();
     setUser(null);
-    window.location.href = "/";
+    window.location.href = "/login";
   };
 
   return {

@@ -10,6 +10,7 @@ import {
 import { useEffect, useState } from "react";
 import apiClient from "../../../hooks/api/apiClient";
 import { toast } from "react-toastify";
+import { Pencil, Trash2 } from "lucide-react";
 
 interface CategoryListProps {
     onEdit?: (item: any) => void;
@@ -55,44 +56,6 @@ export default function CategoryList({ onEdit, refreshKey }: CategoryListProps) 
 
 
 
-
-
-
-
-
-
-// =============================Resize able table ========================
-    useEffect(() => {
-  const thElements = document.querySelectorAll(".resizable-table th");
-
-  thElements.forEach((th: any) => {
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault(); // stop page scroll
-
-      const delta = e.deltaY;
-
-      const currentWidth = th.offsetWidth;
-
-      // scroll up = increase, scroll down = decrease
-      let newWidth = delta < 0 
-        ? currentWidth + 20 
-        : currentWidth - 20;
-
-      // min width protection
-      newWidth = Math.max(80, newWidth);
-
-      th.style.width = newWidth + "px";
-    };
-
-    th.addEventListener("wheel", handleWheel, { passive: false });
-  });
-
-  return () => {
-    thElements.forEach((th: any) => {
-      th.removeEventListener("wheel", () => {});
-    });
-  };
-}, []);
 
 
 
@@ -168,16 +131,16 @@ export default function CategoryList({ onEdit, refreshKey }: CategoryListProps) 
     {/* ========================================================= */}
     {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
     {/* ========================================================= */}
-    <div className="hidden md:block max-w-full overflow-x-auto">
-        <Table className="resizable-table">
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+    <div className="hidden md:block w-full max-w-full overflow-x-hidden">
+        <Table className="w-full table-fixed border-collapse">
+            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/70 dark:bg-gray-900/40">
                 <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Sr.No.</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Category Name</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Code</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Status</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Description</TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">Action</TableCell>
+                    <TableCell isHeader className="w-[6%] p-2.5 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs">Sr.No.</TableCell>
+                    <TableCell isHeader className="w-[24%] p-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Category Name</TableCell>
+                    <TableCell isHeader className="w-[14%] p-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Code</TableCell>
+                    <TableCell isHeader className="w-[12%] p-2.5 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs">Status</TableCell>
+                    <TableCell isHeader className="w-[32%] p-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start text-xs break-words">Description</TableCell>
+                    <TableCell isHeader className="w-[12%] p-2.5 font-semibold text-gray-600 dark:text-gray-300 text-center text-xs">Action</TableCell>
                 </TableRow>
             </TableHeader>
 
@@ -185,21 +148,33 @@ export default function CategoryList({ onEdit, refreshKey }: CategoryListProps) 
                 {categories && categories.length > 0 ? (
                     categories.map((item, index) => (
                         <TableRow key={item?.id}>
-                            <TableCell className="px-5 py-4">{index + 1}</TableCell>
-                            <TableCell className="px-5 py-4">
-                                <span className="font-medium text-gray-800 dark:text-white">{item?.name}</span>
+                            <TableCell className="w-[6%] p-2.5 text-center font-medium text-gray-400 text-xs align-top">{index + 1}</TableCell>
+                            <TableCell className="w-[24%] p-2.5 text-start whitespace-normal break-words leading-snug text-xs align-top">
+                                <span className="font-semibold text-gray-800 dark:text-white">{item?.name}</span>
                             </TableCell>
-                            <TableCell className="px-5 py-4 text-gray-500">{item?.code}</TableCell>
-                            <TableCell className="px-5 py-4">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${Number(item?.status) === 1 ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`}>
+                            <TableCell className="w-[14%] p-2.5 text-gray-500 whitespace-normal break-words font-mono text-xs align-top dark:text-gray-400">{item?.code || "-"}</TableCell>
+                            <TableCell className="w-[12%] p-2.5 text-center text-xs align-top">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-semibold ${Number(item?.status) === 1 ? "bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300"}`}>
                                     {Number(item?.status) === 1 ? "Active" : "Inactive"}
                                 </span>
                             </TableCell>
-                            <TableCell className="px-5 py-4 text-gray-500">{item?.description || "N/A"}</TableCell>
-                            <TableCell className="px-5 py-4 text-start">
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleEdit(item)} className="text-blue-500 hover:text-blue-700">✏️Edit</button>
-                                    <button onClick={() => handleDelete(item?.id)} className="text-red-500 hover:text-red-700">🗑️Delete</button>
+                            <TableCell className="w-[32%] p-2.5 text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-snug text-xs align-top">{item?.description || "-"}</TableCell>
+                            <TableCell className="w-[12%] p-2.5 text-center align-top">
+                                <div className="flex items-center justify-center gap-1.5">
+                                    <button 
+                                        onClick={() => handleEdit(item)} 
+                                        className="p-1 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition cursor-pointer"
+                                        title="Edit Category"
+                                    >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDelete(item?.id)} 
+                                        className="p-1 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition cursor-pointer"
+                                        title="Delete Category"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </TableCell>
                         </TableRow>

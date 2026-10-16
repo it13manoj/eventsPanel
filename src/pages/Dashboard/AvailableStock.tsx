@@ -532,19 +532,19 @@ export default function AvailableStock() {
   {/* ========================================================= */}
   {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
   {/* ========================================================= */}
-  <div className="hidden md:block max-w-full overflow-x-auto">
-    <Table className="w-full text-left">
+  <div className="hidden md:block w-full max-w-full overflow-x-hidden">
+    <Table className="w-full table-fixed border-collapse text-left">
       <TableHeader className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/40 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
         <TableRow>
-          <TableCell isHeader className="px-5 py-3.5">#</TableCell>
-          <TableCell isHeader className="px-5 py-3.5">Warehouse</TableCell>
-          <TableCell isHeader className="px-5 py-3.5">Category</TableCell>
-          <TableCell isHeader className="px-5 py-3.5">Sub-Category</TableCell>
-          <TableCell isHeader className="px-5 py-3.5 text-center">Total Stock</TableCell>
-          <TableCell isHeader className="px-5 py-3.5 text-center">In Use (Active)</TableCell>
-          <TableCell isHeader className="px-5 py-3.5">Available Remaining (Ratio)</TableCell>
-          <TableCell isHeader className="px-5 py-3.5">Sizes Breakdown</TableCell>
-          <TableCell isHeader className="px-5 py-3.5">Active Events / Templates</TableCell>
+          <TableCell isHeader className="w-[3.5%] p-2 text-center whitespace-nowrap">#</TableCell>
+          <TableCell isHeader className="w-[12%] p-2 break-words">Warehouse</TableCell>
+          <TableCell isHeader className="w-[13%] p-2 break-words">Category</TableCell>
+          <TableCell isHeader className="w-[13%] p-2 break-words">Sub-Category</TableCell>
+          <TableCell isHeader className="w-[6.5%] p-2 text-center break-words">Total Stock</TableCell>
+          <TableCell isHeader className="w-[9%] p-2 text-center break-words">In Use (Active)</TableCell>
+          <TableCell isHeader className="w-[14%] p-2 break-words">Available Remaining (Ratio)</TableCell>
+          <TableCell isHeader className="w-[14%] p-2 break-words">Sizes Breakdown</TableCell>
+          <TableCell isHeader className="w-[15%] p-2 break-words">Active Events / Templates</TableCell>
         </TableRow>
       </TableHeader>
 
@@ -590,26 +590,26 @@ export default function AvailableStock() {
                 key={row.id}
                 className="hover:bg-gray-50/60 dark:hover:bg-white/[0.02] transition"
               >
-                <TableCell className="px-5 py-4 font-mono text-gray-400">
+                <TableCell className="w-[3.5%] p-2 text-center font-mono text-gray-400 text-xs align-top">
                   #{row.id}
                 </TableCell>
-                <TableCell className="px-5 py-4 font-medium text-gray-800 dark:text-gray-200">
+                <TableCell className="w-[12%] p-2 font-medium text-gray-800 dark:text-gray-200 whitespace-normal break-words leading-snug text-xs align-top">
                   {row.wareHouse?.name || "-"}
                 </TableCell>
-                <TableCell className="px-5 py-4">
+                <TableCell className="w-[13%] p-2 whitespace-normal break-words leading-snug text-xs align-top">
                   <span className="font-semibold text-gray-900 dark:text-white">
                     {row.categories?.name || "-"}
                   </span>
                 </TableCell>
-                <TableCell className="px-5 py-4 text-gray-700 dark:text-gray-300">
+                <TableCell className="w-[13%] p-2 text-gray-700 dark:text-gray-300 whitespace-normal break-words leading-snug text-xs align-top">
                   {row.subCategories?.name || "-"}
                 </TableCell>
-                <TableCell className="px-5 py-4 text-center font-bold text-gray-900 dark:text-white">
+                <TableCell className="w-[6.5%] p-2 text-center font-bold text-gray-900 dark:text-white text-xs align-top">
                   {total}
                 </TableCell>
-                <TableCell className="px-5 py-4 text-center">
+                <TableCell className="w-[9%] p-2 text-center text-xs align-top">
                   {allocated > 0 ? (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700/50">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                       {allocated} in use
                     </span>
@@ -617,13 +617,13 @@ export default function AvailableStock() {
                     <span className="text-gray-400 text-xs">0 (Idle)</span>
                   )}
                 </TableCell>
-                <TableCell className="px-5 py-4">
-                  <div className="space-y-1.5 min-w-[140px]">
+                <TableCell className="w-[14%] p-2 align-top">
+                  <div className="space-y-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className={`text-sm font-bold ${available > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                        {available} available
+                      <span className={`text-xs font-bold ${available > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                        {available} avail
                       </span>
-                      <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${percent > 50 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : percent > 20 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"}`}>
+                      <span className={`text-[10px] font-bold px-1 py-0.2 rounded ${percent > 50 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : percent > 20 ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"}`}>
                         {percent}%
                       </span>
                     </div>
@@ -638,61 +638,59 @@ export default function AvailableStock() {
                     </p>
                   </div>
                 </TableCell>
-                <TableCell className="px-5 py-4">
+                <TableCell className="w-[14%] p-2 align-top">
                   {row.have_size ? (
-                    <div className="space-y-2 min-w-[160px]">
+                    <div className="space-y-1.5">
                       {row.vertical_enabled && row.verticalSizes?.length > 0 && (
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Vertical Sizes</span>
+                        <div className="space-y-0.5">
+                          <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Vertical</span>
                           {row.verticalSizes.map((v) => (
-                            <div key={v.id} className="p-1.5 rounded-lg bg-blue-50/70 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 text-[11px]">
-                              <div className="flex items-center justify-between font-semibold text-blue-800 dark:text-blue-300">
-                                <span>{v.size} {v.unit}</span>
-                                <span className={(v.available_qty || 0) <= 0 ? "text-rose-600 font-bold" : "text-emerald-600 font-bold"}>
-                                  {v.available_qty !== undefined ? v.available_qty : v.quantity} Avail
-                                </span>
-                              </div>
+                            <div key={v.id} className="p-1 rounded bg-blue-50/70 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 text-[10px] flex items-center justify-between">
+                              <span className="font-semibold text-blue-800 dark:text-blue-300">{v.size} {v.unit}</span>
+                              <span className={(v.available_qty || 0) <= 0 ? "text-rose-600 font-bold" : "text-emerald-600 font-bold"}>
+                                {v.available_qty !== undefined ? v.available_qty : v.quantity} Avail
+                              </span>
                             </div>
                           ))}
                         </div>
                       )}
                       {row.horizontal_enabled && row.horizontalSizes?.length > 0 && (
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Horizontal Sizes</span>
+                        <div className="space-y-0.5">
+                          <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Horizontal</span>
                           {row.horizontalSizes.map((h) => (
-                            <div key={h.id} className="p-1.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40 text-[11px]">
-                              <div className="flex items-center justify-between font-semibold text-emerald-800 dark:text-emerald-300">
-                                <span>{h.size} {h.unit}</span>
-                                <span className={(h.available_qty || 0) <= 0 ? "text-rose-600 font-bold" : "text-emerald-600 font-bold"}>
-                                  {h.available_qty !== undefined ? h.available_qty : h.quantity} Avail
-                                </span>
-                              </div>
+                            <div key={h.id} className="p-1 rounded bg-emerald-50/70 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/40 text-[10px] flex items-center justify-between">
+                              <span className="font-semibold text-emerald-800 dark:text-emerald-300">{h.size} {h.unit}</span>
+                              <span className={(h.available_qty || 0) <= 0 ? "text-rose-600 font-bold" : "text-emerald-600 font-bold"}>
+                                {h.available_qty !== undefined ? h.available_qty : h.quantity} Avail
+                              </span>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <span className="text-gray-400 italic text-xs">Standard Item</span>
+                    <span className="text-gray-400 italic text-[11px]">Standard Item</span>
                   )}
                 </TableCell>
-                <TableCell className="px-5 py-4">
+                <TableCell className="w-[15%] p-2 align-top">
                   {row.matched_active_events && row.matched_active_events.length > 0 ? (
-                    <div className="space-y-1.5 min-w-[150px]">
+                    <div className="space-y-1">
                       {row.matched_active_events.map((ev, i) => (
-                        <div key={i} className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/60 text-[11px]">
-                          <div className="font-semibold text-gray-900 dark:text-white truncate">
-                            Event #{ev.event_id}: {ev.event_name}
+                        <div key={i} className="p-1 rounded bg-gray-50 dark:bg-gray-800/60 border border-gray-200/80 dark:border-gray-700/60 text-[10px]">
+                          <div className="font-semibold text-gray-900 dark:text-white truncate" title={`Event #${ev.event_id}: ${ev.event_name}`}>
+                            #{ev.event_id}: {ev.event_name}
                           </div>
-                          <div className="flex items-center justify-between text-[10px] text-gray-500 mt-0.5">
-                            <span>{ev.template_name ? `Tpl: ${ev.template_name}` : "Direct Booking"}</span>
+                          <div className="flex items-center justify-between text-[9px] text-gray-500 mt-0.5">
+                            <span className="truncate max-w-[80px]" title={ev.template_name || "Direct"}>
+                              {ev.template_name ? `Tpl: ${ev.template_name}` : "Direct"}
+                            </span>
                             <span className="font-bold text-amber-700 dark:text-amber-300">{ev.allocated} pcs</span>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <span className="text-gray-400 text-xs">None (Available)</span>
+                    <span className="text-gray-400 text-[11px]">None (Available)</span>
                   )}
                 </TableCell>
               </TableRow>

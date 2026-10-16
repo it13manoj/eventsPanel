@@ -203,34 +203,23 @@ export default function Vechicle() {
         {/* ========================================================= */}
         {/* 2. DESKTOP VIEW: Traditional Table (Visible on md+ screens) */}
         {/* ========================================================= */}
-        <div className="hidden md:block overflow-x-auto">
-          <Table className="resizable-table">
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+        <div className="hidden md:block w-full max-w-full overflow-x-hidden">
+          <Table className="w-full table-fixed border-collapse">
+            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] bg-gray-50/70 dark:bg-gray-900/40">
               <TableRow>
-                {[
-                  "#",
-                  "Vehicle Name",
-                  "Vehicle Number",
-                  "Vehicle Type",
-                  "Owner / Agent Name",
-                  "Contact Number",
-                  "Ownership Type",
-                  "Load Capacity",
-                  "Commission (%)",
-                  "Insurance Expiry",
-                  "Images",
-                  "Status",
-                  "Actions"
-                ].map((col, i) => (
-                  <TableCell
-                    key={i}
-                    isHeader
-                    className="relative px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400 resize-column"
-                  >
-                    {col}
-                    <span className="resizer"></span>
-                  </TableCell>
-                ))}
+                <TableCell isHeader className="w-[3.5%] px-1.5 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300">#</TableCell>
+                <TableCell isHeader className="w-[12%] px-2 py-2.5 text-start text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Vehicle Name</TableCell>
+                <TableCell isHeader className="w-[9%] px-2 py-2.5 text-start text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Vehicle Number</TableCell>
+                <TableCell isHeader className="w-[10%] px-2 py-2.5 text-start text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Vehicle Type</TableCell>
+                <TableCell isHeader className="w-[10%] px-2 py-2.5 text-start text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Owner / Agent Name</TableCell>
+                <TableCell isHeader className="w-[8.5%] px-2 py-2.5 text-start text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Contact Number</TableCell>
+                <TableCell isHeader className="w-[7.5%] px-1.5 py-2.5 text-start text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Ownership Type</TableCell>
+                <TableCell isHeader className="w-[6.5%] px-1 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Load Capacity</TableCell>
+                <TableCell isHeader className="w-[7%] px-1 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Commission (%)</TableCell>
+                <TableCell isHeader className="w-[7.5%] px-1.5 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-normal break-words leading-tight">Insurance Expiry</TableCell>
+                <TableCell isHeader className="w-[6%] px-1 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300">Images</TableCell>
+                <TableCell isHeader className="w-[6%] px-1 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300">Status</TableCell>
+                <TableCell isHeader className="w-[6.5%] px-1 py-2.5 text-center text-xs font-semibold text-gray-600 dark:text-gray-300">Actions</TableCell>
               </TableRow>
             </TableHeader>
 
@@ -238,74 +227,74 @@ export default function Vechicle() {
               {vehicleData && vehicleData.length > 0 ? (
                 vehicleData.map((rows) => (
                   <TableRow key={rows?.id}>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
+                    <TableCell className="w-[3.5%] px-1.5 py-2.5 text-center align-top whitespace-normal break-words text-xs">
                       <span className="font-medium text-gray-800 dark:text-white">
                         {rows?.id}
                       </span>
                     </TableCell>
-                    <TableCell className="px-5 py-4 sm:px-6 text-start">
-                      <span className="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                    <TableCell className="w-[12%] px-2 py-2.5 text-start align-top whitespace-normal break-words text-xs leading-tight">
+                      <span className="font-medium text-gray-800 dark:text-white/90">
                         {rows?.name}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[9%] px-2 py-2.5 text-start align-top font-mono text-gray-600 dark:text-gray-300 whitespace-normal break-all text-xs leading-tight">
                       {rows?.vehicle_number}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[10%] px-2 py-2.5 text-start align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                       {rows?.vehiclesTypes?.name} ({rows?.vehiclesTypes?.wheel} wheels)
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[10%] px-2 py-2.5 text-start align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                       {rows?.owner_agency}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[8.5%] px-2 py-2.5 text-start align-top text-gray-600 dark:text-gray-300 whitespace-normal break-all text-xs leading-tight">
                       {rows?.contact}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[7.5%] px-1.5 py-2.5 text-start align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                       {rows?.commission != null && rows?.commission !== "" ? "Agency" : "Owner"}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[6.5%] px-1 py-2.5 text-center align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                       {rows?.load_capacity}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[7%] px-1 py-2.5 text-center align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                       {rows?.commission || "N/A"}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[7.5%] px-1.5 py-2.5 text-center align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                       {rows?.insurance || "N/A"}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                    <TableCell className="w-[6%] px-1 py-2.5 text-center align-top">
                       {rows?.image ? (
                         <img
                           src={`${images.baseUrl}/${rows?.image}`}
                           alt={rows?.name}
-                          className="w-12 h-12 object-cover rounded"
+                          className="w-8 h-8 object-cover rounded mx-auto"
                           onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
                             e.currentTarget.style.display = 'none';
                           }}
                         />
                       ) : (
-                        "No image"
+                        <span className="text-[11px] text-gray-400">No image</span>
                       )}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                      <span className={`px-2 py-1 text-xs rounded-full ${rows?.status === 1 || rows?.status === "1" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                    <TableCell className="w-[6%] px-1 py-2.5 text-center align-top">
+                      <span className={`inline-block px-1.5 py-0.5 text-[11px] font-medium rounded-full ${rows?.status === 1 || rows?.status === "1" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>
                         {rows?.status === 1 || rows?.status === "1" ? "Active" : "Inactive"}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-start">
-                      <div className="flex items-center gap-3">
+                    <TableCell className="w-[6.5%] px-1 py-2.5 text-center align-top">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => handleEdit(rows)}
-                          className="text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400"
+                          className="p-1 rounded text-gray-500 hover:text-brand-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-brand-400 dark:hover:bg-gray-800 transition-colors"
                           title="Edit Vehicle"
                         >
-                          <Pencil className="w-5 h-5" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(rows.id)}
-                          className="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+                          className="p-1 rounded text-gray-500 hover:text-red-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-gray-800 transition-colors"
                           title="Delete Vehicle"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </TableCell>

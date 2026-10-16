@@ -9,8 +9,7 @@ import { useModal } from "../hooks/useModal";
 import PageMeta from "../components/common/PageMeta";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import apiClient from "../hooks/api/apiClient";
-import AutoComplete from "../components/utils/ChosenSelect";
-// import DatePicker from "../components/form/date-picker";
+import AutoComplete, { DesignOption } from "../components/utils/ChosenSelect";
 import { Link } from "react-router";
 import AvaliableItems from "../model/AvaliableItems";
 import ReactDatePicker from "react-datepicker";
@@ -140,8 +139,8 @@ const Calendar: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [date, setDate] = useState<Date | null>(new Date());
   // Original Form States
-  const [eventId, setEventId] = useState();
-  const [designId, setDesignId] = useState();
+  const [eventId, setEventId] = useState<any>(undefined);
+  const [designId, setDesignId] = useState<any>(undefined);
   const [selectedTech, setSelectedTech] = useState<string>("");
   const [eventTitle, setEventTitle] = useState("");
   const [vanus, setVanus] = useState("");
@@ -180,6 +179,8 @@ const Calendar: React.FC = () => {
   const [templatesList, setTemplatesList] = useState<any[]>([]);
   const [templateId, setTemplateId] = useState<number>(0);
   const [templateName, setTemplateName] = useState<string>("");
+  const [matchedDesignEvent, setMatchedDesignEvent] = useState<any>(null);
+  const [loadingDesignEvent, setLoadingDesignEvent] = useState(false);
 
   console.log(eventStartDate, eventEndDate, eventLevel);
 
@@ -504,10 +505,9 @@ const Calendar: React.FC = () => {
   // console.log(eventStartDate, eventLevel, eventEndDate);
 
 
-  const resetModalFields = () => {
+  const resetFormFieldsForDesign = (keepDate: boolean = true) => {
     setEventTitle("");
     setVanus("");
-    setDateOfEvent("");
     setLocationOfVanus("");
     setVenueAvailalityDate("");
     setBookingDays("");
@@ -515,13 +515,179 @@ const Calendar: React.FC = () => {
     setTransportCharges("");
     setSpecialRequest("");
     setAmountTaxes("");
-    setEventStartDate("");
-    setEventEndDate("");
-    setEventLevel("");
-    setDate(null);
-    setSelectedEvent(null);
+    setTemplateId(0);
+    setTemplateName("");
+    setCheckStock({
+      categories_id: 0,
+      sub_categories_id: 0,
+      quntites: 0,
+      width: null,
+      height: null,
+    });
     setAppendsAll([]);
-    setHideAvailableButton([])
+    setHideAvailableButton({});
+    setMatchedDesignEvent(null);
+    if (!keepDate) {
+      setDateOfEvent("");
+      setEventStartDate("");
+      setEventEndDate("");
+      setDate(null);
+    }
+  };
+
+  const resetModalFields = () => {
+    resetFormFieldsForDesign(false);
+    setSelectedEvent(null);
+    setEventId(undefined);
+    setDesignId(undefined);
+    setSelectedTech("");
+    setEventLevel("");
+  };
+
+  const handleDesignSelect = async (design: DesignOption | null) => {
+    // Only auto-fill when creating a NEW event (not when editing an existing event)
+    if (eventId) return;
+
+    if (!design || !design.name || design.name.trim() === "") {
+      resetFormFieldsForDesign(true);
+      setDesignId(undefined);
+      setSelectedTech("");
+      return;
+    }
+
+    setSelectedTech(design.name);
+    setDesignId(design.id || undefined);
+    setLoadingDesignEvent(true);
+
+    try {
+      const res = await apiClient.get(
+        `/admin/Events/findByDesign/${design.id || 0}?name=${encodeURIComponent(design.name)}`
+      );
+      const prevEvt = res.data?.results || res.data?.data;
+
+      if (prevEvt && prevEvt.id) {
+        // Auto-fill all event fields
+        setEventTitle(prevEvt.c_name || "");
+        setVanus(prevEvt.vanus || "");
+        setLocationOfVanus(prevEvt.v_location || "");
+        setPlaceOfBooking(prevEvt.pob || "");
+        setTransportCharges(prevEvt.tc || "");
+        setSpecialRequest(prevEvt.sr || "");
+        setAmountTaxes(prevEvt.amount !== undefined && prevEvt.amount !== null ? String(prevEvt.amount) : "");
+
+        if (prevEvt.status) {
+          setEventLevel(normalizeStatusCode(prevEvt.status));
+        }
+
+        if (prevEvt.template_id) {
+          setTemplateId(Number(prevEvt.template_id));
+          setTemplateName(prevEvt.template_name || "");
+        }
+
+        // Calculate and apply booking days / end date based on current target date
+        if (prevEvt.doe && prevEvt.nodb) {
+          const diffTime = new Date(prevEvt.nodb).getTime() - new Date(prevEvt.doe).getTime();
+          const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          setBookingDays(String(diffDays));
+
+          if (dateOfEvent) {
+            const newEndDate = new Date(dateOfEvent);
+            newEndDate.setDate(newEndDate.getDate() + diffDays);
+            setDate(newEndDate);
+            setEventEndDate(formatDateLocal(newEndDate));
+          }
+        }
+
+        // Venue availability date
+        if (prevEvt.v_a_d) {
+          try {
+            const vadDate = new Date(prevEvt.v_a_d);
+            const pad = (n: number) => String(n).padStart(2, "0");
+            setVenueAvailalityDate(
+              `${vadDate.getFullYear()}-${pad(vadDate.getMonth() + 1)}-${pad(vadDate.getDate())}T${pad(vadDate.getHours())}:${pad(vadDate.getMinutes())}`
+            );
+          } catch {
+            setVenueAvailalityDate("");
+          }
+        }
+
+        // Categories / Stock check
+        if (prevEvt.categories_id) {
+          setCheckStock({
+            categories_id: prevEvt.categories_id || 0,
+            sub_categories_id: prevEvt.sub_categories_id || 0,
+            quntites: prevEvt.quntites || 0,
+            width: prevEvt.width || null,
+            height: prevEvt.height || null,
+          });
+          eventHandler({ target: { value: prevEvt.categories_id } });
+        }
+
+        // Booked equipment items
+        if (Array.isArray(prevEvt.bookedItems) && prevEvt.bookedItems.length > 0) {
+          const hideBtns: Record<number, boolean> = {};
+          const mappedData = prevEvt.bookedItems.map((row: any) => {
+            if (row.subCategories_id) {
+              hideBtns[row.subCategories_id] = true;
+            }
+            return {
+              categories: {
+                id: row.categories_id,
+                name: row.categories_name,
+              },
+              subCategories: {
+                id: row.subCategories_id,
+                name: row.subCategories_name,
+                is_enable: Boolean(row.vertical || row.horizontal),
+              },
+              inputs: {
+                width: "",
+                height: "",
+                price: row.price || "0.00",
+                vprice: row.vprice || "0.00",
+                hprice: row.hprice || "0.00",
+                vertical: Boolean(row.vertical),
+                horizontal: Boolean(row.horizontal),
+                verticalValue: row.verticalValue || "",
+                horizontalValue: row.horizontalValue || "",
+                verticalUnit: row.verticalUnit || "ft",
+                horizontalUnit: row.horizontalUnit || "ft",
+                verticalPcs: row.verticalPcs ? String(row.verticalPcs) : "",
+                horizontalPcs: row.horizontalPcs ? String(row.horizontalPcs) : "",
+                value: row.qt ? String(row.qt) : "1",
+                eventsName: "",
+                eventsId: 0,
+                stockName: "",
+                stockId: typeof row.stock_id === "string"
+                  ? JSON.parse(row.stock_id || "[0]")[0]
+                  : (Array.isArray(row.stock_id) ? row.stock_id[0] : (row.stock_id || 0)),
+              },
+            };
+          });
+          setHideAvailableButton(hideBtns);
+          setAppendsAll(mappedData);
+        } else if (prevEvt.template_id) {
+          const foundTpl = templatesList.find((t: any) => t.id === Number(prevEvt.template_id));
+          if (foundTpl) {
+            applyTemplateItems(foundTpl);
+          }
+        }
+
+        setMatchedDesignEvent(prevEvt);
+        toast.success(`Design "${design.name}" matched previous event #${prevEvt.id}! All event data auto-filled.`);
+      } else {
+        // No event found for this design -> Blank form!
+        resetFormFieldsForDesign(true);
+        setMatchedDesignEvent(null);
+        toast.info(`No previous event found for "${design.name}". Form is blank.`);
+      }
+    } catch (err) {
+      console.error("Error checking design event:", err);
+      resetFormFieldsForDesign(true);
+      setMatchedDesignEvent(null);
+    } finally {
+      setLoadingDesignEvent(false);
+    }
   };
   const getEvents = async () => {
     try {
@@ -1074,26 +1240,8 @@ const Calendar: React.FC = () => {
   // console.log(stockAddToEvents);
 
   const refresh = () => {
-    setEventTitle("");
-    setVanus("");
-    setDateOfEvent("");
-    setLocationOfVanus("");
-    setVenueAvailalityDate("");
-    setBookingDays("");
-    setPlaceOfBooking("");
-    setTransportCharges("");
-    setSpecialRequest("");
-    setAmountTaxes("");
-    setEventStartDate("");
-    setEventEndDate("");
-    setEventLevel("");
-    setDate(null);
-    setSelectedEvent(null);
-    setAppendsAll([]);
-    setHideAvailableButton([]);
-    setTemplateId(0);
-    setTemplateName("");
-  }
+    resetModalFields();
+  };
 
   return (
     <>
@@ -1186,10 +1334,50 @@ const Calendar: React.FC = () => {
           </div>
           <div className="overflow-y-auto custom-scrollbar p-4 sm:p-6 flex-1 max-h-[82vh]">
             {/* SAME DESIGN AS PREVIOUS */}
-            <AutoComplete setSelectedTech={setSelectedTech}
+            <AutoComplete
+              setSelectedTech={setSelectedTech}
               designId={designId}
+              onSelectDesign={handleDesignSelect}
             />
-            <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+
+            {/* Design Auto-fill Status Banner */}
+            {loadingDesignEvent && (
+              <div className="mt-3 p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                <span>Checking previous event data for design "{selectedTech}"...</span>
+              </div>
+            )}
+
+            {!loadingDesignEvent && matchedDesignEvent && !eventId && (
+              <div className="mt-3 p-3.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 text-xs text-emerald-800 dark:text-emerald-200">
+                  <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                  <div>
+                    <span className="font-bold">Auto-filled from previous event #{matchedDesignEvent.id}:</span>{" "}
+                    <span>
+                      {matchedDesignEvent.c_name || "Client"} • {matchedDesignEvent.vanus || "Venue"}
+                      {matchedDesignEvent.bookedItems?.length ? ` (${matchedDesignEvent.bookedItems.length} equipment items)` : ""}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => resetFormFieldsForDesign(true)}
+                  className="px-3 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-gray-800 hover:bg-rose-50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition shrink-0 cursor-pointer"
+                >
+                  Clear to Blank Form
+                </button>
+              </div>
+            )}
+
+            {!loadingDesignEvent && !matchedDesignEvent && selectedTech && !eventId && (
+              <div className="mt-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/60 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                <span>
+                  ℹ️ No previous event found for design <strong>"{selectedTech}"</strong>. Showing blank form.
+                </span>
+              </div>
+            )}
+            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Event Template Dropdown - Not Optional / Required per requirements */}
               <div className="md:col-span-2 p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/80 to-purple-50/80 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/30 border-2 border-indigo-200 dark:border-indigo-800 shadow-xs space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1351,7 +1539,7 @@ const Calendar: React.FC = () => {
                 <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">VENUE</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">VENUE Name</label>
                 <input type="text" value={vanus} onChange={(e) => setVanus(e.target.value)} className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" />
               </div>
               <div>

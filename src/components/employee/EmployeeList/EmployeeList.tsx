@@ -478,28 +478,23 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
 
 
           {/* ========================================================= */}
-          {/* 2. DESKTOP VIEW: Table with Sticky Actions (md and up)    */}
+          {/* 2. DESKTOP VIEW: Responsive Table (md and up)             */}
           {/* ========================================================= */}
-          <div className="hidden md:block overflow-x-auto custom-scrollbar">
-            <Table className="min-w-[1100px] w-full text-xs sm:text-sm">
+          <div className="hidden md:block w-full max-w-full overflow-x-hidden">
+            <Table className="w-full table-fixed border-collapse text-xs">
               {/* Table Header */}
-              <TableHeader className="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
+              <TableHeader className="bg-gray-50/70 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800">
                 <TableRow>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">#</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Employee</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Contact & Email</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Role</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Designation</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Shift</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Gender</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-nowrap">Base Pay</TableCell>
-                  <TableCell isHeader className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center whitespace-nowrap">Status</TableCell>
-                  <TableCell
-                    isHeader
-                    className="px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 text-center whitespace-nowrap sticky right-0 bg-gray-50 dark:bg-gray-800 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]"
-                  >
-                    Actions
-                  </TableCell>
+                  <TableCell isHeader className="w-[3.5%] px-1.5 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-center">#</TableCell>
+                  <TableCell isHeader className="w-[18.5%] px-2 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Employee</TableCell>
+                  <TableCell isHeader className="w-[16%] px-2 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Contact & Email</TableCell>
+                  <TableCell isHeader className="w-[10%] px-1.5 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Role</TableCell>
+                  <TableCell isHeader className="w-[11%] px-1.5 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Designation</TableCell>
+                  <TableCell isHeader className="w-[12%] px-1.5 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Shift</TableCell>
+                  <TableCell isHeader className="w-[6.5%] px-1 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Gender</TableCell>
+                  <TableCell isHeader className="w-[8%] px-1.5 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-start whitespace-normal break-words leading-tight">Base Pay</TableCell>
+                  <TableCell isHeader className="w-[6.5%] px-1 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-center">Status</TableCell>
+                  <TableCell isHeader className="w-[8%] px-1 py-2.5 font-semibold text-gray-600 dark:text-gray-300 text-center">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
@@ -512,77 +507,76 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
 
                   return (
                     <TableRow key={rows?.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition">
-                      <TableCell className="px-4 py-3 text-start font-medium text-gray-400 whitespace-nowrap">
+                      <TableCell className="w-[3.5%] px-1.5 py-2.5 text-center align-top font-medium text-gray-400 text-xs">
                         {idx + 1}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start whitespace-nowrap">
-                        <div className="flex items-center gap-3">
+                      <TableCell className="w-[18.5%] px-2 py-2.5 text-start align-top whitespace-normal break-words">
+                        <div className="flex items-center gap-2">
                           {rows?.img ? (
                             <img
                               src={`${images.baseUrl}/${rows.img}`}
                               alt={rows.name}
-                              className="w-9 h-9 object-cover rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 shrink-0"
-                              
+                              className="w-8 h-8 object-cover rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 shrink-0"
                             />
                           ) : (
-                            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
                               {rows?.name?.charAt(0) || "U"}
                             </div>
                           )}
-                          <div>
-                            <div className="font-semibold text-gray-900 dark:text-white">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold text-gray-900 dark:text-white break-words leading-tight text-xs">
                               {rows?.name}
                             </div>
-                            <div className="text-[11px] text-gray-400">
+                            <div className="text-[10px] text-gray-400">
                               ID #{rows?.id}
                             </div>
                           </div>
                         </div>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start whitespace-nowrap">
-                        <div className="text-gray-800 dark:text-gray-200 font-medium">
+                      <TableCell className="w-[16%] px-2 py-2.5 text-start align-top whitespace-normal break-words text-xs">
+                        <div className="text-gray-800 dark:text-gray-200 font-medium break-all leading-tight">
                           {rows?.contact || "N/A"}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 break-all leading-tight mt-0.5">
                           {rows?.email}
                         </div>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start whitespace-nowrap">
-                        <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                      <TableCell className="w-[10%] px-1.5 py-2.5 text-start align-top whitespace-normal break-words text-xs">
+                        <span className="inline-block rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-tight">
                           {roleMap[rows?.role_id] || rows?.role?.role_name || `Role ${rows?.role_id}`}
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                      <TableCell className="w-[11%] px-1.5 py-2.5 text-start align-top text-gray-600 dark:text-gray-300 whitespace-normal break-words text-xs leading-tight">
                         {rows?.job || "N/A"}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start whitespace-nowrap">
+                      <TableCell className="w-[12%] px-1.5 py-2.5 text-start align-top whitespace-normal break-words text-xs">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${isNight
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold leading-tight ${isNight
                               ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                               : "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
                             }`}
                         >
-                          <Clock size={11} />
-                          {isNight ? "Night Shift" : "Day Shift"} ({rows.shift_hour ? `${rows.shift_hour}h` : "8h"})
+                          <Clock size={10} />
+                          {isNight ? "Night" : "Day"} ({rows.shift_hour ? `${rows.shift_hour}h` : "8h"})
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start text-gray-600 dark:text-gray-300 capitalize whitespace-nowrap">
+                      <TableCell className="w-[6.5%] px-1 py-2.5 text-start align-top text-gray-600 dark:text-gray-300 capitalize whitespace-normal break-words text-xs">
                         {rows?.gender || "N/A"}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-start font-mono font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                      <TableCell className="w-[8%] px-1.5 py-2.5 text-start align-top font-mono font-semibold text-gray-900 dark:text-white whitespace-normal break-words text-xs leading-tight">
                         {rows?.base_pay ? `₹${Number(rows.base_pay).toLocaleString("en-IN")}` : "N/A"}
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-center whitespace-nowrap">
+                      <TableCell className="w-[6.5%] px-1 py-2.5 text-center align-top">
                         <span
-                          className={`px-2.5 py-0.5 text-xs rounded-full font-semibold ${rows?.isactive
+                          className={`inline-block px-1.5 py-0.5 text-[11px] rounded-full font-semibold ${rows?.isactive
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
                               : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
                             }`}
@@ -591,30 +585,30 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                         </span>
                       </TableCell>
 
-                      <TableCell className="px-4 py-3 text-center whitespace-nowrap sticky right-0 bg-white dark:bg-gray-900 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <TableCell className="w-[8%] px-1 py-2.5 text-center align-top">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => setSelectedDocUser(rows)}
-                            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40 transition cursor-pointer"
+                            className="p-1 rounded text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40 transition cursor-pointer"
                             title="View Aadhaar & Insurance Documents"
                           >
-                            <CreditCard size={15} />
+                            <CreditCard size={14} />
                           </button>
                           {canEdit("employees") && (
                             <>
                               <button
                                 onClick={() => (onEdit ? onEdit(rows) : null)}
-                                className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition cursor-pointer"
+                                className="p-1 rounded text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition cursor-pointer"
                                 title="Edit Employee"
                               >
-                                <Pencil size={15} />
+                                <Pencil size={14} />
                               </button>
                               <button
                                 onClick={() => handleDelete(rows.id)}
-                                className="p-1.5 rounded-lg text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-400 dark:hover:bg-rose-900/30 dark:hover:text-rose-400 transition cursor-pointer"
+                                className="p-1 rounded text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-400 dark:hover:bg-rose-900/30 dark:hover:text-rose-400 transition cursor-pointer"
                                 title="Delete Employee"
                               >
-                                <Trash2 size={15} />
+                                <Trash2 size={14} />
                               </button>
                             </>
                           )}
