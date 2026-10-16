@@ -38,8 +38,9 @@ import { useEffect, useState } from "react";
 import AvailableStock from "./pages/Dashboard/AvailableStock";
 import SettingPage from "./pages/Settings/SettingPage";
 import TemplatePage from "./pages/Templates/TemplatePage";
-
+import RolesPermissionsPage from "./pages/Roles/RolesPermissionsPage";
 import AdminRoute from "./components/AdminRoute";
+import PermissionRoute from "./components/PermissionRoute";
 
 export default function App() {
   const [is_enabled, setEnabled] = useState(false);
@@ -68,48 +69,78 @@ export default function App() {
           <Route element={<PrivateRoute />}>
             {/* Dashboard Layout */}
             <Route element={<AppLayout />}>
-              {/* Common Routes: Staff & Admin */}
-              <Route path="/events" element={<EventsList />} />
+              {/* Profile accessible to all logged in users */}
               <Route path="/profile" element={<UserProfiles />} />
-              <Route path="/setting" element={<SettingPage />} />
-              <Route path="/attendance" element={<Attendance />} />
-              <Route path="/salary" element={<Salary />} />
-              <Route path="/calendar" element={<Calendar />} />
 
-              {/* Admin Only Protected Routes */}
-              <Route element={<AdminRoute />}>
+              {/* Module-Guarded Routes */}
+              <Route element={<PermissionRoute module="dashboard" />}>
                 <Route index path="/dashboard" element={<Home />} />
                 <Route path="/companyprofile" element={<CompanyProfile />} />
                 <Route path="/availablestock" element={<AvailableStock />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="events" />}>
+                <Route path="/events" element={<EventsList />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="calendar" />}>
+                <Route path="/calendar" element={<Calendar />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="templates" />}>
+                <Route path="/templates" element={<TemplatePage />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="employees" />}>
+                <Route path="/employeelist" element={<EmployeeList />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="roles" />}>
+                <Route path="/roles-permissions" element={<RolesPermissionsPage />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="attendance" />}>
+                <Route path="/attendance" element={<Attendance />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="salary" />}>
+                <Route path="/salary" element={<Salary />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="inventory" />}>
                 <Route path="/stock" element={<StockPages />} />
                 <Route path="/wherehouse" element={<WhereHouse />} />
                 <Route path="/category" element={<Category />} />
                 <Route path="/sub-category" element={<SubCategory />} />
+                <Route path="/warehouselist" element={<WareHouseList />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="vehicles" />}>
                 <Route path="/owner-vahicle" element={<Owner />} />
                 <Route path="/agency-vehicle" element={<Agency />} />
                 <Route path="/vehicle" element={<Vechicle />} />
                 <Route path="/addvehicle" element={<AddVehicle />} />
-                <Route path="/warehouselist" element={<WareHouseList />} />
-                <Route path="/employeelist" element={<EmployeeList />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="invoices" />}>
                 <Route path="/invoicelist" element={<InvoiceList />} />
-                <Route path="/templates" element={<TemplatePage />} />
+              </Route>
+
+              <Route element={<PermissionRoute module="settings" />}>
+                <Route path="/setting" element={<SettingPage />} />
+              </Route>
+
+              {/* Admin UI / Dev Pages */}
+              <Route element={<AdminRoute />}>
                 <Route path="/blank" element={<Blank />} />
-
-                {/* Forms */}
                 <Route path="/form-elements" element={<FormElements />} />
-
-                {/* Tables */}
                 <Route path="/basic-tables" element={<BasicTables />} />
-
-                {/* Ui Elements */}
                 <Route path="/alerts" element={<Alerts />} />
                 <Route path="/avatars" element={<Avatars />} />
                 <Route path="/badge" element={<Badges />} />
                 <Route path="/buttons" element={<Buttons />} />
                 <Route path="/images" element={<Images />} />
                 <Route path="/videos" element={<Videos />} />
-
-                {/* Charts */}
                 <Route path="/line-chart" element={<LineChart />} />
                 <Route path="/bar-chart" element={<BarChart />} />
               </Route>

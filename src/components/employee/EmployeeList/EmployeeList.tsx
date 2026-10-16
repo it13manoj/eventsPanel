@@ -8,6 +8,7 @@ import {
 import { useEffect, useState } from "react";
 import apiClient from "../../../hooks/api/apiClient";
 import images from "../../../hooks/api/apiImages";
+import { Modal } from "../../ui/modal";
 import {
   Pencil,
   Trash2,
@@ -20,9 +21,14 @@ import {
   Clock,
   UserCheck,
   Users,
-  Shield
+  Shield,
+  CreditCard,
+  FileText,
+  X,
+  ExternalLink
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useAuth } from "../../../hooks/auth";
 
 const roleMap: Record<number, string> = {
   1: "Admin",
@@ -32,6 +38,8 @@ const roleMap: Record<number, string> = {
 };
 
 export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any) {
+  const [selectedDocUser, setSelectedDocUser] = useState<any | null>(null);
+  const { canEdit } = useAuth();
   const [employeeList, setEmployeeList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -278,22 +286,24 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                       />
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => (onEdit ? onEdit(emp) : null)}
-                        className="p-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 dark:bg-gray-800 dark:hover:bg-blue-900/30 dark:text-gray-300 dark:hover:text-blue-400 transition"
-                        title="Edit Employee"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(emp.id)}
-                        className="p-1.5 rounded-lg bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 dark:bg-gray-800 dark:hover:bg-rose-900/30 dark:text-gray-300 dark:hover:text-rose-400 transition"
-                        title="Delete Employee"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                    {canEdit("employees") && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => (onEdit ? onEdit(emp) : null)}
+                          className="p-1.5 rounded-lg bg-gray-100 hover:bg-blue-50 text-gray-600 hover:text-blue-600 dark:bg-gray-800 dark:hover:bg-blue-900/30 dark:text-gray-300 dark:hover:text-blue-400 transition cursor-pointer"
+                          title="Edit Employee"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(emp.id)}
+                          className="p-1.5 rounded-lg bg-gray-100 hover:bg-rose-50 text-gray-600 hover:text-rose-600 dark:bg-gray-800 dark:hover:bg-rose-900/30 dark:text-gray-300 dark:hover:text-rose-400 transition cursor-pointer"
+                          title="Delete Employee"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Name and Designation */}
@@ -437,17 +447,28 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                   {/* Action Bar */}
                   <div className="flex items-center justify-end gap-2 pt-1">
                     <button
-                      onClick={() => (onEdit ? onEdit(rows) : null)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 transition"
+                      onClick={() => setSelectedDocUser(rows)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 transition"
+                      title="View KYC / Documents"
                     >
-                      <Pencil size={13} /> Edit
+                      <CreditCard size={13} /> KYC
                     </button>
-                    <button
-                      onClick={() => handleDelete(rows.id)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 transition"
-                    >
-                      <Trash2 size={13} /> Delete
-                    </button>
+                    {canEdit("employees") && (
+                      <>
+                        <button
+                          onClick={() => (onEdit ? onEdit(rows) : null)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 transition"
+                        >
+                          <Pencil size={13} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(rows.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-300 transition"
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </>
+                    )}
                   </div>
 
                 </div>
@@ -571,21 +592,32 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
                       </TableCell>
 
                       <TableCell className="px-4 py-3 text-center whitespace-nowrap sticky right-0 bg-white dark:bg-gray-900 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.05)]">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1.5">
                           <button
-                            onClick={() => (onEdit ? onEdit(rows) : null)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition"
-                            title="Edit Employee"
+                            onClick={() => setSelectedDocUser(rows)}
+                            className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40 transition cursor-pointer"
+                            title="View Aadhaar & Insurance Documents"
                           >
-                            <Pencil size={15} />
+                            <CreditCard size={15} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(rows.id)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-400 dark:hover:bg-rose-900/30 dark:hover:text-rose-400 transition"
-                            title="Delete Employee"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {canEdit("employees") && (
+                            <>
+                              <button
+                                onClick={() => (onEdit ? onEdit(rows) : null)}
+                                className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition cursor-pointer"
+                                title="Edit Employee"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(rows.id)}
+                                className="p-1.5 rounded-lg text-gray-500 hover:text-rose-600 hover:bg-rose-50 dark:text-gray-400 dark:hover:bg-rose-900/30 dark:hover:text-rose-400 transition cursor-pointer"
+                                title="Delete Employee"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -595,6 +627,172 @@ export default function EmployeeList({ refreshKey = 0, onEdit, onRefresh }: any)
             </Table>
           </div>
         </div>
+      )}
+
+      {/* KYC / Documents Preview Modal */}
+      {selectedDocUser && (
+        <Modal
+          isOpen={Boolean(selectedDocUser)}
+          onClose={() => setSelectedDocUser(null)}
+          className="max-w-2xl w-full mx-auto p-0 rounded-2xl overflow-hidden shadow-2xl border border-gray-100 dark:border-gray-800 [&>button]:hidden"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <div className="flex items-center gap-2.5">
+              <CreditCard className="w-5 h-5" />
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {selectedDocUser.name} — KYC & Documents
+                </h3>
+                <p className="text-xs text-blue-100">
+                  ID #{selectedDocUser.id} • {roleMap[selectedDocUser.role_id] || "Staff"} • {selectedDocUser.contact}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setSelectedDocUser(null)}
+              className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-5 space-y-5 bg-gray-50 dark:bg-gray-900 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            {/* Aadhaar Section */}
+            <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/60 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-blue-500" /> Aadhaar Card
+                </span>
+                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                  {selectedDocUser.adharcard_number || "No Aadhaar number entered"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {/* Front Photo */}
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block">
+                    Aadhaar Front Photo
+                  </span>
+                  {selectedDocUser.adharcard_front ? (
+                    <a
+                      href={`${images.baseUrl}/${selectedDocUser.adharcard_front}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block group relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900"
+                    >
+                      <img
+                        src={`${images.baseUrl}/${selectedDocUser.adharcard_front}`}
+                        alt="Aadhaar Front"
+                        className="w-full h-40 object-contain group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-semibold">
+                        <ExternalLink size={14} /> View Full
+                      </div>
+                    </a>
+                  ) : (
+                    <div className="h-28 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 text-xs">
+                      No front photo uploaded
+                    </div>
+                  )}
+                </div>
+
+                {/* Back Photo */}
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block">
+                    Aadhaar Back Photo
+                  </span>
+                  {selectedDocUser.adharcard_back ? (
+                    <a
+                      href={`${images.baseUrl}/${selectedDocUser.adharcard_back}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block group relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900"
+                    >
+                      <img
+                        src={`${images.baseUrl}/${selectedDocUser.adharcard_back}`}
+                        alt="Aadhaar Back"
+                        className="w-full h-40 object-contain group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-semibold">
+                        <ExternalLink size={14} /> View Full
+                      </div>
+                    </a>
+                  ) : (
+                    <div className="h-28 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 text-xs">
+                      No back photo uploaded
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Insurance Section */}
+            <div className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/60 shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-500" /> Insurance Policy
+                </span>
+                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                  {selectedDocUser.insurance_number || (selectedDocUser.insurance ? "Covered" : "Not Provided")}
+                </span>
+              </div>
+
+              <div className="pt-1">
+                <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 block mb-1">
+                  Insurance Document / Photo
+                </span>
+                {selectedDocUser.insurance_pic ? (
+                  <a
+                    href={`${images.baseUrl}/${selectedDocUser.insurance_pic}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block group relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 max-w-sm"
+                  >
+                    <img
+                      src={`${images.baseUrl}/${selectedDocUser.insurance_pic}`}
+                      alt="Insurance Document"
+                      className="w-full h-44 object-contain group-hover:scale-105 transition-transform"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-semibold">
+                      <ExternalLink size={14} /> View Full
+                    </div>
+                  </a>
+                ) : (
+                  <div className="h-24 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center text-gray-400 text-xs">
+                    No insurance document photo uploaded
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Close */}
+            <div className="flex justify-end gap-2 pt-1">
+              {canEdit("employees") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const u = selectedDocUser;
+                    setSelectedDocUser(null);
+                    if (onEdit) onEdit(u);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition cursor-pointer"
+                >
+                  Edit / Upload More
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedDocUser(null)}
+                className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -287,23 +287,28 @@ export default function Salary() {
       {/* Add Pay Modal */}
       {openPayModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-99999 p-3 sm:p-5 overflow-hidden overscroll-none">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-md p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto custom-scrollbar" style={{ transform: "translateZ(0)" }}>
-            <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-md my-auto overflow-hidden" style={{ transform: "translateZ(0)" }}>
+            {/* Header */}
+            <div className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-white/20 text-white shadow-inner">
                   <FaMoneyBillWave size={18} />
                 </div>
-                <h2 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">Record Salary Payment</h2>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-white">Record Salary Payment</h2>
+                  <p className="text-xs text-blue-100">Disburse or record employee compensation</p>
+                </div>
               </div>
               <button
                 onClick={() => setOpenPayModal(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs shadow-sm transition cursor-pointer"
               >
-                ✕
+                ✕ Close
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* Body */}
+            <div className="p-5 sm:p-6 bg-gray-50 dark:bg-gray-900/50 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1.5">
                   Employee
@@ -312,7 +317,7 @@ export default function Salary() {
                   type="text"
                   disabled
                   value={selectedEmployee?.emp?.name || ""}
-                  className="w-full border rounded-xl px-4 py-2.5 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700 font-semibold text-sm"
+                  className="w-full border rounded-xl px-4 py-2.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-700 font-semibold text-sm shadow-xs"
                 />
               </div>
 
@@ -327,27 +332,27 @@ export default function Salary() {
                     value={payAmount}
                     onChange={(e) => setPayAmount(e.target.value)}
                     placeholder="Enter payment amount"
-                    className="w-full border rounded-xl pl-8 pr-4 py-2.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono font-semibold text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full border rounded-xl pl-8 pr-4 py-2.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono font-semibold text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                     autoFocus
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-end gap-3 border-t dark:border-gray-800 pt-4 mt-6">
-              <button
-                onClick={() => setOpenPayModal(false)}
-                className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddPayment}
-                className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer"
-              >
-                <FaMoneyBillWave />
-                Confirm Payment
-              </button>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setOpenPayModal(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 transition shadow-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddPayment}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md transition cursor-pointer"
+                >
+                  <FaMoneyBillWave />
+                  Confirm Payment
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -356,23 +361,28 @@ export default function Salary() {
       {/* Edit Pay Modal */}
       {openEditModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-99999 p-3 sm:p-5 overflow-hidden overscroll-none">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-md p-5 sm:p-6 my-auto max-h-[92vh] overflow-y-auto custom-scrollbar" style={{ transform: "translateZ(0)" }}>
-            <div className="flex items-center justify-between border-b dark:border-gray-800 pb-3 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-800 w-full max-w-md my-auto overflow-hidden" style={{ transform: "translateZ(0)" }}>
+            {/* Header */}
+            <div className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-white/20 text-white shadow-inner">
                   <Pencil size={18} />
                 </div>
-                <h2 className="text-base sm:text-lg font-bold text-gray-800 dark:text-white">Edit Payment Record</h2>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-white">Edit Payment Record</h2>
+                  <p className="text-xs text-blue-100">Modify existing salary payment amount</p>
+                </div>
               </div>
               <button
                 onClick={() => setOpenEditModal(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs shadow-sm transition cursor-pointer"
               >
-                ✕
+                ✕ Close
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* Body */}
+            <div className="p-5 sm:p-6 bg-gray-50 dark:bg-gray-900/50 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400 mb-1.5">
                   Paid Amount (₹)
@@ -384,26 +394,26 @@ export default function Salary() {
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
                     placeholder="Enter new amount"
-                    className="w-full border rounded-xl pl-8 pr-4 py-2.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono font-semibold text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                    className="w-full border rounded-xl pl-8 pr-4 py-2.5 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono font-semibold text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-xs"
                     autoFocus
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center justify-end gap-3 border-t dark:border-gray-800 pt-4 mt-6">
-              <button
-                onClick={() => setOpenEditModal(false)}
-                className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdatePayment}
-                className="bg-brand-500 hover:bg-brand-600 text-white px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition cursor-pointer"
-              >
-                Update Payment
-              </button>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setOpenEditModal(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 transition shadow-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdatePayment}
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md transition cursor-pointer"
+                >
+                  Update Payment
+                </button>
+              </div>
             </div>
           </div>
         </div>

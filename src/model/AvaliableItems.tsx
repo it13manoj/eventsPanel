@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Modal } from "../components/ui/modal";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../components/ui/table";
 import apiClient from "../hooks/api/apiClient";
+import { toast } from "react-toastify";
+import { MapPin, Sparkles, Building2, Calendar as CalendarIcon, RefreshCw, CheckCircle2, ArrowRightLeft } from "lucide-react";
 
 
 
@@ -137,8 +139,7 @@ interface ItemsModelProps {
     >;
     stockAddToEvents: StockAddToEventsType
 
-    locationOfVanus: String
-
+    locationOfVanus: string;
 }
 
 export default function AvaliableItems({
@@ -152,36 +153,42 @@ export default function AvaliableItems({
     locationOfVanus
 }: ItemsModelProps) {
     if (!isOpens) return null;
-    const [inventory, setInventory] = useState<
-        InventoryType[]
-    >([]);
 
+    const [currentLocation, setCurrentLocation] = useState<string>(
+        locationOfVanus ? locationOfVanus.toString() : ""
+    );
 
+    useEffect(() => {
+        if (locationOfVanus) {
+            setCurrentLocation(locationOfVanus.toString());
+        }
+    }, [locationOfVanus]);
 
-console.log( stockAddToEvents);
-
+    const [inventory, setInventory] = useState<InventoryType[]>([]);
 
     const [dist, setDist] = useState<
         {
             inventoryId: number;
             address: string;
-            distance: any;
-        }[] | undefined
-    >(undefined);
+            distance: string;
+            distanceValue?: number | null;
+            duration?: string;
+        }[]
+    >([]);
 
     const [edist, seteDist] = useState<
         {
             eventId: number;
             address: string;
-            distance: any;
-        }[] | undefined
-    >(undefined);
+            distance: string;
+            distanceValue?: number | null;
+            duration?: string;
+        }[]
+    >([]);
 
     const [remaining, setRemaining] = useState<any>({});
     const [remainingS, setRemainingS] = useState<any>({});
-    const [quantities, setQuantities] = useState<any>(
-        {}
-    );
+    const [quantities, setQuantities] = useState<any>({});
     const [results_booked, results_bookedSet] = useState<{
         stock: { [key: number]: number };
         event: { [key: number]: number };
@@ -190,76 +197,80 @@ console.log( stockAddToEvents);
         event: {}
     });
 
+    const [bookEventRecords, setBookEventsRecords] = useState<any[]>([]);
 
-    const [bookEventRecords, setBookEventsRecords] = useState([{
-        "id": 1,
-        "c_name": "Rahul",
-        "nodb": "2026-05-22T11:06:58.000Z",
-        "doe": "2026-05-15T00:00:00.000Z",
-        "vanus": "Marrige Events",
-        "v_location": "Buxar",
-        "booked_event_id": 1,
-        "categories_id": 1,
-        "categories_name": "Truss",
-        "subCategories_id": 1,
-        "subCategories_name": "500MM*600MM",
-        "vertical": 1,
-        "horizontal": 1,
-        "verticalValue": "3",
-        "verticalPcs": 20,
-        "verticalUnit": "mm",
-        "horizontalValue": "3",
-        "horizontalPcs": 50,
-        "horizontalUnit": "mm",
-        "qt": 0,
-        "event_id": 1,
-        "created_at": "2026-05-15T11:21:45.000Z",
-        "updated_at": "2026-05-15T11:21:45.000Z",
-        synced: true
-    }])
+    // Find min warehouse distance for comparison
+    const minWarehouseInfo = useMemo(() => {
+        if (!dist || dist.length === 0) return null;
+        const validWarehouses = dist.filter(
+            d => typeof d.distanceValue === "number" && d.distanceValue > 0
+        );
+        if (validWarehouses.length === 0) return null;
+        return validWarehouses.reduce((prev, curr) =>
+            prev.distanceValue! < curr.distanceValue! ? prev : curr
+        );
+    }, [dist]);
 
+    // Check if any finished event is closer than the warehouse
+    const nearestEventComparison = useMemo(() => {
+        if (!edist || edist.length === 0 || !minWarehouseInfo?.distanceValue) return null;
+
+        const closerEvents = bookEventRecords
+            .map(event => {
+                const distanceObj = edist.find(e => e.eventId === event.id);
+                return {
+                    event,
+                    distanceObj,
+                };
+            })
+            .filter(item => 
+                item.distanceObj && 
+                typeof item.distanceObj.distanceValue === "number" && 
+                item.distanceObj.distanceValue > 0 && 
+                item.distanceObj.distanceValue < minWarehouseInfo.distanceValue!
+            )
+            .sort((a, b) => a.distanceObj!.distanceValue! - b.distanceObj!.distanceValue!);
+
+        if (closerEvents.length === 0) return null;
+
+        return {
+            nearest: closerEvents[0],
+            minWarehouseDistance: minWarehouseInfo.distance,
+            allCloserEventIds: new Set(closerEvents.map(c => c.event.id)),
+        };
+    }, [edist, bookEventRecords, minWarehouseInfo]);
 
     const handleAdd = (
         type: "stock" | "event",
         item: any
     ) => {
-
         // ========================= STOCK =========================
         if (type === "stock") {
-            let newAddedQt = getItemsIs_enabled.horizontalPcs || getItemsIs_enabled.verticalPcs || getItemsIs_enabled.value || 0;
-            const verticalQty = Number(
-                item.verticalSizes?.[0]?.quantity || 0
+            const requestedQty = Number(
+                getItemsIs_enabled.horizontalPcs || 
+                getItemsIs_enabled.verticalPcs || 
+                getItemsIs_enabled.value || 
+                0
             );
 
-            const horizontalQty = Number(
-                item.horizontalSizes?.[0]?.quantity || 0
-            );
+            const verticalQty = Number(item.verticalSizes?.[0]?.quantity || 0);
+            const horizontalQty = Number(item.horizontalSizes?.[0]?.quantity || 0);
+            const quantity = Number(item.good || item.quantity || 0);
 
-            const quantity = Number(
-                item.quantity || 0
-            );
-
-            // use only existing qty
-            const usedQty =
-                verticalQty > 0
-                    ? verticalQty
-                    : horizontalQty > 0 ? horizontalQty : quantity;
-
-            // prevent duplicate add
-
+            const availableQty = verticalQty > 0 ? verticalQty : horizontalQty > 0 ? horizontalQty : quantity;
+            const syncQty = requestedQty > 0 && availableQty > requestedQty ? requestedQty : availableQty;
 
             // add stock
             setStockAddToEvents((prev: any) => ({
                 ...prev,
-
                 stock: [
-                    ...prev.stock,
+                    ...prev.stock.filter((s: any) => s.stockId !== item.id),
                     {
                         stockId: item.id,
-                        stockname: item.wareHouse.name,
-                        Categories: item.categories.id,
-                        SubCategoreis: item.subCategories.id,
-                        quntiry: Number(newAddedQt) > usedQty ? usedQty : newAddedQt,
+                        stockname: item.wareHouse?.name || "Warehouse",
+                        Categories: item.categories?.id || getItemsIs_enabled.categoryId,
+                        SubCategoreis: item.subCategories?.id || getItemsIs_enabled.subCategoryId,
+                        quntiry: syncQty,
                     },
                 ],
             }));
@@ -267,211 +278,101 @@ console.log( stockAddToEvents);
             // update inventory
             setInventory((prev: InventoryType[]) =>
                 prev.map((row) => {
-
                     if (row.id !== item.id) return row;
-
                     return {
                         ...row,
-
                         synced: true,
-
-                        verticalSizes: row.verticalSizes.map(
-                            (size) => ({
-                                ...size,
-
-                                quantity:
-                                    size.quantity > 0
-                                        ? Math.max(
-                                            0,
-                                            Number(size.quantity) - usedQty
-                                        )
-                                        : 0,
-                            })
-                        ),
-
-                        horizontalSizes: row.horizontalSizes.map(
-                            (size) => ({
-                                ...size,
-
-                                quantity:
-                                    size.quantity > 0
-                                        ? Math.max(
-                                            0,
-                                            Number(size.quantity) - usedQty
-                                        )
-                                        : 0,
-                            })
-                        ),
-
-                        quantity:
-                            Number(row.quantity || 0) > 0
-                                ? Math.max(
-                                    0,
-                                    Number(row.quantity) - usedQty
-                                )
-                                : 0,
+                        verticalSizes: (row.verticalSizes || []).map((size) => ({
+                            ...size,
+                            quantity: size.quantity > 0 ? Math.max(0, Number(size.quantity) - syncQty) : 0,
+                        })),
+                        horizontalSizes: (row.horizontalSizes || []).map((size) => ({
+                            ...size,
+                            quantity: size.quantity > 0 ? Math.max(0, Number(size.quantity) - syncQty) : 0,
+                        })),
+                        quantity: Number(row.quantity || 0) > 0 ? Math.max(0, Number(row.quantity) - syncQty) : 0,
                     };
                 })
             );
 
             // update selected available qty
             itemsDate((prev: any) => ({
-
                 ...prev,
-
-                verticalPcs:
-                    Number(prev.verticalPcs ?? 0) > 0
-                        ? String(
-                            Math.max(
-                                0,
-                                Number(prev.verticalPcs) - usedQty
-                            )
-                        )
-                        : prev.verticalPcs,
-
-                horizontalPcs:
-                    Number(prev.horizontalPcs ?? 0) > 0
-                        ? String(
-                            Math.max(
-                                0,
-                                Number(prev.horizontalPcs) - usedQty
-                            )
-                        )
-                        : prev.horizontalPcs,
-
-                quantity:
-                    Number(prev.quantity ?? 0) > 0
-                        ? Math.max(
-                            0,
-                            Number(prev.quantity) - usedQty
-                        )
-                        : 0,
+                verticalPcs: Number(prev.verticalPcs ?? 0) > 0 ? String(Math.max(0, Number(prev.verticalPcs) - syncQty)) : prev.verticalPcs,
+                horizontalPcs: Number(prev.horizontalPcs ?? 0) > 0 ? String(Math.max(0, Number(prev.horizontalPcs) - syncQty)) : prev.horizontalPcs,
+                value: Number(prev.value ?? 0) > 0 ? String(Math.max(0, Number(prev.value) - syncQty)) : prev.value,
+                quantity: Number(prev.quantity ?? 0) > 0 ? Math.max(0, Number(prev.quantity) - syncQty) : 0,
             }));
+
+            toast.success(`Successfully synced ${syncQty} items from warehouse "${item.wareHouse?.name || 'Warehouse'}"!`);
         }
 
         // ========================= EVENT =========================
         if (type === "event") {
-            let newAddedQt = getItemsIs_enabled.horizontalPcs || getItemsIs_enabled.verticalPcs || getItemsIs_enabled.value || 0;
-            const verticalQty = Number(
-                item.verticalPcs || 0
+            const requestedQty = Number(
+                getItemsIs_enabled.horizontalPcs || 
+                getItemsIs_enabled.verticalPcs || 
+                getItemsIs_enabled.value || 
+                0
             );
 
-            // console.log(item);
+            const verticalQty = Number(item.verticalPcs || 0);
+            const horizontalQty = Number(item.horizontalPcs || 0);
+            const qt = Number(item.qt || 0);
 
-            const horizontalQty = Number(
-                item.horizontalPcs || 0
-            );
-            const qt = Number(
-                item.qt || 0
-            );
-            const usedQty =
-                verticalQty > 0
-                    ? verticalQty
-                    : horizontalQty > 0 ? horizontalQty : qt;
+            const availableQty = (verticalQty > 0 || horizontalQty > 0)
+                ? (verticalQty + horizontalQty)
+                : qt;
 
-            // prevent duplicate sync
-
-            console.log(usedQty);
-
-
-            // if (alreadyAdded) return;
-
-            // add event
+            const syncQty = requestedQty > 0 && availableQty > requestedQty ? requestedQty : availableQty;
 
             // update records
             setBookEventsRecords((prev: any[]) =>
                 prev.map((row) => {
-
                     if (row.id !== item.id) return row;
-
                     return {
                         ...row,
-
                         synced: true,
-
-                        verticalPcs:
-                            Number(row.verticalPcs || 0) > 0
-                                ? Math.max(
-                                    0,
-                                    Number(row.verticalPcs) - usedQty
-                                )
-                                : row.verticalPcs,
-
-                        horizontalPcs:
-                            Number(row.horizontalPcs || 0) > 0
-                                ? Math.max(
-                                    0,
-                                    Number(row.horizontalPcs) - usedQty
-                                )
-                                : row.horizontalPcs,
-
-                        qt: Number(row.qt || 0) > 0
-                            ? Math.max(
-                                0,
-                                Number(row.qt) - usedQty
-                            )
-                            : row.qt,
+                        verticalPcs: Number(row.verticalPcs || 0) > 0 ? Math.max(0, Number(row.verticalPcs) - syncQty) : row.verticalPcs,
+                        horizontalPcs: Number(row.horizontalPcs || 0) > 0 ? Math.max(0, Number(row.horizontalPcs) - syncQty) : row.horizontalPcs,
+                        qt: Number(row.qt || 0) > 0 ? Math.max(0, Number(row.qt) - syncQty) : row.qt,
                     };
                 })
             );
 
             setStockAddToEvents((prev: any) => ({
                 ...prev,
-
                 events: [
-                    ...prev.events,
+                    ...prev.events.filter((e: any) => e.id !== item.id),
                     {
                         id: item.id,
                         name: item.vanus,
                         categories: item.categories_id,
                         subcategores: item.subCategories_id,
-                        quntity: Number(newAddedQt) > usedQty ? usedQty : newAddedQt,
+                        quntity: syncQty,
                     },
                 ],
             }));
+
             // update selected qty
             itemsDate((prev: any) => ({
-
                 ...prev,
-
-                verticalPcs:
-                    Number(prev.verticalPcs || 0) > 0
-                        ? String(
-                            Math.max(
-                                0,
-                                Number(prev.verticalPcs) - usedQty
-                            )
-                        )
-                        : prev.verticalPcs,
-
-                horizontalPcs:
-                    Number(prev.horizontalPcs || 0) > 0
-                        ? String(
-                            Math.max(
-                                0,
-                                Number(prev.horizontalPcs) - usedQty
-                            )
-                        )
-                        : prev.horizontalPcs,
-
-                qt:
-                    Number(prev.qt || 0) > 0
-                        ? String(
-                            Math.max(
-                                0,
-                                Number(prev.qt) - usedQty
-                            )
-                        )
-                        : prev.qt,
+                verticalPcs: Number(prev.verticalPcs || 0) > 0 ? String(Math.max(0, Number(prev.verticalPcs) - syncQty)) : prev.verticalPcs,
+                horizontalPcs: Number(prev.horizontalPcs || 0) > 0 ? String(Math.max(0, Number(prev.horizontalPcs) - syncQty)) : prev.horizontalPcs,
+                value: Number(prev.value || 0) > 0 ? String(Math.max(0, Number(prev.value) - syncQty)) : prev.value,
+                qt: Number(prev.qt || 0) > 0 ? String(Math.max(0, Number(prev.qt) - syncQty)) : prev.qt,
             }));
+
+            toast.success(`Successfully synced ${syncQty} items from finished event "${item.vanus}"!`);
         }
     };
 
-
     const getInventory = async () => {
         try {
+            if (!getItemsIs_enabled?.categoryId || !getItemsIs_enabled?.subCategoryId) return;
+            const bookedDateParam = getItemsIs_enabled.bookedDate || new Date().toISOString().split("T")[0];
             const results = await apiClient.get(
-                `/admin/Inverntory/items/eventStocks/${getItemsIs_enabled.bookedDate}/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
+                `/admin/Inverntory/items/eventStocks/${encodeURIComponent(bookedDateParam)}/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
             );
 
             setInventory(results?.data?.results?.results || []);
@@ -479,12 +380,10 @@ console.log( stockAddToEvents);
             let events: { [key: number]: number } = {};
 
             results?.data?.results?.results_booked?.forEach((rows: any) => {
-
                 const stockIds = JSON.parse(rows.stock_id || "[]");
                 const quantities = JSON.parse(rows.st_qt || "[]");
 
                 stockIds.forEach((value: number, key: number) => {
-
                     if (array[value]) {
                         array[value] += Number(quantities[key]);
                     } else {
@@ -496,7 +395,6 @@ console.log( stockAddToEvents);
                 const eventQT = JSON.parse(rows.evnt_qt || "[]");
 
                 eventsId.forEach((value: number, key: number) => {
-
                     if (events[value]) {
                         events[value] += Number(eventQT[key]);
                     } else {
@@ -510,15 +408,45 @@ console.log( stockAddToEvents);
                 event: { ...events }
             });
 
-            // results_bookedSet(results?.data?.results?.results_booked || []);
         } catch (error) {
-            // console.log(error);
+            console.error("getInventory error:", error);
+        }
+    };
+
+    const fetchBookedEvents = async () => {
+        try {
+            if (
+                !getItemsIs_enabled.categoryId ||
+                !getItemsIs_enabled.subCategoryId
+            ) {
+                return;
+            }
+
+            const bookedDateParam = getItemsIs_enabled.bookedDate || new Date().toISOString().split("T")[0];
+            const results = await apiClient.get(
+                `/admin/Events/bookedEvents/itemsDate/${encodeURIComponent(
+                    bookedDateParam
+                )}/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
+            );
+
+            setBookEventsRecords(results.data?.results || []);
+
+        } catch (error) {
+            console.error("fetchBookedEvents error:", error);
         }
     };
 
     useEffect(() => {
-        getInventory();
-    }, []);
+        if (isOpens) {
+            getInventory();
+            fetchBookedEvents();
+        }
+    }, [
+        isOpens,
+        getItemsIs_enabled.categoryId,
+        getItemsIs_enabled.subCategoryId,
+        getItemsIs_enabled.bookedDate
+    ]);
 
     const getQunity = async (id: number) => {
         try {
@@ -542,35 +470,6 @@ console.log( stockAddToEvents);
             }
         });
     }, [inventory]);
-
-
-    const fetchBookedEvents = async () => {
-        try {
-
-            if (
-                !getItemsIs_enabled.bookedDate ||
-                !getItemsIs_enabled.categoryId ||
-                !getItemsIs_enabled.subCategoryId
-            ) {
-                return;
-            }
-
-            const results = await apiClient.get(
-                `/admin/Events/bookedEvents/itemsDate/${encodeURIComponent(
-                    getItemsIs_enabled.bookedDate
-                )}/${getItemsIs_enabled.categoryId}/${getItemsIs_enabled.subCategoryId}`
-            );
-
-            setBookEventsRecords(results.data?.results || []);
-
-        } catch (error) {
-            // console.log(error);
-        }
-    };
-
-    useEffect(() => {
-        fetchBookedEvents();
-    }, [])
 
 
 
@@ -848,63 +747,113 @@ console.log( stockAddToEvents);
     console.log(results_booked);
 
 
-    const getDistance = async () => {
+    const getDistance = async (customOrigin?: string) => {
+        const origin = (customOrigin ?? currentLocation ?? locationOfVanus ?? "").toString().trim();
+        if (!origin || !inventory.length) {
+            return;
+        }
+
         try {
             const distances = await Promise.all(
                 inventory.map(async (row) => {
-                    const response = await apiClient.get(
-                        `/admin/Inverntory/getDistances/${encodeURIComponent(locationOfVanus.toString())}/${encodeURIComponent(row.wareHouse?.address.toString())}`);
-                    console.log(response);
-
-                    return {
-                        inventoryId: row.id,
-                        address: row.wareHouse?.address || "",
-                        distance: response.data.distance,
-                    };
+                    const dest = (row.wareHouse?.address || (row.wareHouse as any)?.location || row.wareHouse?.name || "").toString().trim();
+                    if (!dest) {
+                        return {
+                            inventoryId: row.id,
+                            address: "",
+                            distance: "-",
+                            distanceValue: null,
+                            duration: "",
+                        };
+                    }
+                    try {
+                        const response = await apiClient.get("/admin/Inverntory/getDistances", {
+                            params: { from: origin, to: dest }
+                        });
+                        return {
+                            inventoryId: row.id,
+                            address: dest,
+                            distance: response.data?.distance || "-",
+                            distanceValue: typeof response.data?.distance_value === "number" ? response.data.distance_value : null,
+                            duration: response.data?.duration || "",
+                        };
+                    } catch (err) {
+                        return {
+                            inventoryId: row.id,
+                            address: dest,
+                            distance: "-",
+                            distanceValue: null,
+                            duration: "",
+                        };
+                    }
                 })
             );
 
             setDist(distances);
         } catch (error) {
-            console.error(error);
+            console.error("getDistance error:", error);
         }
     };
 
-    const geteventDistance = async () => {
+    const geteventDistance = async (customOrigin?: string) => {
+        const origin = (customOrigin ?? currentLocation ?? locationOfVanus ?? "").toString().trim();
+        if (!origin || !bookEventRecords.length) {
+            return;
+        }
+
         try {
             const distances = await Promise.all(
                 bookEventRecords.map(async (row) => {
-                    const response = await apiClient.get(
-                        `/admin/Inverntory/getDistances/${encodeURIComponent(locationOfVanus.toString())}/${encodeURIComponent(row.vanus?.toString())}`);
-                    console.log(response);
-
-                    return {
-                        eventId: row.id,
-                        address: row.vanus?.toString() || "",
-                        distance: response.data.distance,
-                    };
+                    const dest = (row.v_location || row.vanus || "").toString().trim();
+                    if (!dest) {
+                        return {
+                            eventId: row.id,
+                            address: "",
+                            distance: "-",
+                            distanceValue: null,
+                            duration: "",
+                        };
+                    }
+                    try {
+                        const response = await apiClient.get("/admin/Inverntory/getDistances", {
+                            params: { from: origin, to: dest }
+                        });
+                        return {
+                            eventId: row.id,
+                            address: dest,
+                            distance: response.data?.distance || "-",
+                            distanceValue: typeof response.data?.distance_value === "number" ? response.data.distance_value : null,
+                            duration: response.data?.duration || "",
+                        };
+                    } catch (err) {
+                        return {
+                            eventId: row.id,
+                            address: dest,
+                            distance: "-",
+                            distanceValue: null,
+                            duration: "",
+                        };
+                    }
                 })
             );
 
             seteDist(distances);
         } catch (error) {
-            console.error(error);
+            console.error("geteventDistance error:", error);
         }
     };
 
+    useEffect(() => {
+        if (isOpens && currentLocation && bookEventRecords.length > 0) {
+            geteventDistance(currentLocation);
+        }
+    }, [isOpens, currentLocation, bookEventRecords]);
 
     useEffect(() => {
-        geteventDistance()
-    }, [locationOfVanus, bookEventRecords])
-
-
-    useEffect(() => {
-        getDistance();
-
-    }, [locationOfVanus, inventory])
-
-
-
+        if (isOpens && currentLocation && inventory.length > 0) {
+            getDistance(currentLocation);
+        }
+    }, [isOpens, currentLocation, inventory]);
 
     return (
         <Modal
@@ -914,9 +863,19 @@ console.log( stockAddToEvents);
         >
             {/* Header */}
             <div className="flex justify-between items-center px-4 sm:px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
-                <h2 className="text-lg font-semibold text-white">
-                    Available Items & Warehouse Stock
-                </h2>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-white/20 text-white">
+                        <ArrowRightLeft className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-base sm:text-lg font-bold text-white">
+                            Available Stock & Finished Events Logistics
+                        </h2>
+                        <p className="text-xs text-blue-100 hidden sm:block">
+                            Compare distances from Warehouses and Finished Events to move stock efficiently
+                        </p>
+                    </div>
+                </div>
                 <button
                     onClick={() => {
                         setIsOpens(false);
@@ -925,11 +884,69 @@ console.log( stockAddToEvents);
                             [getItemsIs_enabled.subCategoryId]: true
                         }));
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-semibold text-xs transition cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-semibold text-xs shadow-sm transition cursor-pointer"
                 >
                     Done
                 </button>
             </div>
+
+            {/* Location & Controls Bar */}
+            <div className="px-4 sm:px-6 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+                    <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 shrink-0">
+                        Today's Venue:
+                    </span>
+                    <input
+                        type="text"
+                        value={currentLocation}
+                        onChange={(e) => setCurrentLocation(e.target.value)}
+                        placeholder="Enter venue location / city (e.g. Bhopal, Indore, Buxar)"
+                        className="text-xs bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 flex-1 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            getDistance(currentLocation);
+                            geteventDistance(currentLocation);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium flex items-center gap-1 transition shrink-0 cursor-pointer"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" /> Recalculate
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-4 text-xs">
+                    <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                        <Building2 className="w-3.5 h-3.5 text-blue-500" />
+                        Warehouses: <strong className="text-gray-900 dark:text-gray-100">{inventory.length}</strong>
+                    </span>
+                    <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+                        <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
+                        Finished Events: <strong className="text-gray-900 dark:text-gray-100">{bookEventRecords.length}</strong>
+                    </span>
+                </div>
+            </div>
+
+            {/* Smart Logistics Recommendation Banner */}
+            {nearestEventComparison && (
+                <div className="mx-4 sm:mx-6 mt-4 rounded-xl border border-emerald-300 bg-emerald-50/90 dark:bg-emerald-950/40 dark:border-emerald-700 p-3.5 shadow-sm flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-200 flex items-center justify-center font-bold">
+                        <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-300" />
+                    </div>
+                    <div className="flex-1 text-xs sm:text-sm text-emerald-900 dark:text-emerald-100">
+                        <div className="font-bold flex items-center gap-2">
+                            <span>Nearby Event Stock Available</span>
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200">
+                                Closer than Warehouse
+                            </span>
+                        </div>
+                        <p className="mt-1 text-emerald-800 dark:text-emerald-200 text-xs">
+                            Event <strong>"{nearestEventComparison.nearest.event.vanus}"</strong> ({nearestEventComparison.nearest.event.v_location || "Venue"}) is only <strong>{nearestEventComparison.nearest.distanceObj?.distance}</strong> away {nearestEventComparison.nearest.distanceObj?.duration ? `(${nearestEventComparison.nearest.distanceObj?.duration})` : ""} — which is nearer than the Warehouse ({nearestEventComparison.minWarehouseDistance}). Moving stock directly from this event will save transport time and logistics cost!
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Body */}
             <div className="p-4 sm:p-6 bg-gray-50 dark:bg-gray-900/50 space-y-6 overflow-y-auto max-h-[82vh] custom-scrollbar">
@@ -1232,46 +1249,63 @@ console.log( stockAddToEvents);
                                                 </TableCell>
 
                                                 <TableCell className="px-5 py-4 text-start">
-                                                    {dist?.find((r) => r.inventoryId === rows.id)?.distance || "-"}
+                                                    {(() => {
+                                                        const dObj = dist?.find((r) => r.inventoryId === rows.id);
+                                                        if (!dObj || !dObj.distance || dObj.distance === "-") {
+                                                            return <span className="text-gray-400 text-xs">Distance unavailable</span>;
+                                                        }
+                                                        return (
+                                                            <div>
+                                                                <span className="font-semibold text-gray-800 dark:text-gray-200 block text-xs">
+                                                                    {dObj.distance}
+                                                                </span>
+                                                                {dObj.duration && (
+                                                                    <span className="text-[11px] text-gray-500 block">
+                                                                        ({dObj.duration})
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 sm:px-6 text-start">
 
                                                     {(() => {
-
+                                                        const isAlreadySynced = rows.synced || stockAddToEvents?.stock?.some((s: any) => s.stockId === rows.id);
                                                         const isDisabled =
                                                             rows.verticalSizes?.some(
                                                                 (v: any) =>
-                                                                    v.quantity <= (results_booked?.stock?.[rows.id])
+                                                                    v.quantity <= (results_booked?.stock?.[rows.id] ?? 0)
                                                             ) ||
                                                             rows.horizontalSizes?.some(
                                                                 (h: any) =>
-                                                                    h.quantity <= (results_booked?.stock?.[rows.id] || 0)
+                                                                    h.quantity <= (results_booked?.stock?.[rows.id] ?? 0)
                                                             );
 
-                                                        return (
-                                                            <>
-
-                                                                <span
-                                                                    className={`inline-flex rounded-full px-3 py-1 text-xs font-medium
-                                                                ${isDisabled
-                                                                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                                                            : rows.synced
-                                                                                ? "bg-amber-100 text-amber-700 cursor-pointer dark:bg-amber-900/20 dark:text-amber-400"
-                                                                                : "bg-red-100 text-red-700 cursor-pointer dark:bg-red-900/20 dark:text-red-400"
-                                                                        }`}
-                                                                    onClick={() => {
-                                                                        if (!isDisabled) {
-                                                                            handleAdd("stock", rows);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {isDisabled
-                                                                        ? "Disabled"
-                                                                        : rows.synced
-                                                                            ? "Synced"
-                                                                            : "Sync"}
+                                                        if (isAlreadySynced) {
+                                                            return (
+                                                                <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                                                    <CheckCircle2 className="w-3.5 h-3.5" /> Synced
                                                                 </span>
-                                                            </>
+                                                            );
+                                                        }
+
+                                                        if (isDisabled) {
+                                                            return (
+                                                                <span className="inline-flex rounded-full px-3 py-1 text-xs font-medium bg-gray-200 text-gray-500 cursor-not-allowed">
+                                                                    No Stock
+                                                                </span>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleAdd("stock", rows)}
+                                                                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm cursor-pointer"
+                                                            >
+                                                                Sync
+                                                            </button>
                                                         );
                                                     })()}
 
@@ -1380,7 +1414,7 @@ console.log( stockAddToEvents);
 
                                 {/* Table Body */}
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                                    {bookEventRecords &&
+                                    {bookEventRecords && bookEventRecords.length > 0 ? (
                                         bookEventRecords.map(
                                             (rows: any, index: number) => (
                                                 <TableRow
@@ -1585,36 +1619,66 @@ console.log( stockAddToEvents);
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="px-5 py-4 text-start">
-                                                        {edist?.find((r) => r.eventId === rows.id)?.distance || "-"}
+                                                        {(() => {
+                                                            const dObj = edist?.find((r) => r.eventId === rows.id);
+                                                            const isCloser = nearestEventComparison?.allCloserEventIds?.has(rows.id);
+                                                            if (!dObj || !dObj.distance || dObj.distance === "-") {
+                                                                return <span className="text-gray-400 text-xs">Distance unavailable</span>;
+                                                            }
+                                                            return (
+                                                                <div className="space-y-1">
+                                                                    <span className="font-semibold text-gray-800 dark:text-gray-200 block text-xs">
+                                                                        {dObj.distance}
+                                                                    </span>
+                                                                    {dObj.duration && (
+                                                                        <span className="text-[11px] text-gray-500 block">
+                                                                            ({dObj.duration})
+                                                                        </span>
+                                                                    )}
+                                                                    {isCloser && (
+                                                                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                                                            ⭐ Closer than Warehouse
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </TableCell>
                                                     {/* ================================================= */}
-                                                    {/* STATUS */}
+                                                    {/* ACTION */}
                                                     {/* ================================================= */}
 
-                                                    <TableCell className="px-5 py-4 sm:px-6 text-start"  >
-                                                        <span
-                                                            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium cursor-pointer
-                                                            ${rows.synced
-                                                                    ? "bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
-                                                                    : "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-                                                                }`}
-                                                            onClick={() =>
-                                                                handleAdd("event", rows)
+                                                    <TableCell className="px-5 py-4 sm:px-6 text-start">
+                                                        {(() => {
+                                                            const isAlreadySynced = rows.synced || stockAddToEvents?.events?.some((e: any) => e.id === rows.id);
+
+                                                            if (isAlreadySynced) {
+                                                                return (
+                                                                    <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                                                        <CheckCircle2 className="w-3.5 h-3.5" /> Synced
+                                                                    </span>
+                                                                );
                                                             }
-                                                        >
-                                                            {rows.synced
-                                                                ? "Synced"
-                                                                : "Sync"}
-                                                        </span>
 
-
-
-                                                        {/* <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/20 dark:text-green-400" onClick={() => handleAdd("event", rows)}>
-                                                            Sync
-                                                        </span> */}
+                                                            return (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleAdd("event", rows)}
+                                                                    className="inline-flex items-center gap-1 rounded-full px-3.5 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm cursor-pointer"
+                                                                >
+                                                                    Sync to Event
+                                                                </button>
+                                                            );
+                                                        })()}
                                                     </TableCell>
                                                 </TableRow>
-                                            )
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="p-5 text-center text-xs text-gray-500 dark:text-gray-400">
+                                                    No finished events found holding this stock item.
+                                                </TableCell>
+                                            </TableRow>
                                         )}
                                 </TableBody>
                             </Table>

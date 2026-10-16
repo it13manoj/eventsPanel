@@ -16,7 +16,9 @@ import {
     Search,
     RefreshCw,
     Download,
-    Building2
+    Building2,
+    Pencil,
+    Check
 } from "lucide-react";
 
 import jsPDF from "jspdf";
@@ -71,6 +73,12 @@ interface Data {
     venue?: string;
     mobile: string;
     address: string;
+    partnerName?: string;
+    partnerGst?: string;
+    partnerPhone?: string;
+    partnerAddress?: string;
+    invoiceNotes?: string;
+    gstRate?: number;
     templateId?: number | null;
     templateName?: string;
     templatePrice?: number;
@@ -120,6 +128,91 @@ export default function InvoiceListPage() {
     const [paying, setPaying] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("ALL");
+
+    // Partner and custom invoice billing details state
+    const [partnerModalOpen, setPartnerModalOpen] = useState(false);
+    const [editingPartnerInvoice, setEditingPartnerInvoice] = useState<Data | null>(null);
+    const [partnerForm, setPartnerForm] = useState({
+        partnerName: "",
+        partnerGst: "",
+        partnerPhone: "",
+        partnerAddress: "",
+        invoiceNotes: "",
+        gstRate: 0 as number | string
+    });
+    const [savingPartner, setSavingPartner] = useState(false);
+
+    const handleOpenPartnerModal = (inv: Data) => {
+        setEditingPartnerInvoice(inv);
+        setPartnerForm({
+            partnerName: inv.partnerName || inv.customer || "",
+            partnerGst: inv.partnerGst || "",
+            partnerPhone: inv.partnerPhone || "",
+            partnerAddress: inv.partnerAddress || inv.address || "",
+            invoiceNotes: inv.invoiceNotes || "",
+            gstRate: inv.gstRate !== undefined ? inv.gstRate : 0
+        });
+        setPartnerModalOpen(true);
+    };
+
+    const handleSavePartnerDetails = async (e?: any) => {
+        if (e) e.preventDefault();
+        if (!editingPartnerInvoice) return;
+
+        setSavingPartner(true);
+        try {
+            const cleanId = editingPartnerInvoice.eventId
+                ? String(editingPartnerInvoice.eventId)
+                : editingPartnerInvoice.id.toString().replace("INV-", "");
+
+            const payload = {
+                partner_name: partnerForm.partnerName,
+                partner_gst: partnerForm.partnerGst,
+                partner_phone: partnerForm.partnerPhone,
+                partner_address: partnerForm.partnerAddress,
+                invoice_notes: partnerForm.invoiceNotes,
+                gst_rate: Number(partnerForm.gstRate || 0)
+            };
+
+            await apiClient.put(`/admin/Events/invoice-details/${cleanId}`, payload);
+            toast.success("Partner & Invoice billing details saved successfully!");
+
+            // Update in local state
+            setInvoices(prev => prev.map(inv => {
+                if (String(inv.id) === String(editingPartnerInvoice.id) || String(inv.eventId) === String(cleanId)) {
+                    return {
+                        ...inv,
+                        partnerName: partnerForm.partnerName,
+                        partnerGst: partnerForm.partnerGst,
+                        partnerPhone: partnerForm.partnerPhone,
+                        partnerAddress: partnerForm.partnerAddress,
+                        invoiceNotes: partnerForm.invoiceNotes,
+                        gstRate: Number(partnerForm.gstRate || 0)
+                    };
+                }
+                return inv;
+            }));
+
+            if (selectedInvoice && (String(selectedInvoice.id) === String(editingPartnerInvoice.id) || String(selectedInvoice.eventId) === String(cleanId))) {
+                setSelectedInvoice(prev => prev ? ({
+                    ...prev,
+                    partnerName: partnerForm.partnerName,
+                    partnerGst: partnerForm.partnerGst,
+                    partnerPhone: partnerForm.partnerPhone,
+                    partnerAddress: partnerForm.partnerAddress,
+                    invoiceNotes: partnerForm.invoiceNotes,
+                    gstRate: Number(partnerForm.gstRate || 0)
+                }) : null);
+            }
+
+            setPartnerModalOpen(false);
+        } catch (err: any) {
+            console.error("Failed to save partner details:", err);
+            toast.error(err.response?.data?.message || "Failed to update partner & GST details");
+        } finally {
+            setSavingPartner(false);
+        }
+    };
 
     const fetchCompany = async () => {
         try {
@@ -342,21 +435,46 @@ export default function InvoiceListPage() {
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(71, 85, 105);
-        pdf.text("BILLED TO:", 14, 43);
+        pdf.text("BILLED TO / PARTNER DETAILS:", 14, 43);
 
         pdf.setFontSize(11);
         pdf.setFont("helvetica", "bold");
         pdf.setTextColor(15, 23, 42);
-        pdf.text(inv.customer || "Valued Customer", 14, 49);
+        const billedParty = inv.partnerName
+            ? `${inv.partnerName}${inv.customer && inv.customer !== inv.partnerName ? ` (Client: ${inv.customer})` : ""}`
+            : (inv.customer || "Valued Customer");
+        pdf.text(billedParty, 14, 49);
 
-        pdf.setFontSize(9);
+        let billingY = 54;
+        pdf.setFontSize(8.5);
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(71, 85, 105);
-        pdf.text(`Venue: ${inv.venue || inv.address || "Standard Venue"}`, 14, 55);
-        pdf.text(`Location: ${inv.address || "NA"}`, 14, 60);
+
+        if (inv.partnerGst) {
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(37, 99, 235);
+            pdf.text(`Partner GSTIN: ${inv.partnerGst}`, 14, billingY);
+            billingY += 4.5;
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(71, 85, 105);
+        }
+
+        const billingAddr = inv.partnerAddress || inv.address || inv.venue || "";
+        if (billingAddr) {
+            pdf.text(`Address: ${billingAddr}`, 14, billingY);
+            billingY += 4.5;
+        }
+
+        if (inv.partnerPhone) {
+            pdf.text(`Contact: ${inv.partnerPhone}`, 14, billingY);
+            billingY += 4.5;
+        }
+
+        pdf.text(`Venue: ${inv.venue || "Standard Venue"}`, 14, billingY);
+        billingY += 5;
 
         // TABLE 1: BOOKED EVENT ITEMS (Category & Subcategory)
-        let runningY = 66;
+        let runningY = Math.max(billingY + 2, 66);
 
         pdf.setFontSize(10);
         pdf.setFont("helvetica", "bold");
@@ -509,9 +627,12 @@ export default function InvoiceListPage() {
         // SUMMARY CARD
         const eventCost = Number(inv.eventCost || 0);
         const transportCost = Number(inv.transportCost || 0);
-        const grandTotal = Number(inv.amount || (itemsSubtotal + vehiclesSubtotal + eventCost + transportCost));
+        const subtotal = Number(inv.amount || (itemsSubtotal + vehiclesSubtotal + eventCost + transportCost));
+        const gstRate = Number(inv.gstRate || 0);
+        const gstAmount = gstRate > 0 ? (subtotal * gstRate) / 100 : 0;
+        const grandTotal = subtotal + gstAmount;
         const paidAmount = Number(inv.paidAmount || 0);
-        const unpaidAmount = Number(inv.unpaidAmount !== undefined ? inv.unpaidAmount : Math.max(0, grandTotal - paidAmount));
+        const unpaidAmount = Math.max(0, grandTotal - paidAmount);
 
         const summaryLines: { label: string; value: string; color?: number[]; bold?: boolean }[] = [];
 
@@ -543,8 +664,22 @@ export default function InvoiceListPage() {
             });
         }
 
+        if (gstRate > 0) {
+            summaryLines.push({
+                label: "Subtotal (Excl. Tax):",
+                value: `INR ${subtotal.toFixed(2)}`,
+                bold: true
+            });
+            summaryLines.push({
+                label: `GST (${gstRate}%):`,
+                value: `INR ${gstAmount.toFixed(2)}`,
+                color: [37, 99, 235],
+                bold: true
+            });
+        }
+
         summaryLines.push({
-            label: "Grand Total Bill:",
+            label: gstRate > 0 ? "Grand Total (Incl. GST):" : "Grand Total Bill:",
             value: `INR ${grandTotal.toFixed(2)}`,
             bold: true,
             color: [15, 23, 42]
@@ -566,11 +701,31 @@ export default function InvoiceListPage() {
         let finalY = (pdf as any).lastAutoTable.finalY + 8;
         const boxHeight = summaryLines.length * 5.5 + 4;
         const pageHeight = pdf.internal.pageSize.height;
-        if (finalY + boxHeight > pageHeight - 20) {
+        if (finalY + boxHeight > pageHeight - 24) {
             pdf.addPage();
             finalY = 20;
         }
 
+        // Left Box: Notes & Terms (if provided)
+        if (inv.invoiceNotes) {
+            pdf.setFillColor(248, 250, 252);
+            pdf.roundedRect(14, finalY, 86, boxHeight, 2, 2, "F");
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(14, finalY, 86, boxHeight, 2, 2, "D");
+
+            pdf.setFontSize(8);
+            pdf.setFont("helvetica", "bold");
+            pdf.setTextColor(30, 41, 59);
+            pdf.text("Terms & Notes:", 18, finalY + 5);
+
+            pdf.setFontSize(7.5);
+            pdf.setFont("helvetica", "normal");
+            pdf.setTextColor(100, 116, 139);
+            const splitNotes = pdf.splitTextToSize(inv.invoiceNotes, 78);
+            pdf.text(splitNotes, 18, finalY + 10);
+        }
+
+        // Right Box: Financial Summary
         pdf.setFillColor(248, 250, 252);
         pdf.roundedRect(108, finalY, 88, boxHeight, 2, 2, "F");
         pdf.setDrawColor(226, 232, 240);
@@ -848,6 +1003,13 @@ export default function InvoiceListPage() {
                                             <FaFileInvoiceDollar size={13} /> Pay
                                         </button>
                                         <button
+                                            onClick={() => handleOpenPartnerModal(inv)}
+                                            className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-lg transition-all"
+                                            title="Add / Edit Partner & GST Details"
+                                        >
+                                            <Building2 size={16} />
+                                        </button>
+                                        <button
                                             onClick={() => setSelectedInvoice(inv)}
                                             className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg transition-all"
                                             title="View Bill Details"
@@ -1040,6 +1202,14 @@ export default function InvoiceListPage() {
                                                     </button>
 
                                                     <button
+                                                        onClick={() => handleOpenPartnerModal(inv)}
+                                                        title="Add / Edit Partner & GST Details"
+                                                        className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-300 rounded-lg transition-all"
+                                                    >
+                                                        <Building2 size={16} />
+                                                    </button>
+
+                                                    <button
                                                         onClick={() => setSelectedInvoice(inv)}
                                                         title="View Bill Details"
                                                         className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400 rounded-lg transition-all"
@@ -1175,32 +1345,72 @@ export default function InvoiceListPage() {
                                 </div>
                             </div>
 
-                            {/* Customer & Event Details Card */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-xs">
-                                <div>
-                                    <span className="text-gray-400 uppercase font-semibold">Customer:</span>
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
-                                        {selectedInvoice.customer}
-                                    </p>
+                            {/* Partner & Billing Details Card */}
+                            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 text-xs space-y-3">
+                                <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-gray-700/80">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                            <Building2 size={13} className="text-blue-600" /> Billed To / Partner Details
+                                        </span>
+                                        {selectedInvoice.partnerGst && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                                GSTIN: {selectedInvoice.partnerGst}
+                                            </span>
+                                        )}
+                                        {Number(selectedInvoice.gstRate || 0) > 0 && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                                                GST Rate: {selectedInvoice.gstRate}%
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleOpenPartnerModal(selectedInvoice)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold text-xs transition cursor-pointer"
+                                    >
+                                        <Pencil size={12} />
+                                        Edit Partner / GST Details
+                                    </button>
                                 </div>
-                                <div>
-                                    <span className="text-gray-400 uppercase font-semibold">Event Date:</span>
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
-                                        {selectedInvoice.eventDate ? new Date(selectedInvoice.eventDate).toLocaleDateString("en-IN") : "NA"}
-                                    </p>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div>
+                                        <span className="text-gray-400 uppercase font-semibold">Billed Party / Partner:</span>
+                                        <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                            {selectedInvoice.partnerName || selectedInvoice.customer}
+                                        </p>
+                                        {selectedInvoice.partnerName && selectedInvoice.customer && selectedInvoice.partnerName !== selectedInvoice.customer && (
+                                            <span className="text-[11px] text-gray-500 block">Customer: {selectedInvoice.customer}</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 uppercase font-semibold">Partner GSTIN & Contact:</span>
+                                        <p className="font-bold text-blue-600 dark:text-blue-400 text-sm mt-0.5 font-mono">
+                                            {selectedInvoice.partnerGst || "No GST Added"}
+                                        </p>
+                                        {selectedInvoice.partnerPhone && (
+                                            <span className="text-[11px] text-gray-500 block">Tel: {selectedInvoice.partnerPhone}</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 uppercase font-semibold">Event Date:</span>
+                                        <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                            {selectedInvoice.eventDate ? new Date(selectedInvoice.eventDate).toLocaleDateString("en-IN") : "NA"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-400 uppercase font-semibold">Billing Address / Venue:</span>
+                                        <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
+                                            {selectedInvoice.partnerAddress || selectedInvoice.address || selectedInvoice.venue || "NA"}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="text-gray-400 uppercase font-semibold">Venue:</span>
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
-                                        {selectedInvoice.venue || "Venue"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span className="text-gray-400 uppercase font-semibold">Location / Address:</span>
-                                    <p className="font-bold text-gray-900 dark:text-white text-sm mt-0.5">
-                                        {selectedInvoice.address || "NA"}
-                                    </p>
-                                </div>
+
+                                {selectedInvoice.invoiceNotes && (
+                                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700/60 flex items-start gap-2 text-gray-600 dark:text-gray-300">
+                                        <span className="font-semibold shrink-0 text-[11px] uppercase text-gray-400">Terms / Notes:</span>
+                                        <p className="italic text-xs">{selectedInvoice.invoiceNotes}</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Section 1: Booked Event Items (Category & Subcategory) */}
@@ -1516,12 +1726,33 @@ export default function InvoiceListPage() {
                                     </div>
                                 )}
 
+                                {Number(selectedInvoice.gstRate || 0) > 0 && (() => {
+                                    const sub = Number(selectedInvoice.amount || 0);
+                                    const gst = (sub * Number(selectedInvoice.gstRate)) / 100;
+                                    return (
+                                        <>
+                                            <div className="flex justify-between items-center text-sm text-gray-700 dark:text-gray-300 font-medium">
+                                                <span>Subtotal (Excl. Tax):</span>
+                                                <span className="font-mono">₹ {sub.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm text-purple-600 dark:text-purple-400 font-semibold">
+                                                <span>GST ({selectedInvoice.gstRate}%):</span>
+                                                <span className="font-mono">₹ {gst.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+
                                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
                                     <span className="text-base font-bold text-gray-900 dark:text-white">
-                                        Grand Total Bill:
+                                        {Number(selectedInvoice.gstRate || 0) > 0 ? "Grand Total (Incl. GST):" : "Grand Total Bill:"}
                                     </span>
                                     <span className="text-2xl font-extrabold text-blue-600 dark:text-blue-400 font-mono">
-                                        ₹ {Number(selectedInvoice.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        ₹ {(() => {
+                                            const sub = Number(selectedInvoice.amount || 0);
+                                            const gst = Number(selectedInvoice.gstRate || 0) > 0 ? (sub * Number(selectedInvoice.gstRate)) / 100 : 0;
+                                            return (sub + gst).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+                                        })()}
                                     </span>
                                 </div>
 
@@ -1535,7 +1766,13 @@ export default function InvoiceListPage() {
                                 <div className="flex justify-between items-center text-sm text-red-600 dark:text-red-400 font-bold">
                                     <span>Balance Due / Unpaid:</span>
                                     <span className="font-mono">
-                                        ₹ {Number(selectedInvoice.unpaidAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        ₹ {(() => {
+                                            const sub = Number(selectedInvoice.amount || 0);
+                                            const gst = Number(selectedInvoice.gstRate || 0) > 0 ? (sub * Number(selectedInvoice.gstRate)) / 100 : 0;
+                                            const tot = sub + gst;
+                                            const paid = Number(selectedInvoice.paidAmount || 0);
+                                            return Math.max(0, tot - paid).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+                                        })()}
                                     </span>
                                 </div>
                             </div>
@@ -1545,15 +1782,24 @@ export default function InvoiceListPage() {
                         <div className="bg-gray-50 dark:bg-gray-800/80 p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <button
                                 onClick={() => setSelectedInvoice(null)}
-                                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                             >
                                 Close
                             </button>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2.5">
+                                <button
+                                    onClick={() => handleOpenPartnerModal(selectedInvoice)}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-semibold transition cursor-pointer"
+                                    title="Add / Edit Partner & GST Details"
+                                >
+                                    <Building2 size={15} />
+                                    Partner & GST
+                                </button>
+
                                 <button
                                     onClick={() => handleOpenBillPay(selectedInvoice)}
-                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-all"
+                                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-all cursor-pointer"
                                 >
                                     <FaFileInvoiceDollar size={15} />
                                     Pay Bill
@@ -1561,7 +1807,7 @@ export default function InvoiceListPage() {
 
                                 <button
                                     onClick={() => downloadPDF(selectedInvoice)}
-                                    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md transition-all"
+                                    className="flex items-center gap-2 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md transition-all cursor-pointer"
                                 >
                                     <Printer size={16} />
                                     Download / Print PDF Bill
@@ -1757,6 +2003,206 @@ export default function InvoiceListPage() {
                                 Close
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Partner & GST Details Modal */}
+            {partnerModalOpen && editingPartnerInvoice && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+                    <div className="relative w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col my-8">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-50/50 via-purple-50/30 to-white dark:from-indigo-950/20 dark:via-purple-950/10 dark:to-gray-900">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
+                                    <Building2 size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        Partner & GST Billing Details
+                                    </h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        Invoice #{editingPartnerInvoice.id} • {editingPartnerInvoice.customer || "Client"}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setPartnerModalOpen(false)}
+                                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Form Body */}
+                        <form onSubmit={handleSavePartnerDetails} className="p-5 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                            {/* Live calculation banner */}
+                            {(() => {
+                                const baseSubtotal = Number(editingPartnerInvoice.amount || 0);
+                                const currentGstRate = Number(partnerForm.gstRate || 0);
+                                const gstAmount = (baseSubtotal * currentGstRate) / 100;
+                                const grandTotal = baseSubtotal + gstAmount;
+
+                                return (
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-100 dark:border-indigo-900/50 text-center">
+                                        <div>
+                                            <p className="text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400">Base Subtotal</p>
+                                            <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
+                                                ₹ {baseSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400">
+                                                GST ({currentGstRate}%)
+                                            </p>
+                                            <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                                + ₹ {gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">Final Bill Total</p>
+                                            <p className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                                                ₹ {grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Partner / Company Name & GSTIN */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        Partner / Client Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={partnerForm.partnerName}
+                                        onChange={(e) => setPartnerForm(prev => ({ ...prev, partnerName: e.target.value }))}
+                                        placeholder="e.g. Royal Decorators / Corporate Client"
+                                        className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        Partner GSTIN Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={partnerForm.partnerGst}
+                                        onChange={(e) => setPartnerForm(prev => ({ ...prev, partnerGst: e.target.value.toUpperCase() }))}
+                                        placeholder="e.g. 29ABCDE1234F1Z5"
+                                        maxLength={20}
+                                        className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono tracking-wider focus:ring-2 focus:ring-indigo-500 outline-none transition uppercase"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Contact & GST Rate */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        Partner Phone / Contact
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={partnerForm.partnerPhone}
+                                        onChange={(e) => setPartnerForm(prev => ({ ...prev, partnerPhone: e.target.value }))}
+                                        placeholder="e.g. +91 98765 43210"
+                                        className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        GST Rate (%)
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.1"
+                                            value={partnerForm.gstRate}
+                                            onChange={(e) => setPartnerForm(prev => ({ ...prev, gstRate: e.target.value }))}
+                                            placeholder="0"
+                                            className="w-24 px-3.5 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        />
+                                        <div className="flex items-center gap-1">
+                                            {[0, 5, 12, 18, 28].map((rate) => (
+                                                <button
+                                                    key={rate}
+                                                    type="button"
+                                                    onClick={() => setPartnerForm(prev => ({ ...prev, gstRate: rate }))}
+                                                    className={`px-2 py-1.5 text-xs font-semibold rounded-lg border transition ${
+                                                        Number(partnerForm.gstRate) === rate
+                                                            ? "bg-indigo-600 text-white border-indigo-600"
+                                                            : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-200"
+                                                    }`}
+                                                >
+                                                    {rate}%
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Partner Address */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Partner Billing Address
+                                </label>
+                                <textarea
+                                    rows={2}
+                                    value={partnerForm.partnerAddress}
+                                    onChange={(e) => setPartnerForm(prev => ({ ...prev, partnerAddress: e.target.value }))}
+                                    placeholder="e.g. Flat/Plot No., Road, City, State, PIN"
+                                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition resize-none"
+                                />
+                            </div>
+
+                            {/* Invoice Notes / Terms */}
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                    Invoice Terms & Additional Notes (Appears on PDF & Bill)
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={partnerForm.invoiceNotes}
+                                    onChange={(e) => setPartnerForm(prev => ({ ...prev, invoiceNotes: e.target.value }))}
+                                    placeholder="e.g. Terms: 100% advance before dispatch. Any damage to materials during the event will be charged as per replacement costs."
+                                    className="w-full px-3.5 py-2 text-sm rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                                <button
+                                    type="button"
+                                    onClick={() => setPartnerModalOpen(false)}
+                                    className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={savingPartner}
+                                    className="flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 disabled:opacity-50 transition shadow-md shadow-indigo-600/20"
+                                >
+                                    {savingPartner ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Check size={16} />
+                                            Save & Update Bill
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

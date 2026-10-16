@@ -118,16 +118,24 @@ export default function UserInfoCard() {
         </button>
       </div>
 
-      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px] m-4">
-        <div className="relative w-full max-w-[700px] bg-white rounded-3xl dark:bg-gray-900 p-4 lg:p-8 flex flex-col max-h-[85vh]">
-          <div className="px-2 pr-14">
-            <h4 className="mb-2 text-2xl font-semibold text-gray-800 dark:text-white/90">
+      <Modal isOpen={isOpen} onClose={closeModal} className="max-w-[700px] w-full mx-auto p-0 rounded-2xl sm:rounded-3xl overflow-hidden [&>button]:hidden shadow-2xl border border-gray-100 dark:border-gray-800">
+        <div className="flex justify-between items-center px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+          <div>
+            <h4 className="text-base sm:text-lg font-bold text-white">
               Edit Personal Information
             </h4>
-            <p className="mb-6 text-sm text-gray-500 dark:text-gray-400 lg:mb-7">
+            <p className="text-xs text-blue-100">
               Update your details to keep your profile up-to-date.
             </p>
           </div>
+          <button
+            onClick={closeModal}
+            className="px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs shadow-sm transition cursor-pointer"
+          >
+            ✕ Close
+          </button>
+        </div>
+        <div className="relative w-full bg-gray-50 dark:bg-gray-900/50 p-4 lg:p-6 flex flex-col max-h-[80vh]">
           <form className="flex flex-col flex-1 min-h-0 overflow-hidden">
             <div className="custom-scrollbar overflow-y-auto px-2 pb-3 flex-1">
               <div>

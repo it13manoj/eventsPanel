@@ -3,11 +3,13 @@ import PageBreadcrumb from "../../common/PageBreadCrumb";
 import PageMeta from "../../common/PageMeta";
 import EmployeeModel from "../../../model/EmployeeModel";
 import { useModal } from "../../../hooks/useModal";
+import { useAuth } from "../../../hooks/auth";
 import EmployeeList from "./EmployeeList";
 import { Plus, Users } from "lucide-react";
 
 export default function AddEmployee() {
     const { isOpen, openModal, closeModal } = useModal();
+    const { canEdit } = useAuth();
     const [editEmployee, setEditEmployee] = useState<any>(null);
     const [refreshKey, setRefreshKey] = useState(0);
 
@@ -49,13 +51,15 @@ export default function AddEmployee() {
                     </div>
                 </div>
 
-                <button
-                    onClick={handleAdd}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm transition-all"
-                >
-                    <Plus size={16} />
-                    Add Employee
-                </button>
+                {canEdit("employees") && (
+                    <button
+                        onClick={handleAdd}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-sm transition-all cursor-pointer"
+                    >
+                        <Plus size={16} />
+                        Add Employee
+                    </button>
+                )}
             </div>
 
             <EmployeeList

@@ -8,12 +8,14 @@ export default function AssignTeam({
     isOpen,
     onClose,
     id,
-    isLocked = false
+    isLocked = false,
+    onRefresh
 }: {
     isOpen: boolean;
     onClose: () => void;
     id: number | null;
     isLocked?: boolean;
+    onRefresh?: () => void;
 }) {
     if (!isOpen) return null;
 
@@ -23,7 +25,9 @@ export default function AssignTeam({
         try {
             if (id) {
                 const res = await apiClient.get(`/admin/teamAssign/find/${id}`);
-                setItems(res.data?.data || []);
+                const data = res.data?.data || res.data?.results || [];
+                const list = Array.isArray(data) ? data : (data?.TeamAssignUser || []);
+                setItems(list);
             }
         } catch (err) {
             console.error(err);
@@ -43,12 +47,20 @@ export default function AssignTeam({
         }
         if (!window.confirm("Are you sure you want to remove this member from the team?")) return;
         try {
-            await apiClient.delete(`/admin/teamAssignUser/delete/${assignUserId}`);
+            await apiClient.delete(`/admin/teamAssign/deleteAssignUsers/${assignUserId}`);
             toast.success("Team member removed successfully!");
             getItems();
+            if (onRefresh) onRefresh();
         } catch (err: any) {
-            console.error(err);
-            toast.error(err.response?.data?.message || "Failed to remove member");
+            try {
+                await apiClient.delete(`/admin/teamAssignUser/delete/${assignUserId}`);
+                toast.success("Team member removed successfully!");
+                getItems();
+                if (onRefresh) onRefresh();
+            } catch (fallbackErr: any) {
+                console.error("Error deleting member:", fallbackErr);
+                toast.error(err.response?.data?.message || fallbackErr.response?.data?.message || "Failed to remove member");
+            }
         }
     };
 

@@ -12,7 +12,7 @@ interface User {
   base_pay?: number;
 }
 
-export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
+export default function EventAssignModel({ eid, isOpen, closeModal, onSuccess }: any) {
   if (!isOpen) return null;
 
   const [installationDate, setInstallationDate] = useState<Date | null>(null);
@@ -74,6 +74,7 @@ export default function EventAssignModel({ eid, isOpen, closeModal }: any) {
 
       await apiClient.post("/admin/teamAssign/create", params);
       toast.success("Team assigned successfully!");
+      if (onSuccess) onSuccess();
       closeModal();
     } catch (error: any) {
       console.error(error);

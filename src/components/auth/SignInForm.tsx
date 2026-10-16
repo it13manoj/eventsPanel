@@ -34,6 +34,12 @@ export default function SignInForm() {
           localStorage.setItem("user", JSON.stringify(res.results.user));
           const role = res.results.user.role || (res.results.user.role_id === 2 ? "ADMIN" : "STAFF");
           localStorage.setItem("role", role);
+          if (res.results.user.permissions) {
+            const permStr = typeof res.results.user.permissions === "string" 
+              ? res.results.user.permissions 
+              : JSON.stringify(res.results.user.permissions);
+            localStorage.setItem("permissions", permStr);
+          }
 
           if (role === "STAFF" || role === "USERS") {
             navigation("/events");

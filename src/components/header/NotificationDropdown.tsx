@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { useNavigate } from "react-router";
 import apiClient from "../../hooks/api/apiClient";
+import { normalizeStatusCode } from "../../utils/eventStatus";
 import {
   Bell,
   Calendar,
@@ -97,7 +98,7 @@ export default function NotificationDropdown() {
         }
 
         // 4. Completed Event Notification
-        if (String(ev.status) === "3" && items.length < 15) {
+        if (normalizeStatusCode(ev.status) === "4" && items.length < 15) {
           items.push({
             id: `completed-${ev.id}`,
             title: `Event Finished #${ev.id}`,

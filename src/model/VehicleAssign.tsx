@@ -677,9 +677,9 @@ export default function VehicleAssign({ isOpen, onClose, id, onEventStatusUpdate
                       ))}
                     </select>
 
-                    {normalizeStatusCode(eventStatus) !== "3" && (
+                    {normalizeStatusCode(eventStatus) !== "4" && (
                       <button
-                        onClick={() => handleUpdateEventStatus("3")}
+                        onClick={() => handleUpdateEventStatus("4")}
                         disabled={updatingEventStatus}
                         className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
                         title="Mark Event as Event Finished (Complete Event)"

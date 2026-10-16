@@ -46,7 +46,8 @@ interface Installation {
 
 
 export default function EventsTable() {
-    const { isStaff } = useAuth();
+    const { isStaff, canEdit } = useAuth();
+    const canEditEvents = canEdit("events");
     const [eid, setEId] = useState({
         id: ""
     })
@@ -166,8 +167,10 @@ export default function EventsTable() {
     const getTeamMember = async (id: number) => {
         try {
             if (id > 0) {
-                const res = await apiClient(`/admin/teamAssign/find/${id}`);
-                const size = res?.data?.data?.TeamAssignUser?.length || 0;
+                const res = await apiClient.get(`/admin/teamAssign/find/${id}`);
+                const data = res?.data?.data || res?.data?.results || [];
+                const members = Array.isArray(data) ? data : (data?.TeamAssignUser || []);
+                const size = members.length;
 
                 setTeamSizes(prev => ({
                     ...prev,
@@ -183,11 +186,17 @@ export default function EventsTable() {
     };
 
     useEffect(() => {
-        events.forEach((row: any) => {
-            if (!teamSizes[row.id]) {
-                getTeamMember(row.id);
-            }
-        });
+        if (Array.isArray(events)) {
+            events.forEach((row: any) => {
+                if (row?.id) {
+                    if (row.team_count !== undefined && row.team_count !== null) {
+                        setTeamSizes(prev => ({ ...prev, [row.id]: Number(row.team_count) }));
+                    } else if (teamSizes[row.id] === undefined) {
+                        getTeamMember(row.id);
+                    }
+                }
+            });
+        }
     }, [events]);
 
 
@@ -315,7 +324,7 @@ export default function EventsTable() {
                             )}
                         </div>
                         <div>
-                            {isStaff || isLocked ? (
+                            {!canEditEvents || isLocked ? (
                                 <span className={`text-xs font-semibold rounded-lg px-2.5 py-1 border inline-flex items-center gap-1.5 ${getStatusBadgeClass(rows.status)}`}>
                                     {isLocked && <Lock className="w-3 h-3 text-current" />}
                                     {getStatusLabel(rows.status)}
@@ -368,16 +377,21 @@ export default function EventsTable() {
                         </div>
                         <div>
                             <span className="block font-medium text-gray-400 dark:text-gray-500 text-[10px] uppercase">Teams</span>
-                            <span
-                                className="text-blue-600 dark:text-blue-400 font-semibold cursor-pointer underline"
-                                onClick={() => {
-                                    setSelectedTeamId(rows.id);
-                                    setSelectedTeamLocked(isLocked);
-                                    setIsOpenTeam(true);
-                                }}
-                            >
-                                {teamSizes[rows.id] ?? 0} Members
-                            </span>
+                            {(() => {
+                                const count = teamSizes[rows.id] !== undefined ? teamSizes[rows.id] : (Number(rows.team_count) || 0);
+                                return (
+                                    <span
+                                        className="text-blue-600 dark:text-blue-400 font-semibold cursor-pointer underline"
+                                        onClick={() => {
+                                            setSelectedTeamId(rows.id);
+                                            setSelectedTeamLocked(isLocked);
+                                            setIsOpenTeam(true);
+                                        }}
+                                    >
+                                        {count} {count === 1 ? "Member" : "Members"}
+                                    </span>
+                                );
+                            })()}
                         </div>
                         <div>
                             <span className="block font-medium text-gray-400 dark:text-gray-500 text-[10px] uppercase">Installation</span>
@@ -391,24 +405,27 @@ export default function EventsTable() {
 
                     {/* Action Bar */}
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-                        {!isStaff && (
-                            (teamSizes[rows.id] ?? 0) > 0 ? (
-                                <span className="rounded-lg px-2 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                                    Team Assigned
-                                </span>
-                            ) : (
-                                <button
-                                    disabled={isLocked}
-                                    className={`flex items-center justify-center p-1.5 rounded-lg text-xs font-medium ${isLocked ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60" : "bg-blue-600 text-white"}`}
-                                    onClick={() => {
-                                        if (isLocked) return;
-                                        openModal();
-                                        getEventsByID(rows.id);
-                                    }}
-                                >
-                                    <HiUserGroup size={16} /> Assign
-                                </button>
-                            )
+                        {canEditEvents && (
+                            (() => {
+                                const count = teamSizes[rows.id] !== undefined ? teamSizes[rows.id] : (Number(rows.team_count) || 0);
+                                return count > 0 ? (
+                                    <span className="rounded-lg px-2 py-1 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                                        Team Assigned
+                                    </span>
+                                ) : (
+                                    <button
+                                        disabled={isLocked}
+                                        className={`flex items-center justify-center p-1.5 rounded-lg text-xs font-medium ${isLocked ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60" : "bg-blue-600 text-white"}`}
+                                        onClick={() => {
+                                            if (isLocked) return;
+                                            openModal();
+                                            getEventsByID(rows.id);
+                                        }}
+                                    >
+                                        <HiUserGroup size={16} /> Assign
+                                    </button>
+                                );
+                            })()
                         )}
 
                         {/* Vehicle Button */}
@@ -425,7 +442,7 @@ export default function EventsTable() {
                             {isLocked ? "View" : (isStaff ? "Vehicle" : "Track")}
                         </button>
 
-                        {!isStaff && !isLocked && (
+                        {canEditEvents && !isLocked && (
                             <>
                                 <button
                                     className="p-1.5 text-gray-500 hover:text-brand-500 dark:text-gray-400 transition"
@@ -471,6 +488,7 @@ export default function EventsTable() {
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                 {events && events.map((rows) => {
                     const isLocked = isEventLocked(rows.status);
+                    const teamCount = teamSizes[rows.id] !== undefined ? teamSizes[rows.id] : (Number(rows.team_count) || 0);
                     return (
                         <TableRow key={rows?.id} className={isLocked ? "bg-gray-50/60 dark:bg-gray-900/40" : ""}>
                             <TableCell className="px-5 py-4 sm:px-6 text-start">
@@ -501,7 +519,7 @@ export default function EventsTable() {
                                     className={isLocked ? "cursor-pointer text-gray-700 dark:text-gray-300 font-medium hover:text-blue-600" : "cursor-pointer text-blue-600 hover:underline"}
                                     onClick={() => { setSelectedTeamId(rows.id); setSelectedTeamLocked(isLocked); setIsOpenTeam(true); }}
                                 >
-                                    {teamSizes[rows.id] ?? 0}
+                                    {teamCount}
                                     {isLocked && <Lock className="w-3 h-3 inline ml-1 text-amber-500" />}
                                 </span>
                             </TableCell>
@@ -516,7 +534,7 @@ export default function EventsTable() {
                                     : "-"}
                             </TableCell>
                             <TableCell className="px-4 py-3 text-start text-theme-sm">
-                                {isStaff || isLocked ? (
+                                {!canEditEvents || isLocked ? (
                                     <span className={`text-xs font-semibold rounded-lg px-2.5 py-1.5 border inline-flex items-center gap-1.5 ${isLocked ? "opacity-90" : ""} ${getStatusBadgeClass(rows.status)}`}>
                                         {isLocked && <Lock className="w-3 h-3 text-current" />}
                                         {getStatusLabel(rows.status)}
@@ -535,8 +553,8 @@ export default function EventsTable() {
                             </TableCell>
                             <TableCell className="px-4 py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                                 <div className="flex items-center gap-2">
-                                    {!isStaff && (
-                                        (teamSizes[rows.id] ?? 0) > 0 ? (
+                                    {canEditEvents && (
+                                        teamCount > 0 ? (
                                             <span className={`rounded-lg px-2 py-1 text-xs font-medium ${isLocked ? "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"}`}>
                                                 Team Assigned
                                             </span>
@@ -583,7 +601,7 @@ export default function EventsTable() {
                                         </button>
                                     )}
 
-                                    {!isStaff && (
+                                    {canEditEvents && (
                                         <>
                                             <button
                                                 disabled={isLocked}
@@ -610,11 +628,29 @@ export default function EventsTable() {
         </Table>
     </div>
 
-    {/* Modals remain unchanged */}
-    <EventAssignModel eid={eid} isOpen={isOpen} openModal={openModal} closeModal={closeModal} />
+    {/* Modals */}
+    <EventAssignModel
+        eid={eid}
+        isOpen={isOpen}
+        openModal={openModal}
+        closeModal={closeModal}
+        onSuccess={() => {
+            if (eid?.id) getTeamMember(Number(eid.id));
+            getEvents();
+        }}
+    />
     <ItemsModel selectedItems={selectedItems || []} isOpens={isOpens} setIsOpens={setIsOpens} />
     <EventDetailsModal isOpen={isOpenes} onClose={() => setIsOpenes(false)} data={selectedRow} bookedItems={bookedItems} />
-    <AssignTeam isOpen={isOpenTeam} onClose={() => setIsOpenTeam(false)} id={selectedTeamId} isLocked={selectedTeamLocked} />
+    <AssignTeam
+        isOpen={isOpenTeam}
+        onClose={() => setIsOpenTeam(false)}
+        id={selectedTeamId}
+        isLocked={selectedTeamLocked}
+        onRefresh={() => {
+            if (selectedTeamId) getTeamMember(selectedTeamId);
+            getEvents();
+        }}
+    />
     <VehicleAssign isOpen={isOpenvehicle} onClose={() => setIsOpenvehicle(false)} id={selectedVehicleEventId || selectedTeamId || (eid && eid.id ? Number(eid.id) : null)} onEventStatusUpdated={getEvents} />
     <EventEditModal isOpen={isOpenEditEvent} onClose={() => setIsOpenEditEvent(false)} eventData={editEvent} onSuccess={getEvents} />
 </div>

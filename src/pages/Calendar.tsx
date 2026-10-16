@@ -19,6 +19,7 @@ import { EVENT_STATUSES, normalizeStatusCode, getStatusColor } from "../utils/ev
 import { LayoutTemplate, CheckCircle2, Sparkles, RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
 import { normalizeTemplateItems } from "../utils/templateHelpers";
+import { useAuth } from "../hooks/auth";
 
 
 
@@ -165,6 +166,8 @@ const Calendar: React.FC = () => {
   const [contextData, setContextData] = useState<{ date?: string; event?: any }>({});
 
   const calendarRef = useRef<FullCalendar>(null);
+  const { canEdit } = useAuth();
+  const canEditCalendar = canEdit("calendar");
   const { isOpen, openModal, closeModal } = useModal();
   const [checkStock, setCheckStock] = useState({
     categories_id: 0,
@@ -399,15 +402,58 @@ const Calendar: React.FC = () => {
         });
       };
 
+      const vSizes = collectSizes("verticalSizes");
+      const hSizes = collectSizes("horizontalSizes");
+
       setDimensionSizeData((prev) => ({
         ...prev,
         [cacheKey]: {
-          vertical: collectSizes("verticalSizes"),
-          horizontal: collectSizes("horizontalSizes"),
+          vertical: vSizes,
+          horizontal: hSizes,
           loading: false,
           loaded: true,
         },
       }));
+
+      // Auto-set rows if only vertical or only horizontal is available in stock
+      const hasV = vSizes.length > 0;
+      const hasH = hSizes.length > 0;
+      if ((hasV && !hasH) || (hasH && !hasV)) {
+        setAppendsAll((prev: any) =>
+          prev.map((r: any) => {
+            if (
+              Number(r.categories?.id) === Number(categoryId) &&
+              Number(r.subCategories?.id) === Number(subCategoryId)
+            ) {
+              if (hasV && !hasH) {
+                return {
+                  ...r,
+                  inputs: {
+                    ...r.inputs,
+                    vertical: true,
+                    horizontal: false,
+                    verticalValue: r.inputs?.verticalValue || (vSizes[0]?.size || ""),
+                    verticalUnit: r.inputs?.verticalUnit || (vSizes[0]?.unit || "ft"),
+                  },
+                };
+              }
+              if (hasH && !hasV) {
+                return {
+                  ...r,
+                  inputs: {
+                    ...r.inputs,
+                    vertical: false,
+                    horizontal: true,
+                    horizontalValue: r.inputs?.horizontalValue || (hSizes[0]?.size || ""),
+                    horizontalUnit: r.inputs?.horizontalUnit || (hSizes[0]?.unit || "ft"),
+                  },
+                };
+              }
+            }
+            return r;
+          })
+        );
+      }
     } catch (error) {
       console.error("Failed to load available dimension sizes:", error);
       setDimensionSizeData((prev) => ({
@@ -579,9 +625,26 @@ const Calendar: React.FC = () => {
     );
 
     if (!templateId) {
-      toast.error("Please select an Event Template (Required as per requirements).");
-      return;
+      if (!checkStock.categories_id || Number(checkStock.categories_id) <= 0) {
+        toast.error("Please select an Event Template or a Category.");
+        return;
+      }
+      if (!checkStock.sub_categories_id || Number(checkStock.sub_categories_id) <= 0) {
+        toast.error("Please select a Sub-Category.");
+        return;
+      }
     }
+
+    const firstBookedCategory = appendsAll.find(r => r.categories && Number(r.categories.id) > 0)?.categories?.id || null;
+    const firstBookedSubCategory = appendsAll.find(r => r.subCategories && Number(r.subCategories.id) > 0)?.subCategories?.id || null;
+
+    const catId = Number(checkStock.categories_id) > 0 
+      ? Number(checkStock.categories_id) 
+      : (firstBookedCategory || null);
+
+    const subCatId = Number(checkStock.sub_categories_id) > 0 
+      ? Number(checkStock.sub_categories_id) 
+      : (firstBookedSubCategory || null);
 
     const data = {
       id: eventId ? eventId : null,
@@ -599,31 +662,35 @@ const Calendar: React.FC = () => {
       quntites: checkStock.quntites,
       width: checkStock.width,
       height: checkStock.height,
-      categories_id: checkStock.categories_id,
-      sub_categories_id: checkStock.sub_categories_id,
-      bookedItems: appendsAll.filter(r => r.categories.id != 0),
+      categories_id: catId,
+      sub_categories_id: subCatId,
+      bookedItems: appendsAll.filter(r => r.categories && Number(r.categories.id) !== 0),
       stockDetails: groupedData,
       eventDetails: groupedEventData,
       status: normalizeStatusCode(eventLevel),
-      template_id: templateId,
-      template_name: templateName
+      template_id: templateId || null,
+      template_name: templateName || null
     };
 
-
-
-    await apiClient.post("admin/Events/create", data);
-    setTimeout(() => {
+    try {
+      await apiClient.post("admin/Events/create", data);
+      toast.success(eventId ? "Event updated successfully!" : "Event created successfully!");
+      setTimeout(() => {
+        getEvents();
+        closeModal();
+        resetModalFields();
+        setRefreshKey(prev => prev + 1);
+        setCalendarKey((prev) => prev + 1);
+      }, 500);
       getEvents();
       closeModal();
       resetModalFields();
       setRefreshKey(prev => prev + 1);
       setCalendarKey((prev) => prev + 1);
-    }, 500)
-    getEvents();
-    closeModal();
-    resetModalFields();
-    setRefreshKey(prev => prev + 1);
-    setCalendarKey((prev) => prev + 1);
+    } catch (err: any) {
+      console.error("Error creating/updating event:", err);
+      toast.error(err.response?.data?.message || err.message || "Failed to create/update event");
+    }
   };
 
   // --- Right Click Logic ---
@@ -1040,19 +1107,21 @@ const Calendar: React.FC = () => {
           style={{ top: menuPosition.y, left: menuPosition.x }}
           key={refreshKey}
         >
-          <button
-            onClick={() => {
-              resetModalFields();
-              if (contextData.date) {
-                setEventStartDate(contextData.date);
-                setDateOfEvent(contextData.date);
-              }
-              openModal();
-            }}
-            className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-2"
-          >
-            ➕ Create Event
-          </button>
+          {canEditCalendar && (
+            <button
+              onClick={() => {
+                resetModalFields();
+                if (contextData.date) {
+                  setEventStartDate(contextData.date);
+                  setDateOfEvent(contextData.date);
+                }
+                openModal();
+              }}
+              className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors flex items-center gap-2 cursor-pointer"
+            >
+              ➕ Create Event
+            </button>
+          )}
           {contextData.event && (
             <button
               onClick={() => {
@@ -1351,7 +1420,9 @@ const Calendar: React.FC = () => {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Category</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Category {templateId > 0 && <span className="text-xs font-normal text-indigo-600 dark:text-indigo-400 ml-1">(Optional - Template Selected)</span>}
+                </label>
                 <select className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800" name="categories_id" onChange={(e: any) => {
                   eventHandler(e);
                   setCategoresAnd_SubCategories(e, "category");
@@ -1361,7 +1432,7 @@ const Calendar: React.FC = () => {
                     sub_categories_id: 0,
                   })
                 }}>
-                  <option value={0}> Select Category</option>
+                  <option value={0}> Select Category (Optional if using Template)</option>
                   {categories && categories?.map(rows => (
                     <option value={rows?.id}> {rows.name}</option>
                   ))}
@@ -1369,7 +1440,9 @@ const Calendar: React.FC = () => {
               </div>
 
               <div >
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Sub-Category</label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  Sub-Category {templateId > 0 && <span className="text-xs font-normal text-indigo-600 dark:text-indigo-400 ml-1">(Optional - Template Selected)</span>}
+                </label>
                 <select
                   value={checkStock.sub_categories_id || 0}
                   className="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
@@ -1382,7 +1455,7 @@ const Calendar: React.FC = () => {
                     }));
                   }}
                 >
-                  <option value={0}> Select Sub Category</option>
+                  <option value={0}> Select Sub Category (Optional if using Template)</option>
                   {subCategories && subCategories.map(rows => (
                     <option value={rows?.id}>{rows.name}</option>
                   ))}
@@ -1520,59 +1593,75 @@ const Calendar: React.FC = () => {
                           {rows.subCategories.is_enable ? (
                             <div className="space-y-6">
                               {/* CHECKBOXES */}
-                              <div className="flex flex-wrap gap-6">
-                                <label className="flex items-center gap-2 text-sm font-medium">
-                                  <input
-                                    type="checkbox"
-                                    checked={rows.inputs.vertical || false}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked;
-                                      handleInputChange(
-                                        i,
-                                        "vertical",
-                                        checked
-                                      );
-                                      if (
-                                        checked &&
-                                        rows.categories?.id &&
-                                        rows.subCategories?.id
-                                      ) {
-                                        loadDimensionSizes(
-                                          rows.categories.id,
-                                          rows.subCategories.id
-                                        );
-                                      }
-                                    }}
-                                  />
-                                  Vertical
-                                </label>
+                              {(() => {
+                                const cacheKey = `${rows.categories?.id}:${rows.subCategories?.id}`;
+                                const dimData = dimensionSizeData[cacheKey];
+                                const isLoaded = Boolean(dimData?.loaded);
+                                const hasV = (dimData?.vertical?.length || 0) > 0;
+                                const hasH = (dimData?.horizontal?.length || 0) > 0;
+                                const isVDisabled = isLoaded && !hasV && hasH;
+                                const isHDisabled = isLoaded && !hasH && hasV;
 
-                                <label className="flex items-center gap-2 text-sm font-medium">
-                                  <input
-                                    type="checkbox"
-                                    checked={rows.inputs.horizontal || false}
-                                    onChange={(e) => {
-                                      const checked = e.target.checked;
-                                      handleInputChange(
-                                        i,
-                                        "horizontal",
-                                        checked
-                                      );
-                                      if (
-                                        checked &&
-                                        rows.categories?.id &&
-                                        rows.subCategories?.id
-                                      ) {
-                                        loadDimensionSizes(
-                                          rows.categories.id,
-                                          rows.subCategories.id
-                                        );
-                                      }
-                                    }}
-                                  />
-                                  Horizontal
-                                </label>
-                              </div>
+                                return (
+                                  <div className="flex flex-wrap gap-6">
+                                    <label className={`flex items-center gap-2 text-sm font-medium ${isVDisabled ? "opacity-50 cursor-not-allowed text-gray-400" : "cursor-pointer"}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={!isVDisabled && Boolean(rows.inputs.vertical)}
+                                        disabled={isVDisabled}
+                                        onChange={(e) => {
+                                          if (isVDisabled) return;
+                                          const checked = e.target.checked;
+                                          handleInputChange(
+                                            i,
+                                            "vertical",
+                                            checked
+                                          );
+                                          if (
+                                            checked &&
+                                            rows.categories?.id &&
+                                            rows.subCategories?.id
+                                          ) {
+                                            loadDimensionSizes(
+                                              rows.categories.id,
+                                              rows.subCategories.id
+                                            );
+                                          }
+                                        }}
+                                      />
+                                      Vertical {isVDisabled && <span className="text-[11px] font-semibold text-rose-500">(Disabled - No Stock)</span>}
+                                    </label>
+
+                                    <label className={`flex items-center gap-2 text-sm font-medium ${isHDisabled ? "opacity-50 cursor-not-allowed text-gray-400" : "cursor-pointer"}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={!isHDisabled && Boolean(rows.inputs.horizontal)}
+                                        disabled={isHDisabled}
+                                        onChange={(e) => {
+                                          if (isHDisabled) return;
+                                          const checked = e.target.checked;
+                                          handleInputChange(
+                                            i,
+                                            "horizontal",
+                                            checked
+                                          );
+                                          if (
+                                            checked &&
+                                            rows.categories?.id &&
+                                            rows.subCategories?.id
+                                          ) {
+                                            loadDimensionSizes(
+                                              rows.categories.id,
+                                              rows.subCategories.id
+                                            );
+                                          }
+                                        }}
+                                      />
+                                      Horizontal {isHDisabled && <span className="text-[11px] font-semibold text-rose-500">(Disabled - No Stock)</span>}
+                                    </label>
+                                  </div>
+                                );
+                              })()}
 
                               {/* VERTICAL */}
                               {rows.inputs.vertical && (
@@ -1923,28 +2012,53 @@ const Calendar: React.FC = () => {
                                   Available Stock
                                 </Link>
                               </div>
-                            ) : (<div className="pt-2">
-                              <Link
-                                to=""
-
-                                className="
+                            ) : (
+                              <div className="pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsOpens(true);
+                                    itemsDate({
+                                      categoryId: rows.categories?.id,
+                                      subCategoryId: rows.subCategories?.id,
+                                      isEnable: rows.subCategories?.is_enable,
+                                      bookedDate: dateOfEvent,
+                                      value: rows.inputs?.value,
+                                      horizontalValue: rows.inputs?.horizontalValue,
+                                      horizontalUnit: rows.inputs?.horizontalUnit,
+                                      verticalValue: rows.inputs?.verticalValue,
+                                      verticalUnit: rows.inputs?.verticalUnit,
+                                      horizontalPcs: rows.inputs?.horizontalPcs,
+                                      verticalPcs: rows.inputs?.verticalPcs,
+                                      stockId: rows.categories?.id
+                                    });
+                                    getBookData(
+                                      rows.categories?.id,
+                                      rows.subCategories?.id
+                                    );
+                                  }}
+                                  className="
                                     inline-flex
                                     items-center
+                                    gap-1.5
                                     justify-center
                                     rounded-2xl
-                                    bg-gradient-to-r
-                                    bg-gray-200 text-gray-500 cursor-not-allowed
-                                    px-6
-                                    py-3
+                                    bg-emerald-600 hover:bg-emerald-700
+                                    text-white cursor-pointer
+                                    px-5
+                                    py-2.5
                                     text-sm
                                     font-semibold
-                                    text-white
                                     shadow-md
-                                    "
-                              >
-                                Added
-                              </Link>
-                            </div>)
+                                    hover:scale-[1.02]
+                                    hover:shadow-lg
+                                    transition-all
+                                  "
+                                >
+                                  <CheckCircle2 className="w-4 h-4" /> Stock Synced (View / Change)
+                                </button>
+                              </div>
+                            )
                           }
 
                         </div>
@@ -2034,17 +2148,21 @@ const Calendar: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
-              <button onClick={closeModal} type="button" className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 sm:w-auto">Close</button>
-              <button onClick={handleAddOrUpdateEvent} type="button" className="btn btn-success flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto">
-                {selectedEvent ? "Update Changes" : "Add Event"}
-              </button>
+              <button onClick={closeModal} type="button" className="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 sm:w-auto cursor-pointer">Close</button>
+              {canEditCalendar ? (
+                <button onClick={handleAddOrUpdateEvent} type="button" className="btn btn-success flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto cursor-pointer">
+                  {selectedEvent ? "Update Changes" : "Add Event"}
+                </button>
+              ) : (
+                <span className="text-xs text-gray-400 italic px-2">View Only Mode</span>
+              )}
             </div>
           </div>
         </Modal>
       </div>
 
 
-      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} itemsDate={itemsDate} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} setStockAddToEvents={setStockAddToEvents} stockAddToEvents={stockAddToEvents} setHideAvailableButton={setHideAvailableButton} hideAvailableButton={hideAvailableButton} locationOfVanus={locationOfVanus} />
+      <AvaliableItems isOpens={isOpens} setIsOpens={setIsOpens} itemsDate={itemsDate} getItemsIs_enabled={getItemsIs_enabled} setAppendsAll={setAppendsAll} appendsAll={appendsAll} setStockAddToEvents={setStockAddToEvents} stockAddToEvents={stockAddToEvents} setHideAvailableButton={setHideAvailableButton} hideAvailableButton={hideAvailableButton} locationOfVanus={locationOfVanus || vanus} />
     </>
   );
 };

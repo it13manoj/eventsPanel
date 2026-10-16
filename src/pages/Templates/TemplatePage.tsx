@@ -3,6 +3,7 @@ import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import PageMeta from "../../components/common/PageMeta";
 import { Modal } from "../../components/ui/modal";
 import apiClient from "../../hooks/api/apiClient";
+import { useAuth } from "../../hooks/auth";
 import { toast } from "react-toastify";
 import {
   LayoutTemplate,
@@ -29,7 +30,16 @@ import {
 
 export type { TemplateItem, EventTemplateData };
 
+interface DimensionOption {
+  size: string;
+  unit: string;
+  quantity: number;
+  label: string;
+}
+
 export default function TemplatePage() {
+  const { canEdit } = useAuth();
+  const canEditTemplates = canEdit("templates");
   const [templates, setTemplates] = useState<EventTemplateData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -71,6 +81,13 @@ export default function TemplatePage() {
   const [itemHorizontalValue, setItemHorizontalValue] = useState<string>("10");
   const [itemHorizontalUnit, setItemHorizontalUnit] = useState<string>("ft");
   const [itemHorizontalPcs, setItemHorizontalPcs] = useState<number>(1);
+
+  // Dynamic stock dimensions & total stock count
+  const [availableVerticalSizes, setAvailableVerticalSizes] = useState<DimensionOption[]>([]);
+  const [availableHorizontalSizes, setAvailableHorizontalSizes] = useState<DimensionOption[]>([]);
+  const [totalVerticalStock, setTotalVerticalStock] = useState<number>(0);
+  const [totalHorizontalStock, setTotalHorizontalStock] = useState<number>(0);
+  const [loadingDimensionSizes, setLoadingDimensionSizes] = useState<boolean>(false);
 
   // Fetch templates list
   const fetchTemplates = async () => {
@@ -127,12 +144,241 @@ export default function TemplatePage() {
     );
   }, [stockList, selectedCatId, selectedSubCatId]);
 
+  // Stock availability indicators
+  const hasVerticalStock = availableVerticalSizes.length > 0;
+  const hasHorizontalStock = availableHorizontalSizes.length > 0;
+
+  // When stock has only horizontal, vertical is disabled
+  const isVerticalDisabled = !hasVerticalStock && hasHorizontalStock;
+  // When stock has only vertical, horizontal is disabled
+  const isHorizontalDisabled = !hasHorizontalStock && hasVerticalStock;
+
+  // Determine if currently selected stock has vertical/horizontal dimensions
+  const hasDimensions = Boolean(
+    hasVerticalStock ||
+    hasHorizontalStock ||
+    subCatIsEnable
+  );
+
+  // Dynamic dropdown options for vertical sizes
+  const verticalDropdownOptions = useMemo(() => {
+    const opts = [...availableVerticalSizes];
+    if (
+      !isVerticalDisabled &&
+      itemVertical &&
+      itemVerticalValue &&
+      !opts.some((o) => o.size === itemVerticalValue && o.unit === itemVerticalUnit)
+    ) {
+      opts.unshift({
+        size: itemVerticalValue,
+        unit: itemVerticalUnit || "ft",
+        quantity: 0,
+        label: `${itemVerticalValue}${itemVerticalUnit || "ft"}`,
+      });
+    }
+    return opts;
+  }, [availableVerticalSizes, isVerticalDisabled, itemVertical, itemVerticalValue, itemVerticalUnit]);
+
+  // Dynamic dropdown options for horizontal sizes
+  const horizontalDropdownOptions = useMemo(() => {
+    const opts = [...availableHorizontalSizes];
+    if (
+      !isHorizontalDisabled &&
+      itemHorizontal &&
+      itemHorizontalValue &&
+      !opts.some((o) => o.size === itemHorizontalValue && o.unit === itemHorizontalUnit)
+    ) {
+      opts.unshift({
+        size: itemHorizontalValue,
+        unit: itemHorizontalUnit || "ft",
+        quantity: 0,
+        label: `${itemHorizontalValue}${itemHorizontalUnit || "ft"}`,
+      });
+    }
+    return opts;
+  }, [availableHorizontalSizes, isHorizontalDisabled, itemHorizontal, itemHorizontalValue, itemHorizontalUnit]);
+
+  // Load dimension sizes and stock quantities for category + subcategory
+  const loadDimensionSizes = async (
+    catId: number,
+    subId: number,
+    selectedVSize?: string,
+    selectedVUnit?: string,
+    selectedHSize?: string,
+    selectedHUnit?: string
+  ) => {
+    if (!catId || !subId) {
+      setAvailableVerticalSizes([]);
+      setAvailableHorizontalSizes([]);
+      setTotalVerticalStock(0);
+      setTotalHorizontalStock(0);
+      return;
+    }
+
+    setLoadingDimensionSizes(true);
+    try {
+      let stocks: any[] = [];
+      try {
+        const res = await apiClient.get(
+          `/admin/Inverntory/findBycategoriesAndSubCategories/${catId}/${subId}`
+        );
+        const raw = res?.data?.results || res?.data?.data || [];
+        stocks = Array.isArray(raw) ? raw : (raw.results || []);
+      } catch (apiErr) {
+        console.warn("findBycategoriesAndSubCategories error:", apiErr);
+      }
+
+      // Fallback to stockList if specific inventory endpoint returns empty
+      if (stocks.length === 0 && stockList && stockList.length > 0) {
+        stocks = stockList.filter(
+          (s: any) =>
+            Number(s.categories_id) === Number(catId) &&
+            Number(s.sub_categories_id) === Number(subId)
+        );
+      }
+
+      // Aggregate vertical sizes
+      const vMap = new Map<string, DimensionOption>();
+      let totalVQty = 0;
+      stocks.forEach((stk: any) => {
+        (stk.verticalSizes || []).forEach((row: any) => {
+          if (row.size != null && row.size !== "") {
+            const sizeStr = String(row.size).trim();
+            const unitStr = String(row.unit || "ft").trim();
+            const qty = Number(row.quantity) || 0;
+            totalVQty += qty;
+            const key = `${sizeStr.toLowerCase()}_${unitStr.toLowerCase()}`;
+            if (vMap.has(key)) {
+              const existing = vMap.get(key)!;
+              existing.quantity += qty;
+            } else {
+              vMap.set(key, {
+                size: sizeStr,
+                unit: unitStr,
+                quantity: qty,
+                label: `${sizeStr}${unitStr}`,
+              });
+            }
+          }
+        });
+      });
+
+      // Aggregate horizontal sizes
+      const hMap = new Map<string, DimensionOption>();
+      let totalHQty = 0;
+      stocks.forEach((stk: any) => {
+        (stk.horizontalSizes || []).forEach((row: any) => {
+          if (row.size != null && row.size !== "") {
+            const sizeStr = String(row.size).trim();
+            const unitStr = String(row.unit || "ft").trim();
+            const qty = Number(row.quantity) || 0;
+            totalHQty += qty;
+            const key = `${sizeStr.toLowerCase()}_${unitStr.toLowerCase()}`;
+            if (hMap.has(key)) {
+              const existing = hMap.get(key)!;
+              existing.quantity += qty;
+            } else {
+              hMap.set(key, {
+                size: sizeStr,
+                unit: unitStr,
+                quantity: qty,
+                label: `${sizeStr}${unitStr}`,
+              });
+            }
+          }
+        });
+      });
+
+      const sortSizes = (list: DimensionOption[]) => {
+        return list.sort((a, b) => {
+          const numA = parseFloat(a.size);
+          const numB = parseFloat(b.size);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.size.localeCompare(b.size);
+        });
+      };
+
+      const sortedV = sortSizes(Array.from(vMap.values()));
+      const sortedH = sortSizes(Array.from(hMap.values()));
+
+      setAvailableVerticalSizes(sortedV);
+      setAvailableHorizontalSizes(sortedH);
+      setTotalVerticalStock(totalVQty);
+      setTotalHorizontalStock(totalHQty);
+
+      const hasV = sortedV.length > 0;
+      const hasH = sortedH.length > 0;
+
+      if (hasV && !hasH) {
+        // Only vertical in stock: enable vertical, disable horizontal
+        setItemVertical(true);
+        setItemHorizontal(false);
+        if (selectedVSize) {
+          setItemVerticalValue(selectedVSize);
+          if (selectedVUnit) setItemVerticalUnit(selectedVUnit);
+        } else {
+          setItemVerticalValue(sortedV[0].size);
+          setItemVerticalUnit(sortedV[0].unit);
+        }
+      } else if (!hasV && hasH) {
+        // Only horizontal in stock: disable vertical, enable horizontal
+        setItemVertical(false);
+        setItemHorizontal(true);
+        if (selectedHSize) {
+          setItemHorizontalValue(selectedHSize);
+          if (selectedHUnit) setItemHorizontalUnit(selectedHUnit);
+        } else {
+          setItemHorizontalValue(sortedH[0].size);
+          setItemHorizontalUnit(sortedH[0].unit);
+        }
+      } else if (hasV && hasH) {
+        // Both available in stock: enable both
+        setItemVertical(selectedVSize !== undefined ? Boolean(selectedVSize) : true);
+        setItemHorizontal(selectedHSize !== undefined ? Boolean(selectedHSize) : true);
+        if (selectedVSize) {
+          setItemVerticalValue(selectedVSize);
+          if (selectedVUnit) setItemVerticalUnit(selectedVUnit);
+        } else {
+          setItemVerticalValue(sortedV[0].size);
+          setItemVerticalUnit(sortedV[0].unit);
+        }
+        if (selectedHSize) {
+          setItemHorizontalValue(selectedHSize);
+          if (selectedHUnit) setItemHorizontalUnit(selectedHUnit);
+        } else {
+          setItemHorizontalValue(sortedH[0].size);
+          setItemHorizontalUnit(sortedH[0].unit);
+        }
+      } else {
+        // Neither available in stock
+        setItemVertical(false);
+        setItemHorizontal(false);
+      }
+    } catch (err) {
+      console.warn("Failed to load dimension sizes for template item:", err);
+      setAvailableVerticalSizes([]);
+      setAvailableHorizontalSizes([]);
+      setTotalVerticalStock(0);
+      setTotalHorizontalStock(0);
+      setItemVertical(false);
+      setItemHorizontal(false);
+    } finally {
+      setLoadingDimensionSizes(false);
+    }
+  };
+
   // When Category changes in Item Selector
   const handleCategoryChange = async (catId: number) => {
     setSelectedCatId(catId);
     setSelectedSubCatId(0);
     setSelectedSubCatName("");
     setSubCategories([]);
+    setAvailableVerticalSizes([]);
+    setAvailableHorizontalSizes([]);
+    setTotalVerticalStock(0);
+    setTotalHorizontalStock(0);
+    setItemVertical(false);
+    setItemHorizontal(false);
     if (!catId) return;
 
     const cat = categories.find((c) => c.id === catId);
@@ -152,6 +398,12 @@ export default function TemplatePage() {
     if (!subId) {
       setSelectedSubCatName("");
       setSubCatIsEnable(false);
+      setAvailableVerticalSizes([]);
+      setAvailableHorizontalSizes([]);
+      setTotalVerticalStock(0);
+      setTotalHorizontalStock(0);
+      setItemVertical(false);
+      setItemHorizontal(false);
       return;
     }
 
@@ -163,6 +415,11 @@ export default function TemplatePage() {
         setItemVertical(false);
         setItemHorizontal(false);
       }
+    }
+
+    // Fetch dynamic stock dimensions (vertical & horizontal)
+    if (selectedCatId && subId) {
+      loadDimensionSizes(selectedCatId, subId);
     }
   };
 
@@ -209,6 +466,10 @@ export default function TemplatePage() {
     setItemHorizontalValue("10");
     setItemHorizontalUnit("ft");
     setItemHorizontalPcs(1);
+    setAvailableVerticalSizes([]);
+    setAvailableHorizontalSizes([]);
+    setTotalVerticalStock(0);
+    setTotalHorizontalStock(0);
     setEditingItemIndex(null);
   };
 
@@ -246,6 +507,16 @@ export default function TemplatePage() {
     setItemHorizontalValue(item.horizontalValue || "10");
     setItemHorizontalUnit(item.horizontalUnit || "ft");
     setItemHorizontalPcs(item.horizontalPcs || 1);
+
+    // Load available stock dimension sizes for this category & subcategory
+    loadDimensionSizes(
+      item.category_id,
+      item.subcategory_id,
+      item.verticalValue,
+      item.verticalUnit,
+      item.horizontalValue,
+      item.horizontalUnit
+    );
   };
 
   const handleCancelEditItem = () => {
@@ -259,9 +530,44 @@ export default function TemplatePage() {
       return;
     }
 
-    if (itemQuantity <= 0) {
-      toast.warning("Number of items (Quantity) must be at least 1.");
-      return;
+    let finalQty = Number(itemQuantity);
+    let finalPrice = Number(itemPrice) || 0;
+
+    const finalVertical = !isVerticalDisabled && Boolean(itemVertical);
+    const finalHorizontal = !isHorizontalDisabled && Boolean(itemHorizontal);
+
+    if (hasDimensions) {
+      const vPcs = finalVertical ? Number(itemVerticalPcs) || 0 : 0;
+      const hPcs = finalHorizontal ? Number(itemHorizontalPcs) || 0 : 0;
+
+      if (!finalVertical && !finalHorizontal) {
+        if (isVerticalDisabled) {
+          toast.warning("Vertical is not in stock. Please enable Horizontal dimension.");
+        } else if (isHorizontalDisabled) {
+          toast.warning("Horizontal is not in stock. Please enable Vertical dimension.");
+        } else {
+          toast.warning("Please enable Vertical or Horizontal dimension.");
+        }
+        return;
+      }
+
+      if (finalVertical && vPcs <= 0) {
+        toast.warning("Vertical pieces (Pcs) must be at least 1.");
+        return;
+      }
+
+      if (finalHorizontal && hPcs <= 0) {
+        toast.warning("Horizontal pieces (Pcs) must be at least 1.");
+        return;
+      }
+
+      finalQty = (vPcs + hPcs) || 1;
+      finalPrice = 0; // Standard rate is removed for dimension-based stock
+    } else {
+      if (finalQty <= 0) {
+        toast.warning("Number of items (Quantity) must be at least 1.");
+        return;
+      }
     }
 
     const newItem: TemplateItem = {
@@ -273,16 +579,16 @@ export default function TemplatePage() {
       category_name: selectedCatName,
       subcategory_id: selectedSubCatId,
       subcategory_name: selectedSubCatName,
-      quantity: Number(itemQuantity),
-      price: Number(itemPrice) || 0,
-      vertical: itemVertical,
-      verticalValue: itemVertical ? itemVerticalValue : undefined,
-      verticalUnit: itemVertical ? itemVerticalUnit : undefined,
-      verticalPcs: itemVertical ? Number(itemVerticalPcs) : undefined,
-      horizontal: itemHorizontal,
-      horizontalValue: itemHorizontal ? itemHorizontalValue : undefined,
-      horizontalUnit: itemHorizontal ? itemHorizontalUnit : undefined,
-      horizontalPcs: itemHorizontal ? Number(itemHorizontalPcs) : undefined,
+      quantity: finalQty,
+      price: finalPrice,
+      vertical: finalVertical,
+      verticalValue: finalVertical ? itemVerticalValue : undefined,
+      verticalUnit: finalVertical ? itemVerticalUnit : undefined,
+      verticalPcs: finalVertical ? Number(itemVerticalPcs) : undefined,
+      horizontal: finalHorizontal,
+      horizontalValue: finalHorizontal ? itemHorizontalValue : undefined,
+      horizontalUnit: finalHorizontal ? itemHorizontalUnit : undefined,
+      horizontalPcs: finalHorizontal ? Number(itemHorizontalPcs) : undefined,
     };
 
     let updated: TemplateItem[];
@@ -292,7 +598,7 @@ export default function TemplatePage() {
       toast.success(`Updated item "${selectedSubCatName}" in template!`);
     } else {
       updated = [...formItems, newItem];
-      toast.success(`Added ${selectedSubCatName} (${itemQuantity} pcs) to template!`);
+      toast.success(`Added ${selectedSubCatName} (${finalQty} pcs) to template!`);
     }
 
     setFormItems(updated);
@@ -433,13 +739,15 @@ export default function TemplatePage() {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreateModal}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium text-sm rounded-xl shadow-theme-xs transition active:scale-95"
-        >
-          <Plus size={18} />
-          Create New Template
-        </button>
+        {canEditTemplates && (
+          <button
+            onClick={handleOpenCreateModal}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-medium text-sm rounded-xl shadow-theme-xs transition active:scale-95 cursor-pointer"
+          >
+            <Plus size={18} />
+            Create New Template
+          </button>
+        )}
       </div>
 
       {/* Summary KPI Cards */}
@@ -541,12 +849,14 @@ export default function TemplatePage() {
                       <p className="text-xs text-gray-500">
                         Get started by creating your first reusable stock package template.
                       </p>
-                      <button
-                        onClick={handleOpenCreateModal}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white rounded-xl text-xs font-semibold hover:bg-brand-600"
-                      >
-                        <Plus size={14} /> Create Template
-                      </button>
+                      {canEditTemplates && (
+                        <button
+                          onClick={handleOpenCreateModal}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-500 text-white rounded-xl text-xs font-semibold hover:bg-brand-600 cursor-pointer"
+                        >
+                          <Plus size={14} /> Create Template
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -628,23 +938,27 @@ export default function TemplatePage() {
                           >
                             <Eye size={16} />
                           </button>
-                          <button
-                            onClick={() => handleOpenEditModal(tpl)}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-emerald-600 transition cursor-pointer"
-                            title="Edit Template"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setTemplateToDelete(tpl);
-                              setIsDeleteModalOpen(true);
-                            }}
-                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 transition cursor-pointer"
-                            title="Delete Template"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canEditTemplates && (
+                            <>
+                              <button
+                                onClick={() => handleOpenEditModal(tpl)}
+                                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-emerald-600 transition cursor-pointer"
+                                title="Edit Template"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setTemplateToDelete(tpl);
+                                  setIsDeleteModalOpen(true);
+                                }}
+                                className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-rose-600 transition cursor-pointer"
+                                title="Delete Template"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -758,7 +1072,7 @@ export default function TemplatePage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 ${!hasDimensions ? "lg:grid-cols-4" : ""} gap-3 text-xs`}>
                   {/* Category Selection */}
                   <div>
                     <label className="block font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -767,7 +1081,7 @@ export default function TemplatePage() {
                     <select
                       value={selectedCatId}
                       onChange={(e) => handleCategoryChange(Number(e.target.value))}
-                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-gray-800 dark:text-gray-200"
                     >
                       <option value={0}>Select Category</option>
                       {categories.map((c) => (
@@ -787,7 +1101,7 @@ export default function TemplatePage() {
                       value={selectedSubCatId}
                       onChange={(e) => handleSubCategoryChange(Number(e.target.value))}
                       disabled={!selectedCatId || subCategories.length === 0}
-                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-semibold text-gray-800 dark:text-gray-200 disabled:opacity-50"
                     >
                       <option value={0}>
                         {!selectedCatId
@@ -804,35 +1118,48 @@ export default function TemplatePage() {
                     </select>
                   </div>
 
-                  {/* Number of Items / Quantity */}
-                  <div>
-                    <label className="block font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Number of Items (Qty):
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={itemQuantity}
-                      onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
-                    />
-                  </div>
+                  {/* Generic Quantity and Price - Hidden/Removed when Stock has Vertical & Horizontal Dimensions */}
+                  {!hasDimensions && (
+                    <>
+                      {/* Number of Items / Quantity */}
+                      <div>
+                        <label className="block font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          Number of Items (Qty):
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={itemQuantity}
+                          onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
+                        />
+                      </div>
 
-                  {/* Price per item */}
-                  <div>
-                    <label className="block font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Rate / Price (₹ per unit):
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      value={itemPrice}
-                      onChange={(e) => setItemPrice(parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
-                    />
-                  </div>
+                      {/* Price per item */}
+                      <div>
+                        <label className="block font-medium text-gray-600 dark:text-gray-400 mb-1">
+                          Rate / Price (₹ per unit):
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={itemPrice}
+                          onChange={(e) => setItemPrice(parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-brand-500 font-semibold"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* Loading Dimension Sizes Indicator */}
+                {loadingDimensionSizes && (
+                  <div className="p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 flex items-center gap-2 text-xs text-brand-600 dark:text-brand-400">
+                    <RefreshCw className="animate-spin" size={13} />
+                    <span>Loading vertical and horizontal stock dimensions...</span>
+                  </div>
+                )}
 
                 {/* Live Stock Availability Info Badge */}
                 {selectedStockItem && (() => {
@@ -865,105 +1192,239 @@ export default function TemplatePage() {
                   );
                 })()}
 
-                {/* Dimension Inputs if SubCategory has size enabled */}
-                {subCatIsEnable && (
-                  <div className="pt-2 border-t border-brand-200 dark:border-brand-900/40 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    {/* Vertical Dimension */}
-                    <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 space-y-2">
-                      <label className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={itemVertical}
-                          onChange={(e) => setItemVertical(e.target.checked)}
-                          className="rounded text-brand-500"
-                        />
-                        Vertical Dimension
-                      </label>
-                      {itemVertical && (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <div>
-                            <span className="text-[10px] text-gray-400 block">Size:</span>
-                            <div className="flex">
-                              <input
-                                type="text"
-                                value={itemVerticalValue}
-                                onChange={(e) => setItemVerticalValue(e.target.value)}
-                                className="w-full px-2 py-1 text-xs border rounded-l-lg outline-none"
-                              />
-                              <select
-                                value={itemVerticalUnit}
-                                onChange={(e) => setItemVerticalUnit(e.target.value)}
-                                className="border border-l-0 rounded-r-lg px-1 bg-gray-50 text-[10px]"
-                              >
-                                <option value="ft">ft</option>
-                                <option value="m">m</option>
-                                <option value="in">in</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-gray-400 block">Pcs:</span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={itemVerticalPcs}
-                              onChange={(e) =>
-                                setItemVerticalPcs(parseInt(e.target.value) || 1)
-                              }
-                              className="w-full px-2 py-1 text-xs border rounded-lg outline-none"
-                            />
-                          </div>
+                {/* Dynamic Dimension Inputs & Stock Totals if stock has vertical/horizontal data */}
+                {hasDimensions && (
+                  <div className="pt-2 border-t border-brand-200 dark:border-brand-900/40 space-y-3">
+                    {/* Dimension Stock Summary Counters */}
+                    {(hasVerticalStock || hasHorizontalStock) && (
+                      <div className="p-2.5 rounded-xl bg-gradient-to-r from-blue-50/80 to-purple-50/80 dark:from-blue-950/40 dark:to-purple-950/40 border border-blue-200/80 dark:border-blue-900/50 flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 dark:text-gray-200">
+                          <Sparkles size={14} className="text-brand-500" />
+                          <span>Stock Dimensions for "{selectedSubCatName}":</span>
                         </div>
-                      )}
-                    </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {hasVerticalStock ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 font-bold flex items-center gap-1">
+                              <span>📏 Total Vertical in Stock:</span>
+                              <strong className="text-sm font-extrabold text-blue-700 dark:text-blue-300">{totalVerticalStock}</strong> pcs
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg bg-gray-200/70 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold flex items-center gap-1">
+                              <span>📏 Vertical:</span>
+                              <strong className="text-xs">No Stock (Disabled)</strong>
+                            </span>
+                          )}
+                          {hasHorizontalStock ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 font-bold flex items-center gap-1">
+                              <span>📐 Total Horizontal in Stock:</span>
+                              <strong className="text-sm font-extrabold text-purple-700 dark:text-purple-300">{totalHorizontalStock}</strong> pcs
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-lg bg-gray-200/70 dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-semibold flex items-center gap-1">
+                              <span>📐 Horizontal:</span>
+                              <strong className="text-xs">No Stock (Disabled)</strong>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Horizontal Dimension */}
-                    <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 space-y-2">
-                      <label className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={itemHorizontal}
-                          onChange={(e) => setItemHorizontal(e.target.checked)}
-                          className="rounded text-brand-500"
-                        />
-                        Horizontal Dimension
-                      </label>
-                      {itemHorizontal && (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <div>
-                            <span className="text-[10px] text-gray-400 block">Size:</span>
-                            <div className="flex">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Vertical Dimension Card */}
+                      <div className={`p-3 rounded-xl border transition space-y-2.5 ${
+                        isVerticalDisabled
+                          ? "bg-gray-100/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700/60 opacity-60"
+                          : itemVertical
+                            ? "bg-blue-50/40 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800"
+                            : "bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <label className={`flex items-center gap-2 font-semibold ${
+                            isVerticalDisabled
+                              ? "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                              : "text-gray-800 dark:text-white cursor-pointer"
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={!isVerticalDisabled && itemVertical}
+                              disabled={isVerticalDisabled}
+                              onChange={(e) => {
+                                if (isVerticalDisabled) return;
+                                setItemVertical(e.target.checked);
+                              }}
+                              className="rounded text-brand-500 disabled:cursor-not-allowed"
+                            />
+                            Vertical Dimension
+                          </label>
+                          {isVerticalDisabled ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                              Disabled (No Stock)
+                            </span>
+                          ) : totalVerticalStock > 0 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                              Stock: {totalVerticalStock} pcs
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {!isVerticalDisabled && itemVertical && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold mb-1">
+                                Size:
+                              </span>
+                              {verticalDropdownOptions.length > 0 ? (
+                                <select
+                                  value={`${itemVerticalValue}|${itemVerticalUnit}`}
+                                  onChange={(e) => {
+                                    const [vSize, vUnit] = e.target.value.split("|");
+                                    setItemVerticalValue(vSize);
+                                    setItemVerticalUnit(vUnit || "ft");
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg outline-none font-semibold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-brand-500"
+                                >
+                                  {verticalDropdownOptions.map((opt) => (
+                                    <option key={`${opt.size}_${opt.unit}`} value={`${opt.size}|${opt.unit}`}>
+                                      {opt.size}{opt.unit}{opt.quantity ? ` (${opt.quantity} in stock)` : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex">
+                                  <input
+                                    type="text"
+                                    value={itemVerticalValue}
+                                    onChange={(e) => setItemVerticalValue(e.target.value)}
+                                    placeholder="e.g. 10"
+                                    className="w-full px-2 py-1 text-xs border rounded-l-lg outline-none"
+                                  />
+                                  <select
+                                    value={itemVerticalUnit}
+                                    onChange={(e) => setItemVerticalUnit(e.target.value)}
+                                    className="border border-l-0 rounded-r-lg px-1 bg-gray-50 text-[10px]"
+                                  >
+                                    <option value="ft">ft</option>
+                                    <option value="m">m</option>
+                                    <option value="in">in</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold mb-1">
+                                Vertical Pieces (Pcs):
+                              </span>
                               <input
-                                type="text"
-                                value={itemHorizontalValue}
-                                onChange={(e) => setItemHorizontalValue(e.target.value)}
-                                className="w-full px-2 py-1 text-xs border rounded-l-lg outline-none"
+                                type="number"
+                                min={1}
+                                value={itemVerticalPcs}
+                                onChange={(e) =>
+                                  setItemVerticalPcs(Math.max(1, parseInt(e.target.value) || 1))
+                                }
+                                className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg outline-none font-semibold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-brand-500"
                               />
-                              <select
-                                value={itemHorizontalUnit}
-                                onChange={(e) => setItemHorizontalUnit(e.target.value)}
-                                className="border border-l-0 rounded-r-lg px-1 bg-gray-50 text-[10px]"
-                              >
-                                <option value="ft">ft</option>
-                                <option value="m">m</option>
-                                <option value="in">in</option>
-                              </select>
                             </div>
                           </div>
-                          <div>
-                            <span className="text-[10px] text-gray-400 block">Pcs:</span>
+                        )}
+                      </div>
+
+                      {/* Horizontal Dimension Card */}
+                      <div className={`p-3 rounded-xl border transition space-y-2.5 ${
+                        isHorizontalDisabled
+                          ? "bg-gray-100/70 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700/60 opacity-60"
+                          : itemHorizontal
+                            ? "bg-purple-50/40 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800"
+                            : "bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <label className={`flex items-center gap-2 font-semibold ${
+                            isHorizontalDisabled
+                              ? "text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                              : "text-gray-800 dark:text-white cursor-pointer"
+                          }`}>
                             <input
-                              type="number"
-                              min={1}
-                              value={itemHorizontalPcs}
-                              onChange={(e) =>
-                                setItemHorizontalPcs(parseInt(e.target.value) || 1)
-                              }
-                              className="w-full px-2 py-1 text-xs border rounded-lg outline-none"
+                              type="checkbox"
+                              checked={!isHorizontalDisabled && itemHorizontal}
+                              disabled={isHorizontalDisabled}
+                              onChange={(e) => {
+                                if (isHorizontalDisabled) return;
+                                setItemHorizontal(e.target.checked);
+                              }}
+                              className="rounded text-brand-500 disabled:cursor-not-allowed"
                             />
-                          </div>
+                            Horizontal Dimension
+                          </label>
+                          {isHorizontalDisabled ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                              Disabled (No Stock)
+                            </span>
+                          ) : totalHorizontalStock > 0 ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
+                              Stock: {totalHorizontalStock} pcs
+                            </span>
+                          ) : null}
                         </div>
-                      )}
+
+                        {!isHorizontalDisabled && itemHorizontal && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold mb-1">
+                                Size:
+                              </span>
+                              {horizontalDropdownOptions.length > 0 ? (
+                                <select
+                                  value={`${itemHorizontalValue}|${itemHorizontalUnit}`}
+                                  onChange={(e) => {
+                                    const [hSize, hUnit] = e.target.value.split("|");
+                                    setItemHorizontalValue(hSize);
+                                    setItemHorizontalUnit(hUnit || "ft");
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg outline-none font-semibold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-brand-500"
+                                >
+                                  {horizontalDropdownOptions.map((opt) => (
+                                    <option key={`${opt.size}_${opt.unit}`} value={`${opt.size}|${opt.unit}`}>
+                                      {opt.size}{opt.unit}{opt.quantity ? ` (${opt.quantity} in stock)` : ""}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <div className="flex">
+                                  <input
+                                    type="text"
+                                    value={itemHorizontalValue}
+                                    onChange={(e) => setItemHorizontalValue(e.target.value)}
+                                    placeholder="e.g. 10"
+                                    className="w-full px-2 py-1 text-xs border rounded-l-lg outline-none"
+                                  />
+                                  <select
+                                    value={itemHorizontalUnit}
+                                    onChange={(e) => setItemHorizontalUnit(e.target.value)}
+                                    className="border border-l-0 rounded-r-lg px-1 bg-gray-50 text-[10px]"
+                                  >
+                                    <option value="ft">ft</option>
+                                    <option value="m">m</option>
+                                    <option value="in">in</option>
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-semibold mb-1">
+                                Horizontal Pieces (Pcs):
+                              </span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={itemHorizontalPcs}
+                                onChange={(e) =>
+                                  setItemHorizontalPcs(Math.max(1, parseInt(e.target.value) || 1))
+                                }
+                                className="w-full px-2.5 py-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg outline-none font-semibold text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-brand-500"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

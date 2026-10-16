@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 
 // Assume these icons are imported from an icon library
@@ -21,170 +21,135 @@ type NavItem = {
   subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
-const staffNavItems: NavItem[] = [
-  {
-    icon: <ClipboardList />,
-    name: "Events List",
-    path: "/events",
-  },
-  {
-    icon: <CalendarDays />,
-    name: "Attendance",
-    path: "/attendance",
-  },
-  {
-    icon: <Users />,
-    name: "My Salary",
-    path: "/salary",
-  },
-  {
-    icon: <User />,
-    name: "My Profile",
-    path: "/profile",
-  },
-  {
-    icon: <Settings />,
-    name: "Setting",
-    path: "/setting",
-  },
-];
-
-const navItems: NavItem[] = [
-  {
-    icon: <LayoutDashboard />,
-    name: "Dashboard",
-    subItems: [{ name: "Company Profile", path: "/companyprofile", pro: false}, {name: "Available Stock", path: "/availablestock", pro: false}],
-  },
-  {
-    icon: <CalendarDays />,
-    name: "Calendar Booking",
-    path: "/calendar",
-  },
-
-  {
-    icon: <ClipboardList />,
-    name: "Events List",
-    path: "/events",
-  },
-
-  {
-    icon: <LayoutTemplate />,
-    name: "Event Templates",
-    path: "/templates",
-  },
-
-  {
-    icon: <Users />,
-    name: "Employee",
-    subItems: [
-      { name: "Employee List", path: "/employeelist", pro: false },
-      { name: "Attendance", path: "/attendance", pro: false },
-      { name: "Salary", path: "/salary", pro: false }
-    ]
-  },
-
-  {
-    icon: <Warehouse  />,
-    name: "Inventroy",
-    subItems: [{ name: "Ware House", path: "/wherehouse", pro: false },{ name: "Ware House List", path: "/warehouselist", pro: false }, { name: "Stock", path: "/stock", pro: false }, { name: "Category", path: "/category", pro: false }, { name: "Sub Category", path: "/sub-category", pro: false }],
-  },
-
-  {
-    icon: <Truck  />,
-    name: "Vehicle Management",
-    subItems: [{ name: "Vehicle Types", path: "/addvehicle", pro: false },{ name: "Owner Vehicle", path: "/owner-vahicle", pro: false }, { name: "Agency Vehicle", path: "/agency-vehicle", pro: false }, { name: "Vehicle", path: "/vehicle", pro: false }],
-  },
-
-  {
-    icon: <FileText  />,
-    name: "Invoice ",
-    subItems: [{name: "Invoice List", path: "/invoicelist", pro: false}]
-  }, 
- 
-
-  // {
-  //   icon: <CalenderIcon />,
-  //   name: "Invoices",
-  //   path: "/attendance",
-  // },
-
-  // {
-  //   icon: <CalenderIcon />,
-  //   name: "Reports",
-  //   path: "/attendance",
-  // },
-
-  {
-    icon: <Settings />,
-    name: "Setting",
-    path: "/setting",
-  },
-
-
-  // {
-  //   icon: <UserCircleIcon />,
-  //   name: "User Profile",
-  //   path: "/profile",
-  // },
-  // {
-  //   name: "Forms",
-  //   icon: <ListIcon />,
-  //   subItems: [{ name: "Form Elements", path: "/form-elements", pro: false }],
-  // },
-  // {
-  //   name: "Tables",
-  //   icon: <TableIcon />,
-  //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-  // },
-  // {
-  //   name: "Pages",
-  //   icon: <PageIcon />,
-  //   subItems: [
-  //     { name: "Blank Page", path: "/blank", pro: false },
-  //     { name: "404 Error", path: "/error-404", pro: false },
-  //   ],
-  // },
-];
-
-const othersItems: NavItem[] = [
-  // {
-  //   icon: <PieChartIcon />,
-  //   name: "Charts",
-  //   subItems: [
-  //     { name: "Line Chart", path: "/line-chart", pro: false },
-  //     { name: "Bar Chart", path: "/bar-chart", pro: false },
-  //   ],
-  // },
-  // {
-  //   icon: <BoxCubeIcon />,
-  //   name: "UI Elements",
-  //   subItems: [
-  //     { name: "Alerts", path: "/alerts", pro: false },
-  //     { name: "Avatar", path: "/avatars", pro: false },
-  //     { name: "Badge", path: "/badge", pro: false },
-  //     { name: "Buttons", path: "/buttons", pro: false },
-  //     { name: "Images", path: "/images", pro: false },
-  //     { name: "Videos", path: "/videos", pro: false },
-  //   ],
-  // },
-  // {
-  //   icon: <PlugInIcon />,
-  //   name: "Authentication",
-  //   subItems: [
-  //     { name: "Sign In", path: "/signin", pro: false },
-  //     { name: "Sign Up", path: "/signup", pro: false },
-  //   ],
-  // },
-];
-
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
-  const { isStaff } = useAuth();
+  const { canView, isStaff } = useAuth();
   const { company } = useCompany();
   const location = useLocation();
 
-  const currentNavItems = isStaff ? staffNavItems : navItems;
-  const currentOthersItems = isStaff ? [] : othersItems;
+  const currentNavItems = useMemo(() => {
+    const items: NavItem[] = [];
+
+    // Dashboard
+    if (canView("dashboard")) {
+      items.push({
+        icon: <LayoutDashboard />,
+        name: "Dashboard",
+        subItems: [
+          { name: "Company Profile", path: "/companyprofile", pro: false },
+          { name: "Available Stock", path: "/availablestock", pro: false },
+        ],
+      });
+    }
+
+    // Calendar Booking
+    if (canView("calendar")) {
+      items.push({
+        icon: <CalendarDays />,
+        name: "Calendar Booking",
+        path: "/calendar",
+      });
+    }
+
+    // Events List
+    if (canView("events")) {
+      items.push({
+        icon: <ClipboardList />,
+        name: "Events List",
+        path: "/events",
+      });
+    }
+
+    // Event Templates
+    if (canView("templates")) {
+      items.push({
+        icon: <LayoutTemplate />,
+        name: "Event Templates",
+        path: "/templates",
+      });
+    }
+
+    // Employee section (Employee List, Roles & Permissions, Attendance, Salary)
+    const empSub: { name: string; path: string; pro?: boolean }[] = [];
+    if (canView("employees")) {
+      empSub.push({ name: "Employee List", path: "/employeelist", pro: false });
+    }
+    if (canView("roles")) {
+      empSub.push({ name: "Roles & Permissions", path: "/roles-permissions", pro: false });
+    }
+    if (canView("attendance")) {
+      empSub.push({ name: "Attendance", path: "/attendance", pro: false });
+    }
+    if (canView("salary")) {
+      empSub.push({ name: "Salary", path: "/salary", pro: false });
+    }
+
+    if (empSub.length > 0) {
+      items.push({
+        icon: <Users />,
+        name: "Employee",
+        subItems: empSub,
+      });
+    }
+
+    // Inventory
+    if (canView("inventory")) {
+      items.push({
+        icon: <Warehouse />,
+        name: "Inventory",
+        subItems: [
+          { name: "Ware House", path: "/wherehouse", pro: false },
+          { name: "Ware House List", path: "/warehouselist", pro: false },
+          { name: "Stock", path: "/stock", pro: false },
+          { name: "Category", path: "/category", pro: false },
+          { name: "Sub Category", path: "/sub-category", pro: false },
+        ],
+      });
+    }
+
+    // Vehicle Management
+    if (canView("vehicles")) {
+      items.push({
+        icon: <Truck />,
+        name: "Vehicle Management",
+        subItems: [
+          { name: "Vehicle Types", path: "/addvehicle", pro: false },
+          { name: "Owner Vehicle", path: "/owner-vahicle", pro: false },
+          { name: "Agency Vehicle", path: "/agency-vehicle", pro: false },
+          { name: "Vehicle", path: "/vehicle", pro: false },
+        ],
+      });
+    }
+
+    // Invoice
+    if (canView("invoices")) {
+      items.push({
+        icon: <FileText />,
+        name: "Invoice",
+        subItems: [{ name: "Invoice List", path: "/invoicelist", pro: false }],
+      });
+    }
+
+    // My Profile (accessible to all logged in users)
+    items.push({
+      icon: <User />,
+      name: "My Profile",
+      path: "/profile",
+    });
+
+    // Setting
+    if (canView("settings")) {
+      items.push({
+        icon: <Settings />,
+        name: "Setting",
+        path: "/setting",
+      });
+    }
+
+    return items;
+  }, [canView]);
+
+  const currentOthersItems: NavItem[] = [];
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "others";
